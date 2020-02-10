@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# -*- coding: windows-1252 -*-
 # Name: QR Toolbox v2a
 # Description: The QR Toolbox is a suite a tools for creating and reading QR codes. See the About screen for more
 # information
@@ -52,18 +52,18 @@ context_auth.acquire_token_for_app(client_id=settings['client_id'], client_secre
 ctx = ClientContext(settings['url'], context_auth)
 
 # load variables
-# set share folder default, assign system ID, and wait time
-share_folder = "None"
+# set store folder default, assign system ID, and wait time
+storagePath = "None"
 system_id = os.environ['COMPUTERNAME']
 t_value = timedelta(seconds=10)
 
 # Lists and Dictionaries used for special character handling and conversion
 trouble_characters = ['\t', '\n', '\r']
-bad_file_name_list = ['*', ':', '"', '<', '>', ',', '/', '\\', '|', '?', '\t', '\n']
-special_characters = ["√†", "√°", "√¢", "√£", "√§", "√•", "√¶", "√ß", "√®", "√©", "√™", "√´", "√¨", "√≠", "√Æ", "√Ø", "√∞", "√±", "√≤",
-                      "√≥", "√¥", "√µ", "√∂", "√∏", "√π", "√∫", "√ª", "√º", "√Ω", "√æ", "√ø", "√Ä", "√Å", "√Ç", "√É", "√Ñ", "√Ö", "√Ü",
-                      "√á", "√à", "√â", "√ä", "√ã", "√å", "√ç", "√é", "√è", "√ê", "√ë", "√í", "√ì", "√î", "√ï", "√ñ", "√ò", "√ô", "√ö",
-                      "√õ", "√ú", "√ù", "√û", "√ü"]
+bad_file_name_list = ['*', ':', '"', '<', '>', ',', '/', '|', '?', '\\']
+special_characters = ["‡", "·", "‚", "„", "‰", "Â", "Ê", "Á", "Ë", "È", "Í", "Î", "Ï", "Ì", "Ó", "Ô", "", "Ò", "Ú",
+                      "Û", "Ù", "ı", "ˆ", "¯", "˘", "˙", "˚", "¸", "˝", "˛", "ˇ", "¿", "¡", "¬", "√", "ƒ", "≈", "∆",
+                      "«", "»", "…", " ", "À", "Ã", "Õ", "Œ", "œ", "–", "—", "“", "”", "‘", "’", "÷", "ÿ", "Ÿ", "⁄",
+                      "€", "‹", "›", "ﬁ", "ﬂ"]
 code_characters = ["!@!a1!", "!@!a2!", "!@!a3!", "!@!a4!", "!@!a5!", "!@!a6!", "!@!a7!", "!@!c1!", "!@!e1!", "!@!e2!",
                    "!@!e3!", "!@!e4!", "!@!i1!", "!@!i2!", "!@!i3!", "!@!i4!", "!@!o1!", "!@!n1!", "!@!o2!", "!@!o3!",
                    "!@!o4!", "!@!o5!", "!@!o6!", "!@!o7!", "!@!u1!", "!@!u2!", "!@!u3!", "!@!u4!", "!@!y1!", "!@!b1!",
@@ -71,35 +71,35 @@ code_characters = ["!@!a1!", "!@!a2!", "!@!a3!", "!@!a4!", "!@!a5!", "!@!a6!", "
                    "!@!E2!", "!@!E3!", "!@!E4!", "!@!I1!", "!@!I2!", "!@!I3!", "!@!I4!", "!@!O1!", "!@!N1!", "!@!O2!",
                    "!@!O3!", "!@!O4!", "!@!O5!", "!@!O6!", "!@!O7!", "!@!U1!", "!@!U2!", "!@!U3!", "!@!U4!", "!@!Y1!",
                    "!@!B1!", "!@!Y2!"]
-char_dict_special_to_code = {"√†": "!@!a1!", "√°": "!@!a2!", "√¢": "!@!a3!", "√£": "!@!a4!", "√§": "!@!a5!", "√•": "!@!a6!",
-                             "√¶": "!@!a7!", "√ß": "!@!c1!", "√®": "!@!e1!", "√©": "!@!e1!", "√™": "!@!e3!", "√´": "!@!e4!",
-                             "√¨": "!@!i1!", "√≠": "!@!i2!", "√Æ": "!@!i3!", "√Ø": "!@!i4!", "√∞": "!@!o1!", "√±": "!@!n1!",
-                             "√≤": "!@!o2!", "√≥": "!@!o3!", "√¥": "!@!o4!", "√µ": "!@!o5!", "√∂": "!@!o6!", "√∏": "!@!o7!",
-                             "√π": "!@!u1!", "√∫": "!@!u2!", "√ª": "!@!u3!", "√º": "!@!u4!", "√Ω": "!@!y1!", "√æ": "!@!b1!",
-                             "√ø": "!@!y2!", "√Ä": "!@!A1!", "√Å": "!@!A2!", "√Ç": "!@!A3!", "√É": "!@!A4!", "√Ñ": "!@!A5!",
-                             "√Ö": "!@!A6!", "√Ü": "!@!A7!", "√á": "!@!C1!", "√à": "!@!E1!", "√â": "!@!E2!", "√ä": "!@!E3!",
-                             "√ã": "!@!E4!", "√å": "!@!I1!", "√ç": "!@!I2!", "√é": "!@!I3!", "√è": "!@!I4!", "√ê": "!@!O1!",
-                             "√ë": "!@!N1!", "√í": "!@!O2!", "√ì": "!@!O3!", "√î": "!@!O4!", "√ï": "!@!O5!", "√ñ": "!@!O6!",
-                             "√ò": "!@!O7!", "√ô": "!@!U1!", "√ö": "!@!U2!", "√õ": "!@!U3!", "√ú": "!@!U4!", "√ù": "!@!Y1!",
-                             "√û": "!@!B1!", "√ü": "!@!Y2!"}
-char_dict_code_to_special = {"!@!a1!": "√†", "!@!a2!": "√°", "!@!a3!": "√¢", "!@!a4!": "√£", "!@!a5!": "√§", "!@!a6!": "√•",
-                             "!@!a7!": "√¶", "!@!c1!": "√ß", "!@!e1!": "√®", "!@!e2!": "√©", "!@!e3!": "√™", "!@!e4!": "√´",
-                             "!@!i1!": "√¨", "!@!i2!": "√≠", "!@!i3!": "√Æ", "!@!i4!": "√Ø", "!@!o1!": "√∞", "!@!n1!": "√±",
-                             "!@!o2!": "√≤", "!@!o3!": "√≥", "!@!o4!": "√¥", "!@!o5!": "√µ", "!@!o6!": "√∂", "!@!o7!": "√∏",
-                             "!@!u1!": "√π", "!@!u2!": "√∫", "!@!u3!": "√ª", "!@!u4!": "√º", "!@!y1!": "√Ω", "!@!b1!": "√æ",
-                             "!@!y2!": "√ø", "!@!A1!": "√Ä", "!@!A2!": "√Å", "!@!A3!": "√Ç", "!@!A4!": "√É", "!@!A5!": "√Ñ",
-                             "!@!A6!": "√Ö", "!@!A7!": "√Ü", "!@!C1!": "√á", "!@!E1!": "√à", "!@!E2!": "√â", "!@!E3!": "√ä",
-                             "!@!E4!": "√ã", "!@!I1!": "√å", "!@!I2!": "√ç", "!@!I3!": "√é", "!@!I4!": "√è", "!@!O1!": "√ê",
-                             "!@!N1!": "√ë", "!@!O2!": "√í", "!@!O3!": "√ì", "!@!O4!": "√î", "!@!O5!": "√ï", "!@!O6!": "√ñ",
-                             "!@!O7!": "√ò", "!@!U1!": "√ô", "!@!U2!": "√ö", "!@!U3!": "√õ", "!@!U4!": "√ú", "!@!Y1!": "√ù",
-                             "!@!B1!": "√û", "!@!Y2!": "√ü"}
-char_dict_special_to_reg = {"√†": "a", "√°": "a", "√¢": "a", "√£": "a", "√§": "a", "√•": "a", "√¶": "a", "√ß": "c", "√®": "e",
-                            "√©": "e", "√™": "e", "√´": "e", "√¨": "i", "√≠": "i", "√Æ": "i", "√Ø": "i", "√∞": "o", "√±": "n",
-                            "√≤": "o", "√≥": "o", "√¥": "o", "√µ": "o", "√∂": "o", "√∏": "o", "√π": "u", "√∫": "u", "√ª": "u",
-                            "√º": "u", "√Ω": "y", "√æ": "b", "√ø": "y", "√Ä": "A", "√Å": "A", "√Ç": "A", "√É": "A", "√Ñ": "A",
-                            "√Ö": "A", "√Ü": "A", "√á": "C", "√à": "E", "√â": "E", "√ä": "E", "√ã": "E", "√å": "I", "√ç": "I",
-                            "√é": "I", "√è": "I", "√ê": "O", "√ë": "N", "√í": "O", "√ì": "O", "√î": "O", "√ï": "O", "√ñ": "O",
-                            "√ò": "O", "√ô": "U", "√ö": "U", "√õ": "U", "√ú": "U", "√ù": "Y", "√û": "B", "√ü": "Y"}
+char_dict_special_to_code = {"‡": "!@!a1!", "·": "!@!a2!", "‚": "!@!a3!", "„": "!@!a4!", "‰": "!@!a5!", "Â": "!@!a6!",
+                             "Ê": "!@!a7!", "Á": "!@!c1!", "Ë": "!@!e1!", "È": "!@!e1!", "Í": "!@!e3!", "Î": "!@!e4!",
+                             "Ï": "!@!i1!", "Ì": "!@!i2!", "Ó": "!@!i3!", "Ô": "!@!i4!", "": "!@!o1!", "Ò": "!@!n1!",
+                             "Ú": "!@!o2!", "Û": "!@!o3!", "Ù": "!@!o4!", "ı": "!@!o5!", "ˆ": "!@!o6!", "¯": "!@!o7!",
+                             "˘": "!@!u1!", "˙": "!@!u2!", "˚": "!@!u3!", "¸": "!@!u4!", "˝": "!@!y1!", "˛": "!@!b1!",
+                             "ˇ": "!@!y2!", "¿": "!@!A1!", "¡": "!@!A2!", "¬": "!@!A3!", "√": "!@!A4!", "ƒ": "!@!A5!",
+                             "≈": "!@!A6!", "∆": "!@!A7!", "«": "!@!C1!", "»": "!@!E1!", "…": "!@!E2!", " ": "!@!E3!",
+                             "À": "!@!E4!", "Ã": "!@!I1!", "Õ": "!@!I2!", "Œ": "!@!I3!", "œ": "!@!I4!", "–": "!@!O1!",
+                             "—": "!@!N1!", "“": "!@!O2!", "”": "!@!O3!", "‘": "!@!O4!", "’": "!@!O5!", "÷": "!@!O6!",
+                             "ÿ": "!@!O7!", "Ÿ": "!@!U1!", "⁄": "!@!U2!", "€": "!@!U3!", "‹": "!@!U4!", "›": "!@!Y1!",
+                             "ﬁ": "!@!B1!", "ﬂ": "!@!Y2!"}
+char_dict_code_to_special = {"!@!a1!": "‡", "!@!a2!": "·", "!@!a3!": "‚", "!@!a4!": "„", "!@!a5!": "‰", "!@!a6!": "Â",
+                             "!@!a7!": "Ê", "!@!c1!": "Á", "!@!e1!": "Ë", "!@!e2!": "È", "!@!e3!": "Í", "!@!e4!": "Î",
+                             "!@!i1!": "Ï", "!@!i2!": "Ì", "!@!i3!": "Ó", "!@!i4!": "Ô", "!@!o1!": "", "!@!n1!": "Ò",
+                             "!@!o2!": "Ú", "!@!o3!": "Û", "!@!o4!": "Ù", "!@!o5!": "ı", "!@!o6!": "ˆ", "!@!o7!": "¯",
+                             "!@!u1!": "˘", "!@!u2!": "˙", "!@!u3!": "˚", "!@!u4!": "¸", "!@!y1!": "˝", "!@!b1!": "˛",
+                             "!@!y2!": "ˇ", "!@!A1!": "¿", "!@!A2!": "¡", "!@!A3!": "¬", "!@!A4!": "√", "!@!A5!": "ƒ",
+                             "!@!A6!": "≈", "!@!A7!": "∆", "!@!C1!": "«", "!@!E1!": "»", "!@!E2!": "…", "!@!E3!": " ",
+                             "!@!E4!": "À", "!@!I1!": "Ã", "!@!I2!": "Õ", "!@!I3!": "Œ", "!@!I4!": "œ", "!@!O1!": "–",
+                             "!@!N1!": "—", "!@!O2!": "“", "!@!O3!": "”", "!@!O4!": "‘", "!@!O5!": "’", "!@!O6!": "÷",
+                             "!@!O7!": "ÿ", "!@!U1!": "Ÿ", "!@!U2!": "⁄", "!@!U3!": "€", "!@!U4!": "‹", "!@!Y1!": "›",
+                             "!@!B1!": "ﬁ", "!@!Y2!": "ﬂ"}
+char_dict_special_to_reg = {"‡": "a", "·": "a", "‚": "a", "„": "a", "‰": "a", "Â": "a", "Ê": "a", "Á": "c", "Ë": "e",
+                            "È": "e", "Í": "e", "Î": "e", "Ï": "i", "Ì": "i", "Ó": "i", "Ô": "i", "": "o", "Ò": "n",
+                            "Ú": "o", "Û": "o", "Ù": "o", "ı": "o", "ˆ": "o", "¯": "o", "˘": "u", "˙": "u", "˚": "u",
+                            "¸": "u", "˝": "y", "˛": "b", "ˇ": "y", "¿": "A", "¡": "A", "¬": "A", "√": "A", "ƒ": "A",
+                            "≈": "A", "∆": "A", "«": "C", "»": "E", "…": "E", " ": "E", "À": "E", "Ã": "I", "Õ": "I",
+                            "Œ": "I", "œ": "I", "–": "O", "—": "N", "“": "O", "”": "O", "‘": "O", "’": "O", "÷": "O",
+                            "ÿ": "O", "Ÿ": "U", "⁄": "U", "€": "U", "‹": "U", "›": "Y", "ﬁ": "B", "ﬂ": "Y"}
 
 # display landing screen
 
@@ -131,6 +131,7 @@ def video():
     args = vars(ap.parse_args())
     # initialize time and date and make filename friendly
     time_header = str(datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S'))
+    file_name = "QRT" + "-" + system_id + "_" + time_header + ".csv"
 
     # initialize the video stream and allow the camera sensor to warm up
     print("[ALERT] starting video stream...")
@@ -150,12 +151,6 @@ def video():
 
     # open the output CSV file for writing and initialize the set of barcodes found thus far
     csv = open(args["output"], "w", encoding="utf-8")
-
-    if os.path.exists(share_folder):
-        csv2 = open(os.path.join(share_folder, "QRT" + "-" + system_id + "_" + time_header + ".csv"), "w",
-                    encoding="utf-8")
-    else:
-        print("Alert: Share folder not established or is unavailable. Files will be saved to the working directory\n")
 
     # time track variables. These are used to keep track of QR codes as they enter the screen
     found = []
@@ -218,14 +213,6 @@ def video():
                     create_list_item(ctx, contentstr2)
                     contentStrings = contentStrings + contentstr
 
-                # csv2 writes to share folder location
-                if os.path.exists(share_folder):
-                    csv2.write("{},{},{},{}\n".format(system_id, datetime.datetime.now(),
-                                                      barcodeData, "IN"))
-                    csv2.flush()
-                else:
-                    pass
-
                 found.append(barcodeData)
                 found_time.append(datetime.datetime.now())
                 found_status.append("IN")
@@ -258,15 +245,6 @@ def video():
                         create_list_item(ctx, contentstr2)
                         contentStrings = contentStrings + contentstr
 
-                    # csv2 writes to share folder location
-                    # check and make sure share folder exists
-                    if os.path.exists(share_folder):
-                        csv2.write("{},{},{},{},{}\n".format(system_id, datetime.datetime.now(),
-                                                             barcodeData, "OUT", time_check))
-                        csv2.flush()
-                    else:
-                        pass
-
                     sys.stdout.write('\a')  # When this letter is sent to terminal, a beep sound is emitted but no text
                     sys.stdout.flush()
                     print(barcodeData + " checking OUT at " + str(
@@ -298,7 +276,7 @@ def video():
 
     # This part is necessary to show special characters properly on any of the local CSVs
     barcodesTxt = open(args["output"], 'r', encoding="utf-8")
-    newCSV = open('barcodes.csv', 'w', encoding="ANSI")
+    newCSV = open(file_name, 'w', encoding="ANSI")
 
     data = barcodesTxt.read()
     newCSV.write(data)
@@ -308,15 +286,18 @@ def video():
     os.remove(args["output"])
 
     if storageChoice == 'a':  # if local was chosen, also store barcodes file at the location given
-        localCSV = open(storagePath + '/barcodes.csv', 'w', encoding="ANSI")
-        localCSV.write(data)
-        localCSV.close()
-    elif storageChoice.lower() == 'b':  # if online was chosen, upload data to SharePoint as well
-        fname = "QRT" + "-" + system_id + "_" + time_header + ".csv"
-        upload_file(ctx, contentStrings, fname, bkcsvfolder)
+        if os.path.exists(storagePath):  # check if file path exists
+            csv2 = open(os.path.join(storagePath, file_name), "w",
+                        encoding="ANSI")
+            csv2.write(data)
+            csv2.close()
+        else:
+            print("Alert: Storage folder not established or is unavailable. Files will only be saved to the working "
+                "directory\n")
 
-    if os.path.exists(share_folder):
-        csv2.close()
+    elif storageChoice.lower() == 'b':  # if online was chosen, upload data to SharePoint as well
+        upload_file(ctx, contentStrings, file_name, bkcsvfolder)
+
     vs.stop()
     vs.stream.release()
     cv2.destroyAllWindows()
@@ -669,23 +650,18 @@ This function allows the user to select a shared folder. If user escapes, a shar
 """
 
 
-def share():
-    print("TEST")
+def store():
     print("")
     root = Tk()
-    print("TEST2")
-    root.title('Share Directory')
+    root.title('Storage Directory')
     root.withdraw()
-    print("TEST3")
-    share_folder = filedialog.askdirectory(title='Select a Network Share Directory')
-    print("TEST4")
-    if os.path.exists(share_folder):
-        print("Share directory established: " + share_folder)
+    store_path = filedialog.askdirectory(title='Select a Network Storage Directory')
+    if os.path.exists(store_path):
+        print("Storage directory established: " + store_path)
     else:
-        print("Share directory NOT established")
+        print("Storage directory NOT established")
     print("")
-    print("TEST5")
-    return share_folder
+    return store_path
 
 
 """
@@ -697,9 +673,9 @@ checks are built in to prevent bad things from happening
 
 def cons():
     time_header = str(datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S'))
-    cons_filename = os.path.join(share_folder, 'Consolidated_Record_' + time_header + '.csv')
-    if os.path.exists(share_folder):
-        QRT_files = [fn for fn in os.listdir(share_folder) if fn.startswith('QRT')]
+    cons_filename = os.path.join(storagePath, 'Consolidated_Record_' + time_header + '.csv')
+    if os.path.exists(storagePath):
+        QRT_files = [fn for fn in os.listdir(storagePath) if fn.startswith('QRT')]
 
         if not QRT_files:
             print("No entries to combine. Check the shared directory and try again")
@@ -707,7 +683,7 @@ def cons():
             try:
                 with open(cons_filename, 'wb') as outfile:
                     for i, fname in enumerate(QRT_files):
-                        fname = os.path.join(share_folder, fname)
+                        fname = os.path.join(storagePath, fname)
                         with open(fname, 'rb') as infile:
                             shutil.copyfileobj(infile, outfile)
                             print(fname + " has been imported.")
@@ -743,12 +719,11 @@ while True:
 while True:
     print("Do you want data stored on Sharepoint (online) or locally?")
     print("Note: Files are saved in the QR_Toolbox root folder by default.")
-    print("A. Local (Specify another location on the computer)")
+    print("A. Local (Specify a location on the computer)")
     print("B. Sharepoint (Online)")
     storageChoice = input("Enter your selection: ")
     if storageChoice.lower() == 'a':
-        print("\nWhere do you want to store the data?")
-        storagePath = input("Enter the absolute path: ")
+        storagePath = store()
         break
     elif storageChoice.lower() == 'b':
         break
@@ -762,10 +737,9 @@ while True:
     print("A. QR Reader")
     print("B. QR Creator - Batch")
     print("C. QR Creator - Single")
-    print("D. Establish Share Folder")
-    print("E. Consolidate Records")
-    print("F. About/Credits")
-    print("G. Exit \n")
+    print("D. Consolidate Records") if storageChoice == 'a' else ""
+    print("E. About/Credits" if storageChoice == 'a' else "D. About/Credits")
+    print("F. Exit \n" if storageChoice == 'a' else "E. Exit \n")
     choice = input("Enter your selection: ")
     if choice.lower() == 'a':
         video()
@@ -774,12 +748,13 @@ while True:
     elif choice.lower() == 'c':
         qr_single()
     elif choice.lower() == 'd':
-        share_folder = share()
+        cons() if storageChoice == 'a' else about()
     elif choice.lower() == 'e':
-        cons()
-    elif choice.lower() == 'f':
-        about()
-    elif choice.lower() == 'g':
+        if storageChoice == 'a':
+            about()
+        else:
+            break
+    elif choice.lower() == 'f' and storageChoice == 'a':
         break
     else:
         print("Invalid choice \n")
