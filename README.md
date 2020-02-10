@@ -9,5 +9,6 @@ Contact: Timothy Boe boe.timothy@epa.gov; Jonathan Pettit pettit.Jonathan@epa.go
 Requirements: Python 3, pyzbar, imutils, opencv-python, qrcode[pil], office365
 
 Installation: installation process and user guide coming soon...
+-Use Setup.bat to install software.
 
-Note: the tool requires a Sharepoint ID and passcode to operate (see the settings file). This information is specific to your organization or account. For EPA users, please contact Timothy Boe and Jonathan Pettit to obtain the necessary settings file.
+Note: THIS IS THE OLD LOCAL ONLY VERSION
