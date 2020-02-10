@@ -12,3 +12,5 @@ Installation: User guide coming soon...
 Use Setup.bat to install necessary software.
 
 Note: the tool requires a Sharepoint ID and passcode to operate (see the settings file). This information is specific to your organization or account. For EPA users, please contact Timothy Boe and Jonathan Pettit to obtain the necessary settings file.
+
+Note: Ignore the .idea folder on GitHub, it is not necessary to run or use the software.
