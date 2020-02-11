@@ -5,4 +5,4 @@ pip install qrcode;
 pip install Pillow;
 pip install opencv-python
 pip install Office365-REST-Python-Client;
-setx OPENCV_VIDEOIO_PRIORITY_MSMF 0;
+setx OPENCV_VIDEOIO_PRIORITY_MSMF 0
