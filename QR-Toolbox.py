@@ -281,12 +281,12 @@ def video():
     # close the output CSV file do a bit of cleanup
     print("[ALERT] Cleaning up... \n")
     csv.close()
-    print(os.path.isfile(args["output"]), os.path.isfile("barcodes2.txt"))
+
     # This part is necessary to show special characters properly on any of the local CSVs
     if os.path.isfile(args["output"]) and not os.path.isfile("barcodes2.txt"):
         barcodesTxt = open(args["output"], 'r', encoding="utf-8")
         newCSV = open(file_name, 'w', encoding="ANSI")
-        print("WE HERE")  ##############
+
         data = barcodesTxt.read()
         newCSV.write(data)
 
@@ -307,7 +307,7 @@ def video():
         os.remove("barcodes2.txt")
         isCameraOne = False
     else:
-        data = "Something went wrong"
+        data = "[ERROR] Something went wrong in the CSV special character handling section."
         print("[ERROR] Something went wrong in the CSV special character handling section.")
 
     if storageChoice == 'a':  # if local was chosen, also store barcodes file at the location given
