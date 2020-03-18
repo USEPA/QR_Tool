@@ -45,7 +45,7 @@ qrfolder = "QRCodes"
 bkcsvfolder = "HXWTEST"
 remoteQRBatchFile = "names-remote.csv"
 localQRBatchFile = "names.csv"
-relative_url = "/sites/Emergency%20Response/EOCIncident/EOC%20Documents/QRCodes/names_test.csv"
+relative_url = "/sites/Emergency%20Response/EOCIncident/EOC%20Documents/QRCodes/names.csv"
 
 context_auth = AuthenticationContext(url=settings['url'])
 context_auth.acquire_token_for_app(client_id=settings['client_id'], client_secret=settings['client_secret'])
