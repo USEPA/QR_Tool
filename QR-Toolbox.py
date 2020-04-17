@@ -37,7 +37,7 @@ from office365.sharepoint.file_creation_information import FileCreationInformati
 from pyzbar import pyzbar
 from pyzbar.pyzbar import ZBarSymbol
 
-from settings import settings
+from Setup.settings import settings
 
 # Sharepoint related variables
 listTitle = "QR Timestamps"
