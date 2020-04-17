@@ -46,6 +46,7 @@ bkcsvfolder = "HXWTEST"
 remoteQRBatchFile = "names-remote.csv"
 localQRBatchFile = "names.csv"
 relative_url = "/sites/Emergency%20Response/EOCIncident/EOC%20Documents/QRCodes/names.csv"
+qr_storage_file = "System_Data/qr-data.txt"
 
 context_auth = AuthenticationContext(url=settings['url'])
 context_auth.acquire_token_for_app(client_id=settings['client_id'], client_secret=settings['client_secret'])
@@ -108,7 +109,7 @@ print("  _/    _/    _/    _/          _/      _/_/      _/_/    _/  _/_/_/     
 print(" _/  _/_/    _/_/_/            _/    _/    _/  _/    _/  _/  _/    _/  _/    _/    _/_/  ")
 print("_/    _/    _/    _/          _/    _/    _/  _/    _/  _/  _/    _/  _/    _/  _/    _/  ")
 print(" _/_/  _/  _/    _/          _/      _/_/      _/_/    _/  _/_/_/      _/_/    _/    _/ \n")
-print("QR Toolbox v2a \n")
+print("QR Toolbox v1.2 \n")
 print("The QR Toolbox is a suite a tools for creating and reading QR codes.\n")
 print("USEPA Homeland Security Research Program \n")
 print("System ID: " + system_id + "\n")
@@ -161,6 +162,20 @@ def video():
     found_status = []
     # ctxAuth = AuthenticationContext(url=settings['url'])
 
+    # Check if there are any stored QR codes that were scanned in in an earlier instance of the system
+    if os.path.exists(qr_storage_file):
+        with open(qr_storage_file, "r") as qr_data_file:
+            for line in qr_data_file:
+                if line == '\n': continue
+                line_array = line.split(",")
+                found.append(line_array[0])
+                found_time.append(datetime.datetime.strptime(line_array[1], "%Y-%m-%d %H:%M:%S.%f"))
+                found_status.append(line_array[2][:len(line_array[2]) - 1:])
+    else:
+        print("File does not exist.")
+
+    print(found, found_time, found_status)
+
     contentStrings = ""  # Used to contain data recorded from video stream
 
     # loop over the frames from the video stream
@@ -208,7 +223,8 @@ def video():
             # the timestamp + barcode to disk and update the set
             # of barcode data has never been seen, check the user in and record id, date, and time information
             if barcodeData not in found:
-                csv.write("{},{},{},{}\n".format(system_id, datetime.datetime.now(),
+                datetime_scanned = datetime.datetime.now()
+                csv.write("{},{},{},{}\n".format(system_id, datetime_scanned,
                                                  barcodeData, "IN"))
                 csv.flush()
                 if storageChoice.lower() == 'b':  # if user chose online/Sharepoint
@@ -221,24 +237,34 @@ def video():
                     contentStrings = contentStrings + contentstr
 
                 found.append(barcodeData)
-                found_time.append(datetime.datetime.now())
+                found_time.append(datetime_scanned)
                 found_status.append("IN")
+
+                # Write updated found arrays to qr_data_file so that it is up to date with the latest scan ins
+                with open(qr_storage_file, "w") as qr_data_file:
+                    for i in range(len(found)):
+                        code = found[i]
+                        tyme = found_time[i]
+                        status = found_status[i]
+                        qr_data_file.write("{0},{1},{2}\n".format(code, tyme, status))
+
                 sys.stdout.write('\a')  # beeping sound
                 sys.stdout.flush()
-                print(barcodeData + " checking IN at " + str(datetime.datetime.now()) + " at location: " + system_id)
+                print(barcodeData + " checking IN at " + str(datetime_scanned) + " at location: " + system_id)
 
             # if barcode information is found...
             elif barcodeData in found:
                 # get current time and also total time passed since user checked in
-                time_check = datetime.datetime.now() - found_time[found.index(barcodeData)]
+                datetime_scanned = datetime.datetime.now()
+                time_check = datetime_scanned - found_time[found.index(barcodeData)]
                 status_check = found_status[found.index(barcodeData)]
 
                 # if time exceeds wait period and user is checked in then check them out
                 if time_check > t_value and status_check == "IN":
                     index_loc = found.index(barcodeData)
                     found_status[index_loc] = "OUT"
-                    found_time[index_loc] = datetime.datetime.now()
-                    csv.write("{},{},{},{},{}\n".format(system_id, datetime.datetime.now(),
+                    found_time[index_loc] = datetime_scanned
+                    csv.write("{},{},{},{},{}\n".format(system_id, datetime_scanned,
                                                         barcodeData, "OUT", time_check))  # write to local CSV file
                     csv.flush()
 
@@ -255,8 +281,8 @@ def video():
                     sys.stdout.write('\a')  # When this letter is sent to terminal, a beep sound is emitted but no text
                     sys.stdout.flush()
                     print(barcodeData + " checking OUT at " + str(
-                        datetime.datetime.now()) + " at location: " + system_id + " for duration of " + str(time_check))
-                    # if found and check-in time is less than the specified wait time then wait
+                        datetime_scanned) + " at location: " + system_id + " for duration of " + str(time_check))
+                # if found and check-in time is less than the specified wait time then wait
                 elif time_check < t_value and status_check == "OUT":
                     pass
                 # if found and time check exceeds specified wait time and user is checked out, delete ID and affiliated
@@ -267,6 +293,15 @@ def video():
                     del found_status[index_loc]
                     del found_time[index_loc]
                     del found[index_loc]
+
+                # Write updated found arrays to qr_data_file so that it is up to date with the latest scan ins
+                with open(qr_storage_file, "w") as qr_data_file:
+                    for i in range(len(found)):
+                        code = found[i]
+                        tyme = found_time[i]
+                        status = found_status[i]
+                        qr_data_file.write("{0},{1},{2}\n".format(code, tyme, status))
+
             else:
                 print("Something happened... error")
 
@@ -281,6 +316,9 @@ def video():
     # close the output CSV file do a bit of cleanup
     print("[ALERT] Cleaning up... \n")
     csv.close()
+
+    if os.path.exists(qr_storage_file) and os.stat(qr_storage_file).st_size == 0:
+        os.remove(qr_storage_file)
 
     # This part is necessary to show special characters properly on any of the local CSVs
     if os.path.isfile(args["output"]) and not os.path.isfile("barcodes2.txt"):
@@ -308,7 +346,7 @@ def video():
         isCameraOne = False
     else:
         data = "[ERROR] Something went wrong in the CSV special character handling section."
-        print("[ERROR] Something went wrong in the CSV special character handling section.")
+        print(data)
 
     if storageChoice == 'a':  # if local was chosen, also store barcodes file at the location given
         if os.path.exists(storagePath):  # check if file path exists
@@ -441,33 +479,6 @@ def upload_file(context, file_content, filename, sub_folder):
     file_context.execute_query()
 
     return target_file
-
-
-""" ******* NOT IN USE (FOR NOW) *******
-"""
-# This function updates the contents of the given target_file with the updated_content
-# @param context the context of the site that is being communicated with/uploaded to (URL, authorization, etc.)
-# @param updated_content the new content to update the target file with
-# @param target_file the file that is to be updated
-
-# @return target_file a reference to the file that was updated
-"""
-
-
-def update_file(context, updated_content, target_file):
-    list_title = "EOC Documents"
-    library = context.web.lists.get_by_title(list_title)
-
-    filecontext = library.context
-
-    list_item = target_file.listitem_allfields # get associated list item
-    list_item.set_property("Title", "TEST")
-    list_item.set_property("Author", "Taha")
-    list_item.set_property("Contents", updated_content)
-
-    filecontext.execute_query()
-    return target_file
-"""
 
 """
 This function creates QR codes in batches from a CSV file (defined in the global variables)
