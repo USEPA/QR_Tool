@@ -47,6 +47,7 @@ remoteQRBatchFile = "names-remote.csv"
 localQRBatchFile = "names.csv"
 relative_url = "/sites/Emergency%20Response/EOCIncident/EOC%20Documents/QRCodes/names.csv"
 qr_storage_file = "System_Data/qr-data.txt"
+barcodes2 = "System_Data/barcodes2.txt"
 
 context_auth = AuthenticationContext(url=settings['url'])
 context_auth.acquire_token_for_app(client_id=settings['client_id'], client_secret=settings['client_secret'])
@@ -125,7 +126,7 @@ Those codes are decoded, and written to a local CSV file along with the Computer
 def video():
     # construct the argument parser and parse the arguments
     ap = argparse.ArgumentParser()
-    ap.add_argument("-o", "--output", type=str, default="barcodes.txt",
+    ap.add_argument("-o", "--output", type=str, default="System_Data/barcodes.txt",
                     help="path to output CSV file containing barcodes")
     # ap.add_argument("-o1", "--output2", type=str, default=files_name,
     #        help="path to output CSV file containing barcodes")
@@ -154,7 +155,7 @@ def video():
     if not os.path.isfile(args["output"]):  # check if another instance is using the file
         csv = open(args["output"], "w", encoding="utf-8")  # if not then use it
     else:
-        csv = open("barcodes2.txt", "w", encoding="utf-8")  # else create a barcodes2.txt and use that
+        csv = open(barcodes2, "w", encoding="utf-8")  # else create a barcodes2.txt and use that
 
     # time track variables. These are used to keep track of QR codes as they enter the screen
     found = []
@@ -173,8 +174,6 @@ def video():
                 found_status.append(line_array[2][:len(line_array[2]) - 1:])
     else:
         print("File does not exist.")
-
-    print(found, found_time, found_status)
 
     contentStrings = ""  # Used to contain data recorded from video stream
 
@@ -321,7 +320,7 @@ def video():
         os.remove(qr_storage_file)
 
     # This part is necessary to show special characters properly on any of the local CSVs
-    if os.path.isfile(args["output"]) and not os.path.isfile("barcodes2.txt"):
+    if os.path.isfile(args["output"]) and not os.path.isfile(barcodes2):
         barcodesTxt = open(args["output"], 'r', encoding="utf-8")
         newCSV = open(file_name, 'w', encoding="ANSI")
 
@@ -332,8 +331,8 @@ def video():
         newCSV.close()
         os.remove(args["output"])
         isCameraOne = True
-    elif os.path.isfile(args["output"]) and os.path.isfile("barcodes2.txt"):
-        barcodesTxt = open("barcodes2.txt", 'r', encoding="utf-8")
+    elif os.path.isfile(args["output"]) and os.path.isfile(barcodes2):
+        barcodesTxt = open(barcodes2, 'r', encoding="utf-8")
         camera2_file_name = "QRT" + "-" + system_id + "_" + time_header + "-CAMERA-2.csv"
         newCSV = open(camera2_file_name, 'w', encoding="ANSI")
 
@@ -342,7 +341,7 @@ def video():
 
         barcodesTxt.close()
         newCSV.close()
-        os.remove("barcodes2.txt")
+        os.remove(barcodes2)
         isCameraOne = False
     else:
         data = "[ERROR] Something went wrong in the CSV special character handling section."
