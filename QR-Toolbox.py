@@ -56,8 +56,21 @@ ctx = ClientContext(settings['url'], context_auth)
 # load variables
 # set store folder default, assign system ID, and wait time
 storagePath = "None"
+checkStorage = False
 system_id = os.environ['COMPUTERNAME']
 t_value = timedelta(seconds=10)
+
+# colors
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[32m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
 
 # Lists and Dictionaries used for special character handling and conversion
 trouble_characters = ['\t', '\n', '\r']
@@ -136,8 +149,8 @@ def video():
     file_name = "QRT" + "-" + system_id + "_" + time_header + ".csv"
 
     # initialize the video stream and allow the camera sensor to warm up
-    print("[ALERT] starting video stream...")
-    print("Press 'Q' to exit")
+    print(f"{bcolors.OKBLUE}[ALERT] starting video stream...{bcolors.ENDC}")
+    print(f"{bcolors.OKBLUE}Press 'Q' to exit{bcolors.ENDC}")
 
     if cameraChoice == 'a':  # start correct camera based on user choice at beginning
         vs = VideoStream(src=0).start()  # for integrated/built in webcam
@@ -164,16 +177,20 @@ def video():
     # ctxAuth = AuthenticationContext(url=settings['url'])
 
     # Check if there are any stored QR codes that were scanned in in an earlier instance of the system
-    if os.path.exists(qr_storage_file):
-        with open(qr_storage_file, "r") as qr_data_file:
-            for line in qr_data_file:
-                if line == '\n': continue
-                line_array = line.split(",")
-                found.append(line_array[0])
-                found_time.append(datetime.datetime.strptime(line_array[1], "%Y-%m-%d %H:%M:%S.%f"))
-                found_status.append(line_array[2][:len(line_array[2]) - 1:])
-    else:
-        print("File does not exist.")
+    global checkStorage
+    if checkStorage:
+        if os.path.exists(qr_storage_file):
+            with open(qr_storage_file, "r") as qr_data_file:
+                for line in qr_data_file:
+                    if line == '\n': continue
+                    line_array = line.split(",")
+                    found.append(line_array[0])
+                    found_time.append(datetime.datetime.strptime(line_array[1], "%Y-%m-%d %H:%M:%S.%f"))
+                    found_status.append(line_array[2][:len(line_array[2]) - 1:])
+                print(f"{bcolors.OKBLUE}Scanned codes imported from file.{bcolors.ENDC}")
+        else:
+            print(f"{bcolors.WARNING}qr-data.txt file does not exist. Either there was no past session, or something "
+                  f"happened to the file. Continuing...{bcolors.ENDC}")
 
     contentStrings = ""  # Used to contain data recorded from video stream
 
@@ -226,14 +243,6 @@ def video():
                 csv.write("{},{},{},{}\n".format(system_id, datetime_scanned,
                                                  barcodeData, "IN"))
                 csv.flush()
-                if storageChoice.lower() == 'b':  # if user chose online/Sharepoint
-                    # Convert barcodeData's special chars to regular chars
-                    barcodeDataNew = convert(barcodeData, special_characters, char_dict_special_to_reg)
-
-                    contentstr = "{},{},{},{}\n".format(system_id, timestr, barcodeDataNew, "IN")  # for online CSV file
-                    contentstr2 = '{},{},{},{}\n'.format(system_id, timestr, barcodeData, "IN")  # for list item
-                    create_list_item(ctx, contentstr2)
-                    contentStrings = contentStrings + contentstr
 
                 found.append(barcodeData)
                 found_time.append(datetime_scanned)
@@ -246,6 +255,15 @@ def video():
                         tyme = found_time[i]
                         status = found_status[i]
                         qr_data_file.write("{0},{1},{2}\n".format(code, tyme, status))
+
+                if storageChoice.lower() == 'b':  # if user chose online/Sharepoint
+                    # Convert barcodeData's special chars to regular chars
+                    barcodeDataNew = convert(barcodeData, special_characters, char_dict_special_to_reg)
+
+                    contentstr = "{},{},{},{}\n".format(system_id, timestr, barcodeDataNew, "IN")  # for online CSV file
+                    contentstr2 = '{},{},{},{}\n'.format(system_id, timestr, barcodeData, "IN")  # for list item
+                    create_list_item(ctx, contentstr2)
+                    contentStrings = contentStrings + contentstr
 
                 sys.stdout.write('\a')  # beeping sound
                 sys.stdout.flush()
@@ -302,7 +320,7 @@ def video():
                         qr_data_file.write("{0},{1},{2}\n".format(code, tyme, status))
 
             else:
-                print("Something happened... error")
+                print(f"{bcolors.FAIL}Something happened... error{bcolors.ENDC}")
 
         # show the output frame
         cv2.imshow("QR Toolbox", frame)
@@ -313,11 +331,12 @@ def video():
             break
 
     # close the output CSV file do a bit of cleanup
-    print("[ALERT] Cleaning up... \n")
+    print(f"{bcolors.OKBLUE}[ALERT] Cleaning up... \n{bcolors.ENDC}")
     csv.close()
 
     if os.path.exists(qr_storage_file) and os.stat(qr_storage_file).st_size == 0:
         os.remove(qr_storage_file)
+    checkStorage = False  # Reset the global variable that tells code to check the qr_storage_file
 
     # This part is necessary to show special characters properly on any of the local CSVs
     if os.path.isfile(args["output"]) and not os.path.isfile(barcodes2):
@@ -361,7 +380,7 @@ def video():
             print("Alert: Storage folder not established or is unavailable. Files will only be saved to the working "
                 "directory\n")
     elif storageChoice.lower() == 'b':  # if online was chosen, upload data to SharePoint as well
-        upload_file(ctx, contentStrings, file_name, bkcsvfolder)
+        connect(ctx, 'upload', contentStrings, file_name)
 
     vs.stop()
     vs.stream.release()
@@ -430,6 +449,40 @@ def ask_special_char_conversion(label):
 
 
 """
+TODO: Need to add this function definition
+"""
+
+
+def connect(context, connection_type, contentStrings = None, file_name = None):
+    i = 0
+    while i < 3:
+        # noinspection PyBroadException
+        try:
+            if connection_type == 'upload':
+                upload_file(ctx, contentStrings, file_name, bkcsvfolder)
+            elif connection_type == 'execute_query':
+                context.execute_query()
+            elif connection_type == 'qr_batch':
+                pass
+            else:
+                print(f"{bcolors.WARNING}Invalid connection type.{bcolors.ENDC}")
+            if i > 0:
+                print(f"{bcolors.OKGREEN}Connection successful.{bcolors.ENDC}")
+            break
+        except:
+            if i == 0:
+                print(f"{bcolors.FAIL}Connection lost. Trying again in 10 seconds.{bcolors.ENDC}")
+                time.sleep(10)
+            elif i == 1:
+                print(f"{bcolors.FAIL}Reconnect failed. Trying again in 30 seconds.{bcolors.ENDC}")
+                time.sleep(30)
+            else:
+                print(f"{bcolors.OKBLUE}Reconnect failed again. Data will be stored locally and uploaded at reconnect.{bcolors.ENDC}")
+                pass  # TODO: what should I do here? It also depends on what the connection_type is
+        i += 1
+
+
+"""
 This function Creates a list item, used with the SharePoint site and the Office365-REST-Python-Client
 @param context the context of the site that is being communicated with/uploaded to
 @param content the content to add as a list item
@@ -448,7 +501,7 @@ def create_list_item(context, content):
     item_properties = {'__metadata': {'type': 'SP.Data.QR_x0020_TimestampsListItem'}, 'Title': barstr,
                        'QR_x0020_Terminal': sid, 'Time_x0020_Stamp': tstr, 'Info': status}
     item = list_object.add_item(item_properties)
-    context.execute_query()
+    connect(context, 'execute_query')
     print("List item '{0}' has been created.".format(item.properties["Title"]))
 
 
@@ -667,11 +720,11 @@ This function provides more information on the purpose and development of this s
 
 def about():
     # displays the about screen
-    print("\nQR Toolbox v2a \n")
+    print("\nQR Toolbox v1.2 \n")
     print("About: The QR Toolbox is a suite a tools for creating and reading QR codes. The toolbox is platform "
           "agnostic, lightweight, open source, and written in pure Python. This toolbox may be used to track resources,"
           " serve as a check-in capability for personnel, or customized to meet other operational needs. \n")
-    print("Version: 2.0a \n")
+    print("Version: 1.2 \n")
     print("Credits: The QR Toolbox consists of a number of python packages, namely: \n qrcode - "
           "Lincoln Loop info@lincolnloop.com; \n pyzbar - Lawrence Hudson quicklizard@googlemail.com; \n OpenCV code - "
           "Adrian Rosebrock https://www.pyimagesearch.com/author/adrian/; \n Code integration, minor enhancements, & "
@@ -775,9 +828,10 @@ while True:
     print("A. QR Reader")
     print("B. QR Creator - Batch")
     print("C. QR Creator - Single")
-    print("D. Consolidate Records") if storageChoice == 'a' else ""
-    print("E. About/Credits" if storageChoice == 'a' else "D. About/Credits")
-    print("F. Exit \n" if storageChoice == 'a' else "E. Exit \n")
+    print("D. Import Scanned Codes from File")
+    print("E. Consolidate Records") if storageChoice == 'a' else ""
+    print("F. About/Credits" if storageChoice == 'a' else "E. About/Credits")
+    print("G. Exit \n" if storageChoice == 'a' else "F. Exit \n")
     choice = input("Enter your selection: ")
     if choice.lower() == 'a':
         video()
@@ -786,13 +840,16 @@ while True:
     elif choice.lower() == 'c':
         qr_single()
     elif choice.lower() == 'd':
-        cons() if storageChoice == 'a' else about()
+        checkStorage = True
+        print(f"{bcolors.OKBLUE}QR Toolbox will import scanned codes from file first when QR Reading.{bcolors.ENDC}")
     elif choice.lower() == 'e':
+        cons() if storageChoice == 'a' else about()
+    elif choice.lower() == 'f':
         if storageChoice == 'a':
             about()
         else:
             break
-    elif choice.lower() == 'f' and storageChoice == 'a':
+    elif choice.lower() == 'g' and storageChoice == 'a':
         break
     else:
         print("Invalid choice \n")
