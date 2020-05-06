@@ -47,7 +47,6 @@ remoteQRBatchFile = "names-remote.csv"
 localQRBatchFile = "names.csv"
 relative_url = "/sites/Emergency%20Response/EOCIncident/EOC%20Documents/QRCodes/names.csv"
 qr_storage_file = "System_Data/qr-data.txt"
-barcodes2 = "System_Data/barcodes2.txt"
 
 context_auth = AuthenticationContext(url=settings['url'])
 context_auth.acquire_token_for_app(client_id=settings['client_id'], client_secret=settings['client_secret'])
@@ -159,16 +158,56 @@ def video():
     elif cameraChoice == 'c':
         vs = VideoStream(usePiCamera=True).start()  # for mobile solution like Raspberry Pi Camera
     else:
-        print("An error has occurred.")
+        print(f"{bcolors.FAIL}An error has occurred.{bcolors.ENDC}")
         return
 
     time.sleep(5.0)  # give camera time
 
-    # open the output CSV file for writing and initialize the set of barcodes found thus far
-    if not os.path.isfile(args["output"]):  # check if another instance is using the file
-        csv = open(args["output"], "w", encoding="utf-8")  # if not then use it
+    # open the output txt file for writing and initialize the set of barcodes found thus far
+    global checkStorage
+    contentStrings = ""  # used to contain data recorded from qr codes, to save in files
+    if os.path.isfile(args["output"]) and checkStorage: # check if user wanted to restart prev session
+        if storageChoice.lower() == 'b':  # do this only if QR Toolbox is in online-mode
+            # Write previous records back to contentStrings
+            with open(args["output"], "r") as txt:
+                print(f"{bcolors.OKBLUE}Restoring records...{bcolors.ENDC}")
+                for line in txt:  # get each record from the file by line
+                    if line == '\n': continue
+                    line_array = line.split(",")
+                    last_system_id = line_array[0]
+                    date_time = datetime.datetime.strptime(line_array[1], "%Y-%m-%d %H:%M:%S.%f")
+                    date_time_online = f"{date_time.month}/{date_time.day}/{date_time.year} " \
+                                       f"{date_time.hour}:{date_time.minute}"
+                    "%m/%d/%Y %H:%M"
+                    barcodeDataSpecial = line_array[2]
+                    status = line_array[3]
+                    if "OUT" in status:
+                        duration = line_array[4][:len(line_array[4]) - 1:]
+                    else:
+                        status = status[:len(status) - 1]
+
+                    # Convert barcodeDataSpecial's special chars to regular chars
+                    barcodeDataReg = convert(barcodeDataSpecial, special_characters, char_dict_special_to_reg)
+
+                    if status == "IN":
+                        contentstr = "{},{},{},{}\n".format(last_system_id, date_time_online,
+                                                            barcodeDataReg, status)  # for online CSV file
+                        contentstr2 = '{},{},{},{}\n'.format(last_system_id, date_time,
+                                                             barcodeDataSpecial, status)  # for list item
+                    else:
+                        contentstr = "{},{},{},{},{}\n".format(last_system_id, date_time_online, barcodeDataReg,
+                                                            status, duration)  # for online CSV file
+                        contentstr2 = '{},{},{},{},{}\n'.format(last_system_id, date_time,
+                                                             barcodeDataSpecial, status, duration)  # for list item
+                    create_list_item(ctx, contentstr2)
+                    contentStrings = contentStrings + contentstr
+
+        txt = open(args["output"], "a", encoding="utf-8")
+        print(f"{bcolors.OKBLUE}Previous records restored.{bcolors.ENDC}")
     else:
-        csv = open(barcodes2, "w", encoding="utf-8")  # else create a barcodes2.txt and use that
+        txt = open(args["output"], "w", encoding="utf-8")  # else open new file/overwrite prev
+        if checkStorage:
+            print(f"{bcolors.WARNING}No previous records found. CSV file will not include past records.{bcolors.ENDC}")
 
     # time track variables. These are used to keep track of QR codes as they enter the screen
     found = []
@@ -177,7 +216,6 @@ def video():
     # ctxAuth = AuthenticationContext(url=settings['url'])
 
     # Check if there are any stored QR codes that were scanned in in an earlier instance of the system
-    global checkStorage
     if checkStorage:
         if os.path.exists(qr_storage_file):
             with open(qr_storage_file, "r") as qr_data_file:
@@ -187,12 +225,9 @@ def video():
                     found.append(line_array[0])
                     found_time.append(datetime.datetime.strptime(line_array[1], "%Y-%m-%d %H:%M:%S.%f"))
                     found_status.append(line_array[2][:len(line_array[2]) - 1:])
-                print(f"{bcolors.OKBLUE}Scanned codes imported from file.{bcolors.ENDC}")
+                print(f"{bcolors.OKBLUE}Previous session restarted.{bcolors.ENDC}")
         else:
-            print(f"{bcolors.WARNING}qr-data.txt file does not exist. Either there was no past session, or something "
-                  f"happened to the file. Continuing...{bcolors.ENDC}")
-
-    contentStrings = ""  # Used to contain data recorded from video stream
+            print(f"{bcolors.WARNING}No previous session found [qr-data.txt not found].{bcolors.ENDC}")
 
     # loop over the frames from the video stream
     while True:
@@ -228,7 +263,7 @@ def video():
             try:
                 d.text((0, 0), textToPrint + ' (' + barcodeType + ')', fill='blue')
             except UnicodeEncodeError:
-                print("[ERROR] Can't use QR Codes not generated by the system.")
+                print(f"{bcolors.FAIL}[ERROR] Can't use QR Codes not generated by the system.{bcolors.ENDC}")
                 continue
 
             pil_image = Image.fromarray(frame)
@@ -240,9 +275,9 @@ def video():
             # of barcode data has never been seen, check the user in and record id, date, and time information
             if barcodeData not in found:
                 datetime_scanned = datetime.datetime.now()
-                csv.write("{},{},{},{}\n".format(system_id, datetime_scanned,
+                txt.write("{},{},{},{}\n".format(system_id, datetime_scanned,
                                                  barcodeData, "IN"))
-                csv.flush()
+                txt.flush()
 
                 found.append(barcodeData)
                 found_time.append(datetime_scanned)
@@ -281,9 +316,9 @@ def video():
                     index_loc = found.index(barcodeData)
                     found_status[index_loc] = "OUT"
                     found_time[index_loc] = datetime_scanned
-                    csv.write("{},{},{},{},{}\n".format(system_id, datetime_scanned,
+                    txt.write("{},{},{},{},{}\n".format(system_id, datetime_scanned,
                                                         barcodeData, "OUT", time_check))  # write to local CSV file
-                    csv.flush()
+                    txt.flush()
 
                     if storageChoice.lower() == 'b':  # if user chose online/Sharepoint version
                         barcodeDataNew = convert(barcodeData, special_characters, char_dict_special_to_reg)
@@ -320,7 +355,7 @@ def video():
                         qr_data_file.write("{0},{1},{2}\n".format(code, tyme, status))
 
             else:
-                print(f"{bcolors.FAIL}Something happened... error{bcolors.ENDC}")
+                print(f"{bcolors.FAIL}[Error] Barcode data issue in video() function.{bcolors.ENDC}")
 
         # show the output frame
         cv2.imshow("QR Toolbox", frame)
@@ -332,14 +367,14 @@ def video():
 
     # close the output CSV file do a bit of cleanup
     print(f"{bcolors.OKBLUE}[ALERT] Cleaning up... \n{bcolors.ENDC}")
-    csv.close()
+    txt.close()
 
     if os.path.exists(qr_storage_file) and os.stat(qr_storage_file).st_size == 0:
         os.remove(qr_storage_file)
     checkStorage = False  # Reset the global variable that tells code to check the qr_storage_file
 
     # This part is necessary to show special characters properly on any of the local CSVs
-    if os.path.isfile(args["output"]) and not os.path.isfile(barcodes2):
+    if os.path.exists(args["output"]):
         barcodesTxt = open(args["output"], 'r', encoding="utf-8")
         newCSV = open(file_name, 'w', encoding="ANSI")
 
@@ -348,40 +383,21 @@ def video():
 
         barcodesTxt.close()
         newCSV.close()
-        os.remove(args["output"])
-        isCameraOne = True
-    elif os.path.isfile(args["output"]) and os.path.isfile(barcodes2):
-        barcodesTxt = open(barcodes2, 'r', encoding="utf-8")
-        camera2_file_name = "QRT" + "-" + system_id + "_" + time_header + "-CAMERA-2.csv"
-        newCSV = open(camera2_file_name, 'w', encoding="ANSI")
-
-        data = barcodesTxt.read()
-        newCSV.write(data)
-
-        barcodesTxt.close()
-        newCSV.close()
-        os.remove(barcodes2)
-        isCameraOne = False
     else:
-        data = "[ERROR] Something went wrong in the CSV special character handling section."
+        data = f"{bcolors.FAIL}[ERROR] barcodes.txt not found as expected.{bcolors.ENDC}"
         print(data)
 
     if storageChoice == 'a':  # if local was chosen, also store barcodes file at the location given
         if os.path.exists(storagePath):  # check if file path exists
-            if isCameraOne:
-                csv2 = open(os.path.join(storagePath, file_name), "w",
-                        encoding="ANSI")
-            else:
-                csv2 = open(os.path.join(storagePath, camera2_file_name), "w",
-                            encoding="ANSI")
-            csv2.write(data)
-            csv2.close()
+            with open(os.path.join(storagePath, file_name), "w", encoding="ANSI") as csv2:
+                csv2.write(data)
         else:
-            print("Alert: Storage folder not established or is unavailable. Files will only be saved to the working "
-                "directory\n")
+            print(f"{bcolors.WARNING}[ALERT]: Storage folder not established or is unavailable. "
+                  f"Files will only be saved to the working directory\n{bcolors.ENDC}")
     elif storageChoice.lower() == 'b':  # if online was chosen, upload data to SharePoint as well
         connect(ctx, 'upload', contentStrings, file_name)
 
+    os.remove(args["output"])  # not removed until the end in case something goes wrong above and it's needed
     vs.stop()
     vs.stream.release()
     cv2.destroyAllWindows()
@@ -415,7 +431,7 @@ def convert(data_to_convert, character_list, conversion_dict, is_for_file_name=F
                 is_for_file_name else data_to_convert.replace(char, "-") if not is_for_trouble \
                 else data_to_convert.replace(char, " ")
     if old_data != data_to_convert and is_for_file_name and is_for_trouble is not True:
-        print("Error saving file with name {}, saved as {} instead.".format(old_data, data_to_convert))
+        print(f"{bcolors.FAIL}Error saving file with name {old_data}, saved as {data_to_convert} instead.{bcolors.ENDC}")
     return data_to_convert
 
 
@@ -545,10 +561,10 @@ This function creates QR codes in batches from a CSV file (defined in the global
 def qr_batch():
     print("")
     print("The batch QR code tool is used to automatically create multiple QR codes by referencing a .csv file. "
-          "The csv file must be stored in the tools origin folder, named 'names.csv', and consist of two columns "
-          "'first' & 'last'. The 'first' and 'last' columns should be populated with participant's first and last "
-          "names. The tool will automatically create QR codes for each participant's full name and save each QR image "
-          "to the tools origin folder. \n")
+          "The csv file must be stored in the tools origin folder, named 'names.csv', and may consist of two columns "
+          "'first' & 'second'. The 'first' and 'second' columns could be populated with participant's first and last "
+          "names. The tool will then automatically create QR codes for each participant's full name and save each QR "
+          "image to the tools origin folder. \n")
     input("Press Enter to Continue \n")
     # this code creates a batch of QR codes from a csv file stored in the local directory
     # QR code image size and input filename can be modified below
@@ -601,7 +617,8 @@ def qr_batch():
 
         if status == 404:
             print(
-                "The batch file '" + relative_url + "' doesn't exist. Please copy 'names.csv' to the sharepoint site.")
+                f"{bcolors.FAIL}The batch file '" + relative_url + "' doesn't exist. "
+                f"Please copy 'names.csv' to the sharepoint site.{bcolors.ENDC}")
             return False
 
         with open(remoteQRBatchFile, 'wb') as output_file:
@@ -649,7 +666,7 @@ def qr_batch():
                     file_content = content_file.read()
                 upload_file(ctx, file_content, qrfile, qrfolder)
                 os.remove(qrfile)
-    print("Success! \n")
+    print(f"{bcolors.OKGREEN}Success!{bcolors.ENDC} \n")
 
 
 """
@@ -710,7 +727,7 @@ def qr_single():
             file_content = content_file.read()
         upload_file(ctx, file_content, fileName, qrfolder)
 
-    print("Success! \n")
+    print(f"{bcolors.OKGREEN}Success!{bcolors.ENDC} \n")
 
 
 """
@@ -748,9 +765,9 @@ def store():
     root.withdraw()
     store_path = filedialog.askdirectory(title='Select a Network Storage Directory')
     if os.path.exists(store_path):
-        print("Storage directory established: " + store_path)
+        print(f"{bcolors.OKGREEN}Storage directory established: " + store_path + f"{bcolors.ENDC}")
     else:
-        print("Storage directory NOT established")
+        print(f"{bcolors.WARNING}Storage directory NOT established{bcolors.ENDC}")
     print("")
     return store_path
 
@@ -779,15 +796,33 @@ def cons():
                             shutil.copyfileobj(infile, outfile)
                             print(fname + " has been imported.")
                 print(
-                    "\nConsolidated file created in the specified shared drive under the filename " + cons_filename + "\n")
+                    f"{bcolors.OKGREEN}\nConsolidated file created in the specified shared drive under the filename " +
+                    cons_filename + f"{bcolors.ENDC}\n")
             except:
-                print("\nWARNING: Either the system was unable to write the consolidated file to the specified shared "
-                      "directory or the file " + cons_filename + " is currently in use or unavailable. The consolidated"
-                                                                 " record may be incomplete. \n")
+                print(f"{bcolors.WARNING}\n[WARNING] Either the system was unable to write the consolidated file to the"
+                      "specified shared directory or the file " + cons_filename + " is currently in use or unavailable."
+                      f"The consolidated record may be incomplete.{bcolors.ENDC} \n")
     else:
-        print("\nA shared folder has not been established. Specify a shared folder using the Establish Share Folder "
-              "option before continuing \n")
+        print(f"{bcolors.WARNING}\nA shared folder has not been established. Specify a shared folder using the Establish Share Folder "
+              f"option before continuing \n{bcolors.ENDC}")
         pass
+
+
+def ask_to_restart_session():
+    while True:
+        print("\nDo you want to start a new session or restart a previous one?")
+        print("A. New session (all previous data will be deleted)")
+        print("B. Restart previous session")
+        sessionChoice = input("Enter your selection: ").lower()
+        if sessionChoice == 'a':
+            break
+        elif sessionChoice == 'b':
+            global checkStorage
+            checkStorage = True
+            print(f"{bcolors.OKBLUE}Previous session will be restarted, if one exists.{bcolors.ENDC}")
+            break
+        else:
+            print("Invalid choice \n")
 
 
 """ THIS SECTION COMES AFTER THE LANDING SCREEN """
@@ -798,8 +833,7 @@ while True:
     print("A. Integrated webcam")
     print("B. Separate webcam")
     print("C. PiCamera")
-    cameraChoice = input("Enter your selection: ")
-    cameraChoice = cameraChoice.lower()
+    cameraChoice = input("Enter your selection: ").lower()
     if cameraChoice != 'a' and cameraChoice != 'b' and cameraChoice != 'c':
         print("Invalid choice \n")
     else:
@@ -812,11 +846,11 @@ while True:
     print("Note: Files are also saved in the QR-Toolbox root folder regardless.")
     print("A. Local (Specify a location on the computer)")
     print("B. Sharepoint (Online)")
-    storageChoice = input("Enter your selection: ")
-    if storageChoice.lower() == 'a':
+    storageChoice = input("Enter your selection: ").lower()
+    if storageChoice == 'a':
         storagePath = store()
         break
-    elif storageChoice.lower() == 'b':
+    elif storageChoice == 'b':
         break
     else:
         print("Invalid choice \n")
@@ -828,28 +862,26 @@ while True:
     print("A. QR Reader")
     print("B. QR Creator - Batch")
     print("C. QR Creator - Single")
-    print("D. Import Scanned Codes from File")
-    print("E. Consolidate Records") if storageChoice == 'a' else ""
-    print("F. About/Credits" if storageChoice == 'a' else "E. About/Credits")
-    print("G. Exit \n" if storageChoice == 'a' else "F. Exit \n")
-    choice = input("Enter your selection: ")
-    if choice.lower() == 'a':
+    #print("D. Restart Previous Session")
+    print("D. Consolidate Records") if storageChoice == 'a' else ""
+    print("E. About/Credits" if storageChoice == 'a' else "D. About/Credits")
+    print("F. Exit \n" if storageChoice == 'a' else "E. Exit \n")
+    choice = input("Enter your selection: ").lower()
+    if choice == 'a':
+        ask_to_restart_session()
         video()
-    elif choice.lower() == 'b':
+    elif choice == 'b':
         qr_batch()
-    elif choice.lower() == 'c':
+    elif choice == 'c':
         qr_single()
-    elif choice.lower() == 'd':
-        checkStorage = True
-        print(f"{bcolors.OKBLUE}QR Toolbox will import scanned codes from file first when QR Reading.{bcolors.ENDC}")
-    elif choice.lower() == 'e':
+    elif choice == 'd':
         cons() if storageChoice == 'a' else about()
-    elif choice.lower() == 'f':
+    elif choice == 'e':
         if storageChoice == 'a':
             about()
         else:
             break
-    elif choice.lower() == 'g' and storageChoice == 'a':
+    elif choice == 'f' and storageChoice == 'a':
         break
     else:
         print("Invalid choice \n")
