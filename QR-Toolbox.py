@@ -43,10 +43,11 @@ from Setup.settings import settings
 listTitle = "QR Timestamps"
 qrfolder = "QRCodes"
 bkcsvfolder = "HXWTEST"
-remoteQRBatchFile = "names-remote.csv"
+remoteQRBatchFile = "System_Data/names-remote.csv"
 localQRBatchFile = "names.csv"
 relative_url = "/sites/Emergency%20Response/EOCIncident/EOC%20Documents/QRCodes/names.csv"
 qr_storage_file = "System_Data/qr-data.txt"
+backup_file = "System_Data/backup.txt"
 
 context_auth = AuthenticationContext(url=settings['url'])
 context_auth.acquire_token_for_app(client_id=settings['client_id'], client_secret=settings['client_secret'])
@@ -291,18 +292,20 @@ def video():
                         status = found_status[i]
                         qr_data_file.write("{0},{1},{2}\n".format(code, tyme, status))
 
+                checked_in = True
                 if storageChoice.lower() == 'b':  # if user chose online/Sharepoint
                     # Convert barcodeData's special chars to regular chars
                     barcodeDataNew = convert(barcodeData, special_characters, char_dict_special_to_reg)
 
                     contentstr = "{},{},{},{}\n".format(system_id, timestr, barcodeDataNew, "IN")  # for online CSV file
                     contentstr2 = '{},{},{},{}\n'.format(system_id, timestr, barcodeData, "IN")  # for list item
-                    create_list_item(ctx, contentstr2)
+                    checked_in = create_list_item(ctx, contentstr2)
                     contentStrings = contentStrings + contentstr
 
                 sys.stdout.write('\a')  # beeping sound
                 sys.stdout.flush()
-                print(barcodeData + " checking IN at " + str(datetime_scanned) + " at location: " + system_id)
+                if checked_in:
+                    print(barcodeData + " checking IN at " + str(datetime_scanned) + " at location: " + system_id)
 
             # if barcode information is found...
             elif barcodeData in found:
@@ -320,6 +323,7 @@ def video():
                                                         barcodeData, "OUT", time_check))  # write to local CSV file
                     txt.flush()
 
+                    checked_out = True
                     if storageChoice.lower() == 'b':  # if user chose online/Sharepoint version
                         barcodeDataNew = convert(barcodeData, special_characters, char_dict_special_to_reg)
                         # (above) convert qr code text special chars to reg chars
@@ -327,13 +331,14 @@ def video():
                         contentstr2 = "{},{},{},{},{}\n".format(system_id, timestr, barcodeData, "OUT",
                                                                 time_check)
 
-                        create_list_item(ctx, contentstr2)
+                        checked_out = create_list_item(ctx, contentstr2)
                         contentStrings = contentStrings + contentstr
 
                     sys.stdout.write('\a')  # When this letter is sent to terminal, a beep sound is emitted but no text
                     sys.stdout.flush()
-                    print(barcodeData + " checking OUT at " + str(
-                        datetime_scanned) + " at location: " + system_id + " for duration of " + str(time_check))
+                    if checked_out:
+                        print(barcodeData + " checking OUT at " + str(datetime_scanned)
+                              + " at location: " + system_id + " for duration of " + str(time_check))
                 # if found and check-in time is less than the specified wait time then wait
                 elif time_check < t_value and status_check == "OUT":
                     pass
@@ -353,7 +358,6 @@ def video():
                         tyme = found_time[i]
                         status = found_status[i]
                         qr_data_file.write("{0},{1},{2}\n".format(code, tyme, status))
-
             else:
                 print(f"{bcolors.FAIL}[Error] Barcode data issue in video() function.{bcolors.ENDC}")
 
@@ -395,7 +399,9 @@ def video():
             print(f"{bcolors.WARNING}[ALERT]: Storage folder not established or is unavailable. "
                   f"Files will only be saved to the working directory\n{bcolors.ENDC}")
     elif storageChoice.lower() == 'b':  # if online was chosen, upload data to SharePoint as well
-        connect(ctx, 'upload', contentStrings, file_name)
+        success = connect(ctx, 'upload', contentStrings, file_name, bkcsvfolder)
+        if success:
+            upload_backup(ctx)
 
     os.remove(args["output"])  # not removed until the end in case something goes wrong above and it's needed
     vs.stop()
@@ -469,33 +475,94 @@ TODO: Need to add this function definition
 """
 
 
-def connect(context, connection_type, contentStrings = None, file_name = None):
+def connect(context, connection_type, content=None, file_name=None, location=None, duplicate=False):
     i = 0
     while i < 3:
         # noinspection PyBroadException
         try:
+            return_val = True
             if connection_type == 'upload':
-                upload_file(ctx, contentStrings, file_name, bkcsvfolder)
+                upload_file(ctx, content, file_name, location)
             elif connection_type == 'execute_query':
                 context.execute_query()
             elif connection_type == 'qr_batch':
-                pass
+                return_val = File.open_binary(context, relative_url)
             else:
                 print(f"{bcolors.WARNING}Invalid connection type.{bcolors.ENDC}")
+                return_val = False
             if i > 0:
                 print(f"{bcolors.OKGREEN}Connection successful.{bcolors.ENDC}")
-            break
+            return return_val
         except:
+            e = sys.exc_info()[0]
+            # print(e)
             if i == 0:
                 print(f"{bcolors.FAIL}Connection lost. Trying again in 10 seconds.{bcolors.ENDC}")
                 time.sleep(10)
             elif i == 1:
                 print(f"{bcolors.FAIL}Reconnect failed. Trying again in 30 seconds.{bcolors.ENDC}")
                 time.sleep(30)
-            else:
-                print(f"{bcolors.OKBLUE}Reconnect failed again. Data will be stored locally and uploaded at reconnect.{bcolors.ENDC}")
-                pass  # TODO: what should I do here? It also depends on what the connection_type is
+            elif i > 1 and not duplicate and connection_type != 'qr_batch':
+                print(f"{bcolors.FAIL}Reconnect failed again.{bcolors.OKBLUE} Data will be stored locally and "
+                      f"uploaded at reconnect.{bcolors.ENDC}")
+                if os.path.exists(backup_file) and connection_type == 'upload':
+                    with open(backup_file, "a") as backup:
+                        backup.write(f"{content}\n@@@@@\n{file_name}\n@@@@@\n{location}\n----------\n")
+                elif connection_type == 'upload':
+                    with open(backup_file, "w") as backup:
+                        backup.write(f"{content}\n@@@@@\n{file_name}\n@@@@@\n{location}\n----------\n")
+                elif connection_type == 'execute_query':
+                    with open(backup_file, "a") as backup:
+                        backup.write(f"$$$$$\n{content}\n----------\n")
+                return False
+            elif i > 1 and connection_type == 'qr_batch':
+                print(f"{bcolors.FAIL}Reconnect failed again.{bcolors.OKBLUE} Try again when you have "
+                      f"internet connection.{bcolors.ENDC}")
+                return False
         i += 1
+
+
+"""
+TODO: Need to add function definition
+"""
+
+
+def upload_backup(context, from_menu=False):
+    if os.path.exists(backup_file):  # check if file exists, if not then return
+        with open(backup_file, "r") as backup:
+            print("Uploading backed up data...")
+            content = ""  # the content of the file that will be uploaded
+            file_name = ""  # the file name of the file to upload
+            location = ""  # the location to upload the file to
+            flag = 0  # this tells program whether we are looking at content, filename, or location information
+            for line in backup:
+                if line == '\n': continue
+                if line == '@@@@@\n': flag += 1; continue
+                if line == '$$$$$\n': flag = 3; continue
+                if line == '----------\n':
+                    if flag == 3:
+                        successful = create_list_item(context, content, True)
+                    else:
+                        successful = connect(context, 'upload', content, file_name, location, True)
+                    if not successful:
+                        print(f"{bcolors.FAIL}Upload of backed up data failed.{bcolors.OKBLUE} Program will try again"
+                              f" at next upload, or you can trigger upload manually from the menu.{bcolors.ENDC}")
+                        return False
+                    flag = 0
+                    content = ""
+                    file_name = ""
+                    location = ""
+                    continue
+                if flag == 0 or flag == 3:
+                    content = content + line
+                elif flag == 1:
+                    file_name = line.rstrip('\n')
+                elif flag == 2:
+                    location = line.rstrip('\n')
+            print(f"{bcolors.OKGREEN}Upload complete!{bcolors.ENDC}")
+        os.remove(backup_file)
+    elif from_menu:
+        print(f"{bcolors.OKBLUE}No backed-up data to upload.{bcolors.ENDC}")
 
 
 """
@@ -505,7 +572,7 @@ This function Creates a list item, used with the SharePoint site and the Office3
 """
 
 
-def create_list_item(context, content):
+def create_list_item(context, content, duplicate=False):
     print("Creating list item example...")
     list_object = context.web.lists.get_by_title(listTitle)
     values = content.split(",")
@@ -517,8 +584,12 @@ def create_list_item(context, content):
     item_properties = {'__metadata': {'type': 'SP.Data.QR_x0020_TimestampsListItem'}, 'Title': barstr,
                        'QR_x0020_Terminal': sid, 'Time_x0020_Stamp': tstr, 'Info': status}
     item = list_object.add_item(item_properties)
-    connect(context, 'execute_query')
-    print("List item '{0}' has been created.".format(item.properties["Title"]))
+    succeed = connect(context, 'execute_query', content, duplicate=duplicate)
+    if succeed:
+        print("List item '{0}' has been created.".format(item.properties["Title"]))
+    else:
+        print(f"{bcolors.WARNING}List item '{item.properties['Title']}' has NOT been created.{bcolors.ENDC}")
+    return succeed
 
 
 """
@@ -548,6 +619,7 @@ def upload_file(context, file_content, filename, sub_folder):
 
     return target_file
 
+
 """
 This function creates QR codes in batches from a CSV file (defined in the global variables)
     -The function always checks and performs the QR code creation in its root folder first, and the generated codes
@@ -560,64 +632,72 @@ This function creates QR codes in batches from a CSV file (defined in the global
 
 def qr_batch():
     print("")
-    print("The batch QR code tool is used to automatically create multiple QR codes by referencing a .csv file. "
-          "The csv file must be stored in the tools origin folder, named 'names.csv', and may consist of two columns "
-          "'first' & 'second'. The 'first' and 'second' columns could be populated with participant's first and last "
-          "names. The tool will then automatically create QR codes for each participant's full name and save each QR "
-          "image to the tools origin folder. \n")
-    input("Press Enter to Continue \n")
+    print("The batch QR code function is used to automatically create multiple QR codes by referencing a .csv file."
+          "\n-If QR Toolbox is in local mode, the csv file must be stored in the root/origin folder, named 'names.csv'."
+          "\n The Tool will then automatically create QR codes for each line in the csv, and save each QR Code image to"
+          "\n the Tools root/origin folder."
+          "\n-If QR Toolbox is in online mode, the csv file must be stored on the SharePoint site where QR codes are"
+          "\n located, and must be named 'names.csv'. The Tool will then do the same as above, but will also store each"
+          "\n QR code image to the SharePoint site."
+          "\n-'names.csv' may consist of two columns 'first' & 'second'. The 'first' and 'second' columns could be "
+          "\n populated with participant's first and last names, or other information.")
+    input("\nPress Enter to Continue \n")
     # this code creates a batch of QR codes from a csv file stored in the local directory
     # QR code image size and input filename can be modified below
 
+    success = True
     # This one creates the batch of QR codes in the same folder as this file
-    with open(localQRBatchFile) as csvfile:
-        reader = csv.reader(csvfile)
+    if storageChoice == 'a':
+        with open(localQRBatchFile) as csvfile:
+            reader = csv.reader(csvfile)
 
-        for row in reader:
-            labeldata = row[0] if len(row) == 1 else row[0] + " " + row[1] if row[1] != '' else row[0]
+            for row in reader:
+                labeldata = row[0] if len(row) == 1 else row[0] + " " + row[1] if row[1] != '' else row[0]
 
-            # Check for special char, ask if user wants to convert
-            if storageChoice == 'b' and not ask_special_char_conversion(labeldata):
-                continue  # if user doesn't want to convert (returns False), then this text/row is skipped
+                # Check for special char, ask if user wants to convert
+                if storageChoice == 'b' and not ask_special_char_conversion(labeldata):
+                    continue  # if user doesn't want to convert (returns False), then this text/row is skipped
 
-            # convert special char to code character
-            codeLabelData = convert(labeldata, special_characters, char_dict_special_to_code)
+                # convert special char to code character
+                codeLabelData = convert(labeldata, special_characters, char_dict_special_to_code)
 
-            qr = qrcode.QRCode(
-                version=1,
-                error_correction=qrcode.constants.ERROR_CORRECT_L,
-                box_size=10,
-                border=4)
+                qr = qrcode.QRCode(
+                    version=1,
+                    error_correction=qrcode.constants.ERROR_CORRECT_L,
+                    box_size=10,
+                    border=4)
 
-            qr.add_data(codeLabelData)
-            qr.make(fit=True)
-            print("Creating QR code: " + labeldata)
+                qr.add_data(codeLabelData)
+                qr.make(fit=True)
+                print("Creating QR code: " + labeldata)
 
-            # draw QR image
+                # draw QR image
 
-            img = qr.make_image()
-            qrFile = labeldata + ".jpg"
-            qrFile = convert(qrFile, bad_file_name_list, None, True)  # remove special chars that can't be in filename
-            img.save(qrFile)
+                img = qr.make_image()
+                qrFile = labeldata + ".jpg"
+                qrFile = convert(qrFile, bad_file_name_list, None, True)  # remove special chars that can't be in filename
+                img.save(qrFile)
 
-            # open QR image and add qr data as name
-            img = Image.open(qrFile)
-            draw = ImageDraw.Draw(img)
-            font = ImageFont.truetype("arial", 24)
-            color = 0
-            draw.text((37, 10), labeldata, font=font, fill=color)
-            img.save(qrFile)
-            if storageChoice == 'a':
-                img.save(storagePath + "/" + qrFile)
+                # open QR image and add qr data as name
+                img = Image.open(qrFile)
+                draw = ImageDraw.Draw(img)
+                font = ImageFont.truetype("arial", 24)
+                color = 0
+                draw.text((37, 10), labeldata, font=font, fill=color)
+                img.save(qrFile)
+                if storageChoice == 'a':
+                    try:
+                        img.save(storagePath + "/" + qrFile)
+                    except:
+                        success = False
+    elif storageChoice == 'b':  # For storing the new QR Codes online, if that was selected
+        # resp = File.open_binary(ctx, relative_url) WILL PROBABLY REMOVE SOON
+        resp = connect(ctx, 'qr_batch')
 
-    # For storing the new QR Codes online, if that was selected
-    if storageChoice == 'b':
-        resp = File.open_binary(ctx, relative_url)
-        status = resp.status_code
-
-        if status == 404:
-            print(
-                f"{bcolors.FAIL}The batch file '" + relative_url + "' doesn't exist. "
+        if type(resp) == bool:
+            return False
+        elif resp.status_code == 404:
+            print(f"{bcolors.FAIL}The batch file '" + relative_url + "' doesn't exist. "
                 f"Please copy 'names.csv' to the sharepoint site.{bcolors.ENDC}")
             return False
 
@@ -664,9 +744,17 @@ def qr_batch():
 
                 with open(qrfile, 'rb') as content_file:  # upload file
                     file_content = content_file.read()
-                upload_file(ctx, file_content, qrfile, qrfolder)
-                os.remove(qrfile)
-    print(f"{bcolors.OKGREEN}Success!{bcolors.ENDC} \n")
+                success = connect(ctx, 'upload', file_content, qrfile, qrfolder)
+
+        os.remove(remoteQRBatchFile)
+
+    if success:
+        print(f"{bcolors.OKGREEN}Success!{bcolors.ENDC}\n")
+        if storageChoice == 'b':  # if the other upload was successful, also try to upload the backed-up data
+            upload_backup(ctx)
+    else:
+        print(f"{bcolors.FAIL}Some or no files were saved in {storagePath}, only in root folder.{bcolors.ENDC}" if
+              storageChoice == 'a' else f"{bcolors.WARNING}Successful locally, not online.{bcolors.ENDC}")
 
 
 """
@@ -718,16 +806,26 @@ def qr_single():
     draw.text((37, 10), custom_labeldata, font=font, fill=color)
     img.save(fileName)
 
+    succeed = True
     # Store QR code locally, if that was chosen
     if storageChoice == 'a':
-        img.save(storagePath + "/" + fileName)
+        try:
+            img.save(storagePath + "/" + fileName)
+        except:
+            succeed = False
     elif storageChoice == 'b':  # Store QR code online, if chosen
         # upload file
         with open(fileName, 'rb') as content_file:
             file_content = content_file.read()
-        upload_file(ctx, file_content, fileName, qrfolder)
+        succeed = connect(ctx, 'upload', file_content, fileName, qrfolder)
 
-    print(f"{bcolors.OKGREEN}Success!{bcolors.ENDC} \n")
+    if succeed:
+        print(f"{bcolors.OKGREEN}Success!{bcolors.ENDC}\n")
+        if storageChoice == 'b':
+            upload_backup(ctx)  # if the other upload was successful, also try to upload the backed-up data
+    else:
+        print(f"{bcolors.FAIL}File not saved in {storagePath}, only in root folder.{bcolors.ENDC}" if
+              storageChoice == 'a' else f"{bcolors.WARNING}Successful locally, not online.{bcolors.ENDC}")
 
 
 """
@@ -862,10 +960,9 @@ while True:
     print("A. QR Reader")
     print("B. QR Creator - Batch")
     print("C. QR Creator - Single")
-    #print("D. Restart Previous Session")
-    print("D. Consolidate Records") if storageChoice == 'a' else ""
-    print("E. About/Credits" if storageChoice == 'a' else "D. About/Credits")
-    print("F. Exit \n" if storageChoice == 'a' else "E. Exit \n")
+    print("D. Consolidate Records" if storageChoice == 'a' else "D. Upload Backed-Up Data")
+    print("E. About/Credits")
+    print("F. Exit \n")
     choice = input("Enter your selection: ").lower()
     if choice == 'a':
         ask_to_restart_session()
@@ -875,13 +972,10 @@ while True:
     elif choice == 'c':
         qr_single()
     elif choice == 'd':
-        cons() if storageChoice == 'a' else about()
+        cons() if storageChoice == 'a' else upload_backup(ctx, True)
     elif choice == 'e':
-        if storageChoice == 'a':
-            about()
-        else:
-            break
-    elif choice == 'f' and storageChoice == 'a':
+        about()
+    elif choice == 'f':
         break
     else:
         print("Invalid choice \n")
