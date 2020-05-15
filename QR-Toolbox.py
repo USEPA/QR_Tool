@@ -403,7 +403,8 @@ def video():
         if success:
             upload_backup(ctx)
 
-    os.remove(args["output"])  # not removed until the end in case something goes wrong above and it's needed
+    if os.path.exists(args["output"]) and os.stat(args["output"]).st_size == 0:
+        os.remove(args["output"])  # not removed until the end in case something goes wrong above and it's needed
     vs.stop()
     vs.stream.release()
     cv2.destroyAllWindows()
@@ -504,7 +505,7 @@ def connect(context, connection_type, content=None, file_name=None, location=Non
                 time.sleep(30)
             elif i > 1 and not duplicate and connection_type != 'qr_batch':
                 print(f"{bcolors.FAIL}Reconnect failed again.{bcolors.OKBLUE} Data will be stored locally and "
-                      f"uploaded at reconnect.{bcolors.ENDC}")
+                      f"uploaded at the next upload point, or if triggered from the menu.{bcolors.ENDC}")
                 if os.path.exists(backup_file) and connection_type == 'upload':
                     with open(backup_file, "a") as backup:
                         backup.write(f"{content}\n@@@@@\n{file_name}\n@@@@@\n{location}\n----------\n")
