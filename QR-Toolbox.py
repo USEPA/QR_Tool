@@ -46,8 +46,8 @@ bkcsvfolder = "HXWTEST"
 remoteQRBatchFile = "System_Data/names-remote.csv"
 localQRBatchFile = "names.csv"
 relative_url = "/sites/Emergency%20Response/EOCIncident/EOC%20Documents/QRCodes/names.csv"
-qr_storage_file = "System_Data/qr-data.txt"
-backup_file = "System_Data/backup.txt"
+qr_storage_file = "System_Data/qr-data.txt"  # file that contains saved session information
+backup_file = "System_Data/backup.txt"  # file that contains data that couldn't be uploaded, to later be uploaded
 
 context_auth = AuthenticationContext(url=settings['url'])
 context_auth.acquire_token_for_app(client_id=settings['client_id'], client_secret=settings['client_secret'])
@@ -56,7 +56,7 @@ ctx = ClientContext(settings['url'], context_auth)
 # load variables
 # set store folder default, assign system ID, and wait time
 storagePath = "None"
-checkStorage = False
+checkStorage = False  # whether system should check if there is any backed up data or previous session data
 system_id = os.environ['COMPUTERNAME']
 t_value = timedelta(seconds=10)
 
@@ -173,29 +173,29 @@ def video():
             with open(args["output"], "r") as txt:
                 print(f"{bcolors.OKBLUE}Restoring records...{bcolors.ENDC}")
                 for line in txt:  # get each record from the file by line
-                    if line == '\n': continue
+                    if line == '\n': continue  # if line is newline only then skip it
                     line_array = line.split(",")
                     last_system_id = line_array[0]
-                    date_time = datetime.datetime.strptime(line_array[1], "%Y-%m-%d %H:%M:%S.%f")
+                    date_time = datetime.datetime.strptime(line_array[1], "%Y-%m-%d %H:%M:%S.%f")  # get date from file
                     date_time_online = f"{date_time.month}/{date_time.day}/{date_time.year} " \
-                                       f"{date_time.hour}:{date_time.minute}"
-                    "%m/%d/%Y %H:%M"
-                    barcodeDataSpecial = line_array[2]
-                    status = line_array[3]
-                    if "OUT" in status:
-                        duration = line_array[4][:len(line_array[4]) - 1:]
+                                       f"{date_time.hour}:{date_time.minute}"  # store in this format: "%m/%d/%Y %H:%M"
+
+                    barcodeDataSpecial = line_array[2]  # get the QR Code from the file
+                    status = line_array[3]  # get the status from the file
+                    if "OUT" in status:  # if the status is OUT, also get the QRCodes' duration from the file
+                        duration = line_array[4][:len(line_array[4]) - 1:]  # also remove newline char
                     else:
-                        status = status[:len(status) - 1]
+                        status = status[:len(status) - 1]  # else just remove the newline char from the status
 
                     # Convert barcodeDataSpecial's special chars to regular chars
                     barcodeDataReg = convert(barcodeDataSpecial, special_characters, char_dict_special_to_reg)
 
-                    if status == "IN":
+                    if status == "IN":  # if status is IN, use 4 params
                         contentstr = "{},{},{},{}\n".format(last_system_id, date_time_online,
                                                             barcodeDataReg, status)  # for online CSV file
                         contentstr2 = '{},{},{},{}\n'.format(last_system_id, date_time,
                                                              barcodeDataSpecial, status)  # for list item
-                    else:
+                    else:  # if status is OUT, use 5 params
                         contentstr = "{},{},{},{},{}\n".format(last_system_id, date_time_online, barcodeDataReg,
                                                             status, duration)  # for online CSV file
                         contentstr2 = '{},{},{},{},{}\n'.format(last_system_id, date_time,
@@ -203,10 +203,10 @@ def video():
                     create_list_item(ctx, contentstr2)
                     contentStrings = contentStrings + contentstr
 
-        txt = open(args["output"], "a", encoding="utf-8")
+        txt = open(args["output"], "a", encoding="utf-8")  # reopen txt file for appending (to continue records)
         print(f"{bcolors.OKBLUE}Previous records restored.{bcolors.ENDC}")
     else:
-        txt = open(args["output"], "w", encoding="utf-8")  # else open new file/overwrite prev
+        txt = open(args["output"], "w", encoding="utf-8")  # else open new file/overwrite previous
         if checkStorage:
             print(f"{bcolors.WARNING}No previous records found. CSV file will not include past records.{bcolors.ENDC}")
 
@@ -220,10 +220,10 @@ def video():
     if checkStorage:
         if os.path.exists(qr_storage_file):
             with open(qr_storage_file, "r") as qr_data_file:
-                for line in qr_data_file:
+                for line in qr_data_file:  # if yes, read them in line by line
                     if line == '\n': continue
                     line_array = line.split(",")
-                    found.append(line_array[0])
+                    found.append(line_array[0])  # append file data to the found arrays
                     found_time.append(datetime.datetime.strptime(line_array[1], "%Y-%m-%d %H:%M:%S.%f"))
                     found_status.append(line_array[2][:len(line_array[2]) - 1:])
                 print(f"{bcolors.OKBLUE}Previous session restarted.{bcolors.ENDC}")
@@ -374,7 +374,7 @@ def video():
     txt.close()
 
     if os.path.exists(qr_storage_file) and os.stat(qr_storage_file).st_size == 0:
-        os.remove(qr_storage_file)
+        os.remove(qr_storage_file)  # if the file is empty, delete it
     checkStorage = False  # Reset the global variable that tells code to check the qr_storage_file
 
     # This part is necessary to show special characters properly on any of the local CSVs
@@ -403,7 +403,7 @@ def video():
         if success:
             upload_backup(ctx)
 
-    if os.path.exists(args["output"]) and os.stat(args["output"]).st_size == 0:
+    if os.path.exists(args["output"]) and os.stat(args["output"]).st_size == 0:  # delete barcodes.txt if empty
         os.remove(args["output"])  # not removed until the end in case something goes wrong above and it's needed
     vs.stop()
     vs.stream.release()
@@ -472,7 +472,18 @@ def ask_special_char_conversion(label):
 
 
 """
-TODO: Need to add this function definition
+This function handles HTTP requests, and also handles errors that occur during those attempted connections
+    - If there is an error, then system tries again after 10sec, then 30sec, and then stores the data
+    that was to be uploaded in a file (backup.txt), to be attempted to upload again later on
+@param context the URL/HTTP request
+@param connection_type the type of connection/request to make (depends on the method caller)
+@param content the content of the upload
+@param file_name the name of the file to be uploaded
+@param location the location that the file should be uploaded to
+@param duplicate whether the file/data being uploaded already exists in the backup.txt or not
+
+@return True if connection is successful, False if not
+    - Returns binary file in the case of the 'qr_batch' connection_type
 """
 
 
@@ -482,28 +493,27 @@ def connect(context, connection_type, content=None, file_name=None, location=Non
         # noinspection PyBroadException
         try:
             return_val = True
-            if connection_type == 'upload':
+            if connection_type == 'upload':  # if a file needs to be uploaded
                 upload_file(ctx, content, file_name, location)
-            elif connection_type == 'execute_query':
+            elif connection_type == 'execute_query':  # if list item needs to be created and added
                 context.execute_query()
-            elif connection_type == 'qr_batch':
+            elif connection_type == 'qr_batch':  # if a file from the SharePoint needs to be retrieved (names.csv)
                 return_val = File.open_binary(context, relative_url)
             else:
-                print(f"{bcolors.WARNING}Invalid connection type.{bcolors.ENDC}")
+                print(f"{bcolors.WARNING}Invalid connection type.{bcolors.ENDC}")  # connection_type not one of above
                 return_val = False
             if i > 0:
                 print(f"{bcolors.OKGREEN}Connection successful.{bcolors.ENDC}")
             return return_val
         except:
-            e = sys.exc_info()[0]
-            # print(e)
+            # e = sys.exc_info()[0] used for error checking
             if i == 0:
                 print(f"{bcolors.FAIL}Connection lost. Trying again in 10 seconds.{bcolors.ENDC}")
                 time.sleep(10)
             elif i == 1:
                 print(f"{bcolors.FAIL}Reconnect failed. Trying again in 30 seconds.{bcolors.ENDC}")
                 time.sleep(30)
-            elif i > 1 and not duplicate and connection_type != 'qr_batch':
+            elif i > 1 and not duplicate and connection_type != 'qr_batch':  # if failed thrice, write to backup.txt
                 print(f"{bcolors.FAIL}Reconnect failed again.{bcolors.OKBLUE} Data will be stored locally and "
                       f"uploaded at the next upload point, or if triggered from the menu.{bcolors.ENDC}")
                 if os.path.exists(backup_file) and connection_type == 'upload':
@@ -524,7 +534,12 @@ def connect(context, connection_type, content=None, file_name=None, location=Non
 
 
 """
-TODO: Need to add function definition
+This function uploads the data that was stored/backed up in the backup.txt file
+
+@param context the URL/HTTP request information for uploading
+@param from_menu True if this method was triggered/called from the main menu, False otherwise
+
+@return True if re-upload was successful, False otherwise (or if there was no data to upload)
 """
 
 
@@ -536,14 +551,14 @@ def upload_backup(context, from_menu=False):
             file_name = ""  # the file name of the file to upload
             location = ""  # the location to upload the file to
             flag = 0  # this tells program whether we are looking at content, filename, or location information
-            for line in backup:
+            for line in backup:  # for each line, take the appropriate action according to what is read in
                 if line == '\n': continue
                 if line == '@@@@@\n': flag += 1; continue
                 if line == '$$$$$\n': flag = 3; continue
                 if line == '----------\n':
-                    if flag == 3:
+                    if flag == 3:  # means it was a list item
                         successful = create_list_item(context, content, True)
-                    else:
+                    else:  # means it was a file to be uploaded
                         successful = connect(context, 'upload', content, file_name, location, True)
                     if not successful:
                         print(f"{bcolors.FAIL}Upload of backed up data failed.{bcolors.OKBLUE} Program will try again"
@@ -561,7 +576,7 @@ def upload_backup(context, from_menu=False):
                 elif flag == 2:
                     location = line.rstrip('\n')
             print(f"{bcolors.OKGREEN}Upload complete!{bcolors.ENDC}")
-        os.remove(backup_file)
+        os.remove(backup_file)  # file removed if upload is successful
     elif from_menu:
         print(f"{bcolors.OKBLUE}No backed-up data to upload.{bcolors.ENDC}")
 
@@ -692,10 +707,9 @@ def qr_batch():
                     except:
                         success = False
     elif storageChoice == 'b':  # For storing the new QR Codes online, if that was selected
-        # resp = File.open_binary(ctx, relative_url) WILL PROBABLY REMOVE SOON
-        resp = connect(ctx, 'qr_batch')
+        resp = connect(ctx, 'qr_batch')  # runs the retrieval of the names.csv file from SharePoint through connect()
 
-        if type(resp) == bool:
+        if type(resp) == bool:  # if a boolean value is returned, then the retrieval failed
             return False
         elif resp.status_code == 404:
             print(f"{bcolors.FAIL}The batch file '" + relative_url + "' doesn't exist. "
@@ -905,6 +919,15 @@ def cons():
         print(f"{bcolors.WARNING}\nA shared folder has not been established. Specify a shared folder using the Establish Share Folder "
               f"option before continuing \n{bcolors.ENDC}")
         pass
+
+
+"""
+This function asks the user whether they want to restart the previous session
+    - This means that the system will read and add-in/append at the beginning the data in the qr-data.txt,
+    as well as the data in the barcodes.txt, so that previous checkin/checkout data is maintained/carried over,
+    and so that the CSV file to be created will have the lines/data from the last session
+    - System knows to do this because this function sets the checkStorage global variable to True
+"""
 
 
 def ask_to_restart_session():
