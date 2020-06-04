@@ -1,12 +1,12 @@
 # -*- coding: windows-1252 -*-
-# Name: QR Toolbox v2a
+# Name: QR Toolbox v1.2
 # Description: The QR Toolbox is a suite a tools for creating and reading QR codes. See the About screen for more
 # information
 # Author(s): Code integration, minor enhancements, & platform development - Timothy Boe boe.timothy@epa.gov;
 # qrcode - Lincoln Loop info@lincolnloop.com; pyzbar - Lawrence Hudson quicklizard@googlemail.com;
 # OpenCV code - Adrian Rosebrock https://www.pyimagesearch.com/author/adrian/;
 # Contact: Timothy Boe boe.timothy@epa.gov
-# Requirements: Python 3, pyzbar, imutils, opencv-python, qrcode[pil]
+# Requirements: Python 3.7+, pyzbar, imutils, opencv-python, qrcode[pil]
 
 # import the necessary packages
 import argparse
@@ -36,6 +36,7 @@ from office365.sharepoint.file import File
 from office365.sharepoint.file_creation_information import FileCreationInformation
 from pyzbar import pyzbar
 from pyzbar.pyzbar import ZBarSymbol
+import ctypes
 
 from Setup.settings import settings
 
@@ -947,6 +948,21 @@ def ask_to_restart_session():
             print("Invalid choice \n")
 
 
+"""
+This function enables VT100 emulation, a Windows 10 setting that allows the color codes used above to actually
+work and show the different colors. Otherwise, the colors would not work on the majority of terminals.
+"""
+
+
+def colors():
+    kernel32 = ctypes.WinDLL('kernel32')
+    hStdOut = kernel32.GetStdHandle(-11)
+    mode = ctypes.c_ulong()
+    kernel32.GetConsoleMode(hStdOut, ctypes.byref(mode))
+    mode.value |= 4
+    kernel32.SetConsoleMode(hStdOut, mode)
+
+
 """ THIS SECTION COMES AFTER THE LANDING SCREEN """
 
 # Determine which camera to use
@@ -976,6 +992,9 @@ while True:
         break
     else:
         print("Invalid choice \n")
+
+# call to function to turn on colors (enable VT100 emulation for Windows 10, works for Windows 10 only I believe)
+colors()
 
 # main menu
 
