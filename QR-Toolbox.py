@@ -631,7 +631,7 @@ def upload_file(context, file_content, filename, sub_folder):
     info.overwrite = True
 
     # upload file to sub folder 'eoctest'
-    target_file = library.root_folder.folders.get_by_url(sub_folder).files.add(info)
+    target_file = library.rootFolder.folders.get_by_url(sub_folder).files.add(info)
     file_context.execute_query()
 
     return target_file
