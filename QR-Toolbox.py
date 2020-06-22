@@ -9,6 +9,8 @@
 # Requirements: Python 3.7+, pyzbar, imutils, opencv-python, qrcode[pil]
 
 # import the necessary packages
+import pkg_resources  # this one and platform are built-in, as are some others (and so don't need to be checked)
+import platform
 import argparse
 import csv
 import datetime
@@ -118,7 +120,6 @@ char_dict_special_to_reg = {"à": "a", "á": "a", "â": "a", "ã": "a", "ä": "a", "å
                             "Ø": "O", "Ù": "U", "Ú": "U", "Û": "U", "Ü": "U", "Ý": "Y", "Þ": "B", "ß": "Y"}
 
 # display landing screen
-
 print("     _/_/      _/_/_/        _/_/_/_/_/                    _/  _/                   ")
 print("  _/    _/    _/    _/          _/      _/_/      _/_/    _/  _/_/_/      _/_/    _/    _/")
 print(" _/  _/_/    _/_/_/            _/    _/    _/  _/    _/  _/  _/    _/  _/    _/    _/_/  ")
@@ -917,8 +918,8 @@ def cons():
                       "specified shared directory or the file " + cons_filename + " is currently in use or unavailable."
                       f"The consolidated record may be incomplete.{bcolors.ENDC} \n")
     else:
-        print(f"{bcolors.WARNING}\nA shared folder has not been established. Specify a shared folder using the Establish Share Folder "
-              f"option before continuing \n{bcolors.ENDC}")
+        print(f"{bcolors.WARNING}\nA shared folder has not been established. Specify a shared folder using the "
+              f"Establish Share Folder option before continuing \n{bcolors.ENDC}")
         pass
 
 
@@ -963,7 +964,43 @@ def colors():
     kernel32.SetConsoleMode(hStdOut, mode)
 
 
+"""
+This function checks the Python version and the Python module versions to ensure they are accurate.
+If they are not exactly the versions the QR Tool was built for, a warning message will be printed.
+(System can still run, but issues may arise because the packages/Python version code may have changed)
+"""
+
+
+def check_versions():
+    proper_versions = True
+
+    if pkg_resources.get_distribution("pyzbar").version != '0.1.8':
+        proper_versions = False
+    elif pkg_resources.get_distribution("imutils").version != '0.5.3':
+        proper_versions = False
+    elif pkg_resources.get_distribution("qrcode").version != '6.1':
+        proper_versions = False
+    elif pkg_resources.get_distribution("Pillow").version != '7.0.0':
+        proper_versions = False
+    elif pkg_resources.get_distribution("opencv-python").version != '4.2.0.32':
+        proper_versions = False
+    elif pkg_resources.get_distribution("Office365-REST-Python-Client").version != '2.1.7.post1':
+        proper_versions = False
+
+    if platform.python_version() != '3.7.4':
+        print(f"{bcolors.WARNING}[WARNING] Your Python version is not 3.7.4. For the most stable build, install Python"
+              f" version 3.7.4.{bcolors.ENDC}")
+    if not proper_versions:
+        print(f"{bcolors.WARNING}[WARNING] Some Python module versions are not accurate, run the Setup.bat again to "
+              f"ensure proper functioning and stability of the program.{bcolors.ENDC}\n")
+
+
 """ THIS SECTION COMES AFTER THE LANDING SCREEN """
+# call to function to turn on colors (enable VT100 emulation for Windows 10, works for Windows 10 only I believe)
+colors()
+
+# Check Python and module versions
+check_versions()
 
 # Determine which camera to use
 while True:
@@ -992,9 +1029,6 @@ while True:
         break
     else:
         print("Invalid choice \n")
-
-# call to function to turn on colors (enable VT100 emulation for Windows 10, works for Windows 10 only I believe)
-colors()
 
 # main menu
 
