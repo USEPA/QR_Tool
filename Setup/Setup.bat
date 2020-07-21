@@ -6,3 +6,4 @@ pip install Pillow==7.0.0;
 pip install opencv-python==4.2.0.32;
 pip install Office365-REST-Python-Client==2.1.7.post1;
 setx OPENCV_VIDEOIO_PRIORITY_MSMF 0
+set /P temp="<Press Enter to exit>"
