@@ -1,5 +1,5 @@
 # -*- coding: windows-1252 -*-
-# Name: QR Toolbox v1.2
+# Name: QR Toolbox v1.3
 # Description: The QR Toolbox is a suite a tools for creating and reading QR codes. See the About screen for more
 # information
 # Author(s): Code integration, minor enhancements, & platform development - Timothy Boe boe.timothy@epa.gov;
@@ -125,7 +125,7 @@ print("  _/    _/    _/    _/          _/      _/_/      _/_/    _/  _/_/_/     
 print(" _/  _/_/    _/_/_/            _/    _/    _/  _/    _/  _/  _/    _/  _/    _/    _/_/  ")
 print("_/    _/    _/    _/          _/    _/    _/  _/    _/  _/  _/    _/  _/    _/  _/    _/  ")
 print(" _/_/  _/  _/    _/          _/      _/_/      _/_/    _/  _/_/_/      _/_/    _/    _/ \n")
-print("QR Toolbox v1.2 \n")
+print("QR Toolbox v1.3 \n")
 print("The QR Toolbox is a suite a tools for creating and reading QR codes.\n")
 print("USEPA Homeland Security Research Program \n")
 print("System ID: " + system_id + "\n")
@@ -852,11 +852,11 @@ This function provides more information on the purpose and development of this s
 
 def about():
     # displays the about screen
-    print("\nQR Toolbox v1.2 \n")
+    print("\nQR Toolbox v1.3 \n")
     print("About: The QR Toolbox is a suite a tools for creating and reading QR codes. The toolbox is platform "
           "agnostic, lightweight, open source, and written in pure Python. This toolbox may be used to track resources,"
           " serve as a check-in capability for personnel, or customized to meet other operational needs. \n")
-    print("Version: 1.2 \n")
+    print("Version: 1.3 \n")
     print("Credits: The QR Toolbox consists of a number of python packages, namely: \n qrcode - "
           "Lincoln Loop info@lincolnloop.com; \n pyzbar - Lawrence Hudson quicklizard@googlemail.com; \n OpenCV code - "
           "Adrian Rosebrock https://www.pyimagesearch.com/author/adrian/; \n Code integration, minor enhancements, & "
