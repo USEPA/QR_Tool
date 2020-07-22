@@ -1,6 +1,6 @@
 Name: EPA QR Tool
 
-Version: 1.2
+Version: 1.3
 
 Description: A python-based tool for tracking assets (e.g., people, equipment) through the use of QR codes. The system uses USB-interface webcams along with the open-source python-based software for scanning and generating QR codes. The system was designed to read QR codes attached to assets. QR stations (consisting of a laptop and webcam) can be staged at various locations for the purpose of tracking an entity for logistical and health and safety purposes.
 
