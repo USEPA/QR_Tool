@@ -1,12 +1,14 @@
 # -*- coding: windows-1252 -*-
-# Name: QR Toolbox v1.3
-# Description: The QR Toolbox is a suite a tools for creating and reading QR codes. See the About screen for more
-# information
-# Author(s): Code integration, minor enhancements, & platform development - Timothy Boe boe.timothy@epa.gov;
-# qrcode - Lincoln Loop info@lincolnloop.com; pyzbar - Lawrence Hudson quicklizard@googlemail.com;
-# OpenCV code - Adrian Rosebrock https://www.pyimagesearch.com/author/adrian/;
-# Contact: Timothy Boe boe.timothy@epa.gov
-# Requirements: Python 3.7+, pyzbar, imutils, opencv-python, qrcode[pil]
+"""
+Name: QR Toolbox v1.3
+Description: The QR Toolbox is a suite a tools for creating and reading QR codes. See the About screen for more
+information
+Author(s): Code integration, minor enhancements, & platform development - Timothy Boe boe.timothy@epa.gov;
+    qrcode - Lincoln Loop info@lincolnloop.com; pyzbar - Lawrence Hudson quicklizard@googlemail.com;
+    OpenCV code - Adrian Rosebrock https://www.pyimagesearch.com/author/adrian/;
+Contact: Timothy Boe boe.timothy@epa.gov
+Requirements: Python 3.7+, pyzbar, imutils, opencv-python, qrcode[pil]
+"""
 
 # import the necessary packages
 import pkg_resources  # this one and platform are built-in, as are some others (and so don't need to be checked)
@@ -22,6 +24,76 @@ from datetime import timedelta
 from time import strftime
 from tkinter import *
 from tkinter import filedialog
+import ctypes
+
+"""
+This function enables VT100 emulation, a Windows 10 setting that allows the color codes used above to actually
+work and show the different colors. Otherwise, the colors would not work on the majority of terminals.
+"""
+
+
+def colors():
+    kernel32 = ctypes.WinDLL('kernel32')
+    hStdOut = kernel32.GetStdHandle(-11)
+    mode = ctypes.c_ulong()
+    kernel32.GetConsoleMode(hStdOut, ctypes.byref(mode))
+    mode.value |= 4
+    kernel32.SetConsoleMode(hStdOut, mode)
+
+
+# colors
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[32m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+
+"""
+This function checks the Python version and the Python module versions to ensure they are accurate.
+If they are not exactly the versions the QR Tool was built for, a warning message will be printed.
+(System can still run, but issues may arise because the packages/Python version code may have changed)
+"""
+
+
+def check_versions():
+    pkg_array = ["pyzbar", "imutils", "qrcode", "Pillow", "opencv-python", "Office365-REST-Python-Client"]
+    pkg_version = {"pyzbar": "0.1.8", "imutils": "0.5.3", "qrcode": "6.1", "Pillow": "7.0.0", "opencv-python": "4.2.0.32",
+                   "Office365-REST-Python-Client": "2.1.7.post1"}
+    pkgs_to_install = []
+    i = 0
+    while i < len(pkg_array):  # check which packages need to be installed or updated
+        try:
+            if pkg_resources.get_distribution(pkg_array[i]).version != pkg_version[pkg_array[i]]:
+                pkgs_to_install.append(pkg_array[i])
+        except:  # this catches errors thrown by a not-installed pkg resource, so we know to install it
+            pkgs_to_install.append(pkg_array[i])
+        i += 1
+
+    if len(pkgs_to_install) > 0:
+        print(f"{bcolors.WARNING}[WARNING] Some Python module versions are not accurate or installed, they will be installed "
+              f"now.{bcolors.ENDC}\n")
+    for pkg in pkgs_to_install:  # install the packages
+        os.system(f"pip install {pkg}=={pkg_version[pkg]}")
+
+    if os.environ.get('OPENCV_VIDEOIO_PRIORITY_MSMF') is None or os.environ.get('OPENCV_VIDEOIO_PRIORITY_MSMF') != '0':
+        print(f"{bcolors.WARNING}[WARNING] OPENCV_VIDEOIO_PRIORITY_MSMF also not set. Setting now.{bcolors.ENDC}")
+        os.system("setx OPENCV_VIDEOIO_PRIORITY_MSMF 0")
+
+    if platform.python_version() != '3.7.4':
+        print(f"{bcolors.WARNING}[WARNING] Your Python version is not 3.7.4. For the most stable build, install Python"
+              f" version 3.7.4.{bcolors.ENDC}")
+
+
+# call to function to turn on colors (enable VT100 emulation for Windows 10, works for Windows 10 only I believe)
+colors()
+
+# Check Python and module versions
+check_versions()
 
 # import csv packages
 import cv2
@@ -38,7 +110,6 @@ from office365.sharepoint.file import File
 from office365.sharepoint.file_creation_information import FileCreationInformation
 from pyzbar import pyzbar
 from pyzbar.pyzbar import ZBarSymbol
-import ctypes
 
 from Setup.settings import settings
 
@@ -62,18 +133,6 @@ storagePath = "None"
 checkStorage = False  # whether system should check if there is any backed up data or previous session data
 system_id = os.environ['COMPUTERNAME']
 t_value = timedelta(seconds=10)
-
-# colors
-class bcolors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKGREEN = '\033[32m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
-
 
 # Lists and Dictionaries used for special character handling and conversion
 trouble_characters = ['\t', '\n', '\r']
@@ -120,6 +179,7 @@ char_dict_special_to_reg = {"à": "a", "á": "a", "â": "a", "ã": "a", "ä": "a", "å
                             "Ø": "O", "Ù": "U", "Ú": "U", "Û": "U", "Ü": "U", "Ý": "Y", "Þ": "B", "ß": "Y"}
 
 # display landing screen
+print()
 print("     _/_/      _/_/_/        _/_/_/_/_/                    _/  _/                   ")
 print("  _/    _/    _/    _/          _/      _/_/      _/_/    _/  _/_/_/      _/_/    _/    _/")
 print(" _/  _/_/    _/_/_/            _/    _/    _/  _/    _/  _/  _/    _/  _/    _/    _/_/  ")
@@ -948,59 +1008,6 @@ def ask_to_restart_session():
         else:
             print("Invalid choice \n")
 
-
-"""
-This function enables VT100 emulation, a Windows 10 setting that allows the color codes used above to actually
-work and show the different colors. Otherwise, the colors would not work on the majority of terminals.
-"""
-
-
-def colors():
-    kernel32 = ctypes.WinDLL('kernel32')
-    hStdOut = kernel32.GetStdHandle(-11)
-    mode = ctypes.c_ulong()
-    kernel32.GetConsoleMode(hStdOut, ctypes.byref(mode))
-    mode.value |= 4
-    kernel32.SetConsoleMode(hStdOut, mode)
-
-
-"""
-This function checks the Python version and the Python module versions to ensure they are accurate.
-If they are not exactly the versions the QR Tool was built for, a warning message will be printed.
-(System can still run, but issues may arise because the packages/Python version code may have changed)
-"""
-
-
-def check_versions():
-    proper_versions = True
-
-    if pkg_resources.get_distribution("pyzbar").version != '0.1.8':
-        proper_versions = False
-    elif pkg_resources.get_distribution("imutils").version != '0.5.3':
-        proper_versions = False
-    elif pkg_resources.get_distribution("qrcode").version != '6.1':
-        proper_versions = False
-    elif pkg_resources.get_distribution("Pillow").version != '7.0.0':
-        proper_versions = False
-    elif pkg_resources.get_distribution("opencv-python").version != '4.2.0.32':
-        proper_versions = False
-    elif pkg_resources.get_distribution("Office365-REST-Python-Client").version != '2.1.7.post1':
-        proper_versions = False
-
-    if platform.python_version() != '3.7.4':
-        print(f"{bcolors.WARNING}[WARNING] Your Python version is not 3.7.4. For the most stable build, install Python"
-              f" version 3.7.4.{bcolors.ENDC}")
-    if not proper_versions:
-        print(f"{bcolors.WARNING}[WARNING] Some Python module versions are not accurate, run the Setup.bat again to "
-              f"ensure proper functioning and stability of the program.{bcolors.ENDC}\n")
-
-
-""" THIS SECTION COMES AFTER THE LANDING SCREEN """
-# call to function to turn on colors (enable VT100 emulation for Windows 10, works for Windows 10 only I believe)
-colors()
-
-# Check Python and module versions
-check_versions()
 
 # Determine which camera to use
 while True:
