@@ -133,6 +133,7 @@ storagePath = "None"
 checkStorage = False  # whether system should check if there is any backed up data or previous session data
 system_id = os.environ['COMPUTERNAME']
 t_value = timedelta(seconds=10)
+cameraSource = "a"
 
 # Lists and Dictionaries used for special character handling and conversion
 trouble_characters = ['\t', '\n', '\r']
@@ -214,11 +215,11 @@ def video():
     print(f"{bcolors.OKBLUE}[ALERT] starting video stream...{bcolors.ENDC}")
     print(f"{bcolors.OKBLUE}Press 'Q' to exit{bcolors.ENDC}")
 
-    if cameraChoice == 'a':  # start correct camera based on user choice at beginning
+    if cameraSource == 'a':  # start correct camera based on user choice at beginning
         vs = VideoStream(src=0).start()  # for integrated/built in webcam
-    elif cameraChoice == 'b':
+    elif cameraSource == 'b':
         vs = VideoStream(src=1).start()  # for separate webcam (usually USB connected)
-    elif cameraChoice == 'c':
+    elif cameraSource == 'c':
         vs = VideoStream(usePiCamera=True).start()  # for mobile solution like Raspberry Pi Camera
     else:
         print(f"{bcolors.FAIL}An error has occurred.{bcolors.ENDC}")
@@ -1009,18 +1010,30 @@ def ask_to_restart_session():
             print("Invalid choice \n")
 
 
-# Determine which camera to use
-while True:
-    print("Which camera do you want to use?")
-    print("A. Integrated webcam")
-    print("B. Separate webcam")
-    print("C. PiCamera")
-    cameraChoice = input("Enter your selection: ").lower()
-    if cameraChoice != 'a' and cameraChoice != 'b' and cameraChoice != 'c':
-        print("Invalid choice \n")
-    else:
-        print("\n")
-        break
+"""
+This function asks the user what camera will be used to read QR Codes
+Only 3 options
+    1. A - integrated/built-in webcam (the default)
+    2. B - USB or connected webcam
+    3. C - PiCamera (from Raspberry Pi)
+"""
+
+
+def choose_camera_source():
+    while True:
+        print("Which camera do you want to use?")
+        print("A. Integrated webcam")
+        print("B. Separate webcam")
+        print("C. PiCamera")
+        cameraChoice = input("Enter your selection: ").lower()
+        if cameraChoice != 'a' and cameraChoice != 'b' and cameraChoice != 'c':
+            print("Invalid choice \n")
+        else:
+            print("\n")
+            global cameraSource
+            cameraSource = cameraChoice
+            break
+
 
 # Determine where to store data that is captured/recorded
 while True:
@@ -1045,8 +1058,9 @@ while True:
     print("B. QR Creator - Batch")
     print("C. QR Creator - Single")
     print("D. Consolidate Records" if storageChoice == 'a' else "D. Upload Backed-Up Data")
-    print("E. About/Credits")
-    print("F. Exit \n")
+    print("E. Change Camera Source")
+    print("F. About/Credits")
+    print("G. Exit \n")
     choice = input("Enter your selection: ").lower()
     if choice == 'a':
         ask_to_restart_session()
@@ -1058,8 +1072,10 @@ while True:
     elif choice == 'd':
         cons() if storageChoice == 'a' else upload_backup(ctx, True)
     elif choice == 'e':
-        about()
+        choose_camera_source()
     elif choice == 'f':
+        about()
+    elif choice == 'g':
         break
     else:
         print("Invalid choice \n")
