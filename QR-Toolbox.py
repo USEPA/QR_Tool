@@ -134,6 +134,7 @@ checkStorage = False  # whether system should check if there is any backed up da
 system_id = os.environ['COMPUTERNAME']
 t_value = timedelta(seconds=10)
 cameraSource = "a"
+storageChoice = ""
 
 # Lists and Dictionaries used for special character handling and conversion
 trouble_characters = ['\t', '\n', '\r']
@@ -230,7 +231,7 @@ def video():
     # open the output txt file for writing and initialize the set of barcodes found thus far
     global checkStorage
     contentStrings = ""  # used to contain data recorded from qr codes, to save in files
-    if os.path.isfile(args["output"]) and checkStorage: # check if user wanted to restart prev session
+    if os.path.isfile(args["output"]) and checkStorage:  # check if user wanted to restart prev session
         if storageChoice.lower() == 'b':  # do this only if QR Toolbox is in online-mode
             # Write previous records back to contentStrings
             with open(args["output"], "r") as txt:
@@ -1036,22 +1037,27 @@ def choose_camera_source():
 
 
 # Determine where to store data that is captured/recorded
-while True:
-    print("Do you want data stored on Sharepoint (online) or locally?")
-    print("Note: Files are also saved in the QR-Toolbox root folder regardless.")
-    print("A. Local (Specify a location on the computer)")
-    print("B. Sharepoint (Online)")
-    storageChoice = input("Enter your selection: ").lower()
-    if storageChoice == 'a':
-        storagePath = store()
-        break
-    elif storageChoice == 'b':
-        break
-    else:
-        print("Invalid choice \n")
+def choose_storage_location():
+    while True:
+        print("Do you want data stored on Sharepoint (online) or locally?")
+        print("Note: Files are also saved in the QR-Toolbox root folder regardless.")
+        print("A. Local (Specify a location on the computer)")
+        print("B. Sharepoint (Online)")
+        global storageChoice
+        storageChoice = input("Enter your selection: ").lower()
+        if storageChoice == 'a':
+            global storagePath
+            storagePath = store()
+            break
+        elif storageChoice == 'b':
+            break
+        else:
+            print("Invalid choice \n")
 
+
+# MAIN PART OF PROGRAM STARTS HERE
+choose_storage_location()  # ask user to choose the storage location
 # main menu
-
 while True:
     print("\n==============|  MENU  |===============")
     print("A. QR Reader")
@@ -1059,8 +1065,9 @@ while True:
     print("C. QR Creator - Single")
     print("D. Consolidate Records" if storageChoice == 'a' else "D. Upload Backed-Up Data")
     print("E. Change Camera Source")
-    print("F. About/Credits")
-    print("G. Exit \n")
+    print("F. Change Storage (Local/Online)")
+    print("G. About/Credits")
+    print("H. Exit\n")
     choice = input("Enter your selection: ").lower()
     if choice == 'a':
         ask_to_restart_session()
@@ -1074,8 +1081,10 @@ while True:
     elif choice == 'e':
         choose_camera_source()
     elif choice == 'f':
-        about()
+        choose_storage_location()
     elif choice == 'g':
+        about()
+    elif choice == 'h':
         break
     else:
         print("Invalid choice \n")
