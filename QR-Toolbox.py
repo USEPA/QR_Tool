@@ -61,9 +61,9 @@ If they are not exactly the versions the QR Tool was built for, a warning messag
 
 
 def check_versions():
-    pkg_array = ["pyzbar", "imutils", "qrcode", "Pillow", "opencv-python", "Office365-REST-Python-Client"]
+    pkg_array = ["pyzbar", "imutils", "qrcode", "Pillow", "opencv-python", "Office365-REST-Python-Client", "zxing"]
     pkg_version = {"pyzbar": "0.1.8", "imutils": "0.5.3", "qrcode": "6.1", "Pillow": "7.0.0", "opencv-python": "4.2.0.32",
-                   "Office365-REST-Python-Client": "2.1.7.post1"}
+                   "Office365-REST-Python-Client": "2.1.7.post1", "zxing": "0.11"}
     pkgs_to_install = []
     i = 0
     while i < len(pkg_array):  # check which packages need to be installed or updated
@@ -111,6 +111,12 @@ from office365.sharepoint.file_creation_information import FileCreationInformati
 from pyzbar import pyzbar
 from pyzbar.pyzbar import ZBarSymbol
 
+import zxing
+import logging
+import threading
+import tkinter
+
+
 from Setup.settings import settings
 
 # Sharepoint related variables
@@ -135,6 +141,10 @@ system_id = os.environ['COMPUTERNAME']
 t_value = timedelta(seconds=10)
 cameraSource = "a"
 storageChoice = ""
+
+num_threads = 0  # number of threads currently running
+temp_img_num = 0  # the number of the temp img to write/overwrite
+temp_img_array = ["System_Data/temp1.jpg", "System_Data/temp2.jpg", "System_Data/temp3.jpg"]  # images to write/overwrite
 
 # Lists and Dictionaries used for special character handling and conversion
 trouble_characters = ['\t', '\n', '\r']
@@ -182,11 +192,12 @@ char_dict_special_to_reg = {"à": "a", "á": "a", "â": "a", "ã": "a", "ä": "a", "å
 
 # display landing screen
 print()
-print("     _/_/      _/_/_/        _/_/_/_/_/                    _/  _/                   ")
-print("  _/    _/    _/    _/          _/      _/_/      _/_/    _/  _/_/_/      _/_/    _/    _/")
-print(" _/  _/_/    _/_/_/            _/    _/    _/  _/    _/  _/  _/    _/  _/    _/    _/_/  ")
-print("_/    _/    _/    _/          _/    _/    _/  _/    _/  _/  _/    _/  _/    _/  _/    _/  ")
-print(" _/_/  _/  _/    _/          _/      _/_/      _/_/    _/  _/_/_/      _/_/    _/    _/ \n")
+title =         "     _/_/      _/_/_/        _/_/_/_/_/                    _/  _/                   \n"
+title = title + "  _/    _/    _/    _/          _/      _/_/      _/_/    _/  _/_/_/      _/_/    _/    _/\n"
+title = title + " _/  _/_/    _/_/_/            _/    _/    _/  _/    _/  _/  _/    _/  _/    _/    _/_/  \n"
+title = title + "_/    _/    _/    _/          _/    _/    _/  _/    _/  _/  _/    _/  _/    _/  _/    _/  \n"
+title = title + " _/_/  _/  _/    _/          _/      _/_/      _/_/    _/  _/_/_/      _/_/    _/    _/ \n"
+print(title)
 print("QR Toolbox v1.3 \n")
 print("The QR Toolbox is a suite a tools for creating and reading QR codes.\n")
 print("USEPA Homeland Security Research Program \n")
@@ -424,6 +435,10 @@ def video():
                         qr_data_file.write("{0},{1},{2}\n".format(code, tyme, status))
             else:
                 print(f"{bcolors.FAIL}[Error] Barcode data issue in video() function.{bcolors.ENDC}")
+        global num_threads
+        if len(barcodes) == 0 and num_threads < 1:  # read non-QR code barcodes using a thread
+            threading.Thread(target=read_barcode, args=(frame, txt, found, found_time, found_status), daemon=True).start()  # start thread
+            num_threads += 1
 
         # show the output frame
         cv2.imshow("QR Toolbox", frame)
@@ -433,13 +448,16 @@ def video():
         if key == ord("q") or key == ord("Q"):
             break
 
-    # close the output CSV file do a bit of cleanup
+    # close the output CSV file and do a bit of cleanup
     print(f"{bcolors.OKBLUE}[ALERT] Cleaning up... \n{bcolors.ENDC}")
     txt.close()
 
     if os.path.exists(qr_storage_file) and os.stat(qr_storage_file).st_size == 0:
         os.remove(qr_storage_file)  # if the file is empty, delete it
     checkStorage = False  # Reset the global variable that tells code to check the qr_storage_file
+    time.sleep(1)
+    for temp_img in temp_img_array:  # deleting temp_imgs
+        os.remove(temp_img)
 
     # This part is necessary to show special characters properly on any of the local CSVs
     if os.path.exists(args["output"]):
@@ -472,6 +490,91 @@ def video():
     vs.stop()
     vs.stream.release()
     cv2.destroyAllWindows()
+
+
+"""
+This function checks the video stream frame for a non-QR code barcode (like UPC/EAN or PDF417 or CODABAR or CODE 128 etc.)
+    It takes the current image using hte frame arg passed to the function. It also should be run on another thread in order to
+    speed up the processing since this particular reading takes more time than QR Reading
+@param frame the current frame/image from the video stream
+"""
+def read_barcode(frame, txt, found, found_time, found_status):
+    global temp_img_num
+    global num_threads
+
+    reader = zxing.BarCodeReader()
+    cv2.imwrite(temp_img_array[temp_img_num], frame)  # temp img overwritten
+    if os.path.exists(temp_img_array[temp_img_num]):
+        other_barcodes = reader.decode(temp_img_array[temp_img_num], True)
+        temp_img_num += 1
+        if other_barcodes.raw is not '':
+            barcode = other_barcodes.parsed
+            # get the barcode top-left position
+            x1 = int(other_barcodes.points[0][0])
+            y1 = int(other_barcodes.points[0][1])
+
+            # draw the barcode data and barcode type on the image
+            cv2.putText(frame, other_barcodes.raw, (x1, y1 - 50),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+            cv2.imshow("QR Toolbox", frame)
+
+            if barcode not in found:
+                datetime_scanned = datetime.datetime.now()
+                txt.write("{},{},{},{}\n".format(system_id, datetime_scanned,
+                                                 barcode, "IN"))
+                txt.flush()
+
+                found.append(barcode)
+                found_time.append(datetime_scanned)
+                found_status.append("IN")
+
+                checked_in = True
+
+                sys.stdout.write('\a')  # beeping sound
+                sys.stdout.flush()
+                if checked_in:
+                    print(barcode + " checking IN at " + str(datetime_scanned) + " at location: " + system_id)
+
+            # if barcode information is found...
+            elif barcode in found:
+                # get current time and also total time passed since user checked in
+                datetime_scanned = datetime.datetime.now()
+                time_check = datetime_scanned - found_time[found.index(barcode)]
+                status_check = found_status[found.index(barcode)]
+
+                # if time exceeds wait period and user is checked in then check them out
+                if time_check > t_value and status_check == "IN":
+                    index_loc = found.index(barcode)
+                    found_status[index_loc] = "OUT"
+                    found_time[index_loc] = datetime_scanned
+                    txt.write("{},{},{},{},{}\n".format(system_id, datetime_scanned,
+                                                        barcode, "OUT", time_check))  # write to local CSV file
+                    txt.flush()
+
+                    checked_out = True
+
+                    sys.stdout.write('\a')  # When this letter is sent to terminal, a beep sound is emitted but no text
+                    sys.stdout.flush()
+                    if checked_out:
+                        print(barcode + " checking OUT at " + str(datetime_scanned)
+                              + " at location: " + system_id + " for duration of " + str(time_check))
+                # if found and check-in time is less than the specified wait time then wait
+                elif time_check < t_value and status_check == "OUT":
+                    pass
+                # if found and time check exceeds specified wait time and user is checked out, delete ID and affiliated
+                # data from the list. This resets everything for said user and allows the user to check back in at a
+                # later time.
+                elif time_check > t_value and status_check == "OUT":
+                    index_loc = found.index(barcode)
+                    del found_status[index_loc]
+                    del found_time[index_loc]
+                    del found[index_loc]
+            else:
+                print(f"{bcolors.FAIL}[Error] Barcode issue in read_barcode() function.{bcolors.ENDC}")
+    num_threads -= 1
+    if temp_img_num == 3: temp_img_num = 0
+
+    sys.exit()  # Thread done
 
 
 """
@@ -1058,6 +1161,34 @@ def choose_storage_location():
 # MAIN PART OF PROGRAM STARTS HERE
 choose_storage_location()  # ask user to choose the storage location
 # main menu
+root = Tk()
+root.title("QR Toolbox")  # main window
+
+title = "_/_/      _/_/_/        _/_/_/_/_/                    _/  _/                   \n"    # 5space
+title = title + "_/    _/    _/    _/          _/      _/_/      _/_/    _/  _/_/_/      _/_/    _/    _/\n"  # 2 space
+title = title + "_/  _/_/    _/_/_/            _/    _/    _/  _/    _/  _/  _/    _/  _/    _/    _/_/  \n"   # 1 space
+title = title + "_/    _/    _/    _/          _/    _/    _/  _/    _/  _/  _/    _/  _/    _/  _/    _/  \n"  # no space
+title = title + "_/_/  _/  _/    _/          _/      _/_/      _/_/    _/  _/_/_/      _/_/    _/    _/ \n"    # 1 space
+
+centralFrame = Frame(root, bg="black")
+centralFrame.pack(padx=20, pady=10)
+tempLabel = Label(centralFrame, text=f"{title}\nQR Toolbox v1.3\n\nUSEPA Homeland Security Research Program\n\nSystem ID: {system_id}", fg="white", bg="black", width=90, height=40)
+tempLabel.pack()
+buttonFrame = Frame(root)
+buttonFrame.pack(side=BOTTOM)
+readerButton = Button(buttonFrame, text="QR Reader")
+readerButton.pack(side=LEFT, padx=5, pady=5)
+batchButton = Button(buttonFrame, text="QR Creator - Batch")
+batchButton.pack(side=LEFT, padx=5)
+singleButton = Button(buttonFrame, text="QR Creator - Single")
+singleButton.pack(side=LEFT, padx=5)
+setupButton = Button(buttonFrame, text="Setup")
+setupButton.pack(side=LEFT, padx=5)
+aboutButton = Button(buttonFrame, text="About/Credits")
+aboutButton.pack(side=LEFT, padx=5)
+exitButton = Button(buttonFrame, text="Exit")
+exitButton.pack(side=LEFT, padx=5)
+
 while True:
     print("\n==============|  MENU  |===============")
     print("A. QR Reader")
@@ -1071,7 +1202,8 @@ while True:
     choice = input("Enter your selection: ").lower()
     if choice == 'a':
         ask_to_restart_session()
-        video()
+        threading.Thread(target=video, daemon=True).start()
+        # video()
     elif choice == 'b':
         qr_batch()
     elif choice == 'c':
