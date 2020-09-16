@@ -9,7 +9,7 @@ karimi.muhammad@epa.gov; Xiaowen Huang - Office 365 integration; qrcode - Lincol
 
 Contact: Timothy Boe boe.timothy@epa.gov; Jonathan Pettit pettit.Jonathan@epa.gov
 
-Requirements: Python 3, pyzbar, imutils, opencv-python, qrcode[pil], office365
+Requirements: Python 3, pyzbar, imutils, opencv-python, qrcode[pil], office365, zxing
 
 Installation: Follow the User Guide in the Documentation folder. 
 Run the Setup.bat file in the Setup folder (you must have admin rights or already have
