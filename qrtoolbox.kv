@@ -137,19 +137,19 @@
             text: "Integrated Webcam"
             size_hint: None, None
             size: 235, 100
-            on_release: root.set_camera("a")
+            on_release: root.set_camera("Integrated")
             on_release: root.camera_popup.dismiss()
         Button:
             text: "Separate Webcam"
             size_hint: None, None
             size: 235, 100
-            on_release: root.set_camera("b")
+            on_release: root.set_camera("Separate")
             on_release: root.camera_popup.dismiss()
         Button:
             text: "PiCamera"
             size_hint: None, None
             size: 235, 100
-            on_release: root.set_camera("c")
+            on_release: root.set_camera("PiCamera")
             on_release: root.camera_popup.dismiss()
 
 <QRSingleWidget>:
@@ -191,3 +191,20 @@
             size: 350, 100
             on_release: root.set_special_char_bool(False)
             on_release: root.special_char_popup.dismiss()
+
+<ExitWidget>:
+    orientation: 'vertical'
+    BoxLayout:
+        orientation: 'horizontal'
+        Button:
+            id: exit_widget
+            text: "Yes"
+            size_hint: None, None
+            size: 195, 70
+            on_release: root.confirm_exit()
+            on_release: root.exit_widget_popup.dismiss()
+        Button:
+            text: "No"
+            size_hint: None, None
+            size: 195, 70
+            on_release: root.exit_widget_popup.dismiss()
