@@ -11,9 +11,7 @@ Contact: Timothy Boe boe.timothy@epa.gov; Jonathan Pettit pettit.Jonathan@epa.go
 
 Requirements: Python 3, pyzbar, imutils, opencv-python, qrcode[pil], office365
 
-Installation: Follow the User Guide in the Documentation folder. 
-Run the Setup.bat file in the Setup folder (you must have admin rights or already have
-Python installed).
+Installation: Run the QR-Toolbox-Installer-v1.3.exe file in the Setup folder. Refer to and follow the User Guide in the Documentation folder.
 
 Note: the tool requires a Sharepoint ID and passcode to operate (see the settings.py in Setup folder). 
 This information is specific to your organization or account. For EPA users, please contact Timothy Boe and Jonathan Pettit 
