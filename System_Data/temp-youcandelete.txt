@@ -1,0 +1,2 @@
+This is temporary, you can delete this after installation.
+It exists only so that System_Data folder exists.
