@@ -139,7 +139,6 @@ char_dict_special_to_reg = {"à": "a", "á": "a", "â": "a", "ã": "a", "ä": "a", "å
                             "Î": "I", "Ï": "I", "Ð": "O", "Ñ": "N", "Ò": "O", "Ó": "O", "Ô": "O", "Õ": "O", "Ö": "O",
                             "Ø": "O", "Ù": "U", "Ú": "U", "Û": "U", "Ü": "U", "Ý": "Y", "Þ": "B", "ß": "Y"}
 
-
 """
 This function converts the passed data based on the other parameters, and returns the converted data
 These conversions fall under 4 cases:
@@ -159,14 +158,16 @@ True so that the logic results in the replacement of those chars with space rath
 """
 
 
-def convert(main_screen, data_to_convert, character_list, conversion_dict, is_for_file_name=False, is_for_trouble=False):
+def convert(main_screen, data_to_convert, character_list, conversion_dict, is_for_file_name=False,
+            is_for_trouble=False):
     old_data = data_to_convert
     screen_label = main_screen.ids.screen_label
     setup_screen_label(screen_label)
 
     for char in character_list:
         if char in data_to_convert:
-            data_to_convert = data_to_convert.replace(char, conversion_dict[char]) if not is_for_file_name else data_to_convert.replace(char, "-") \
+            data_to_convert = data_to_convert.replace(char, conversion_dict[
+                char]) if not is_for_file_name else data_to_convert.replace(char, "-") \
                 if not is_for_trouble else data_to_convert.replace(char, " ")
     if old_data != data_to_convert and is_for_file_name and is_for_trouble is not True:
         screen_label.text = screen_label.text + f"\n{bcolors.FAIL}Error saving file with name {old_data}, saved as {data_to_convert} instead.{bcolors.ENDC}"
@@ -200,8 +201,6 @@ def connect(main_screen, context, connection_type, content=None, file_name=None,
                 upload_file(ctx, content, file_name, location)
             elif connection_type == 'execute_query':  # if list item needs to be created and added
                 context.execute_query()
-            elif connection_type == 'qr_batch':  # if a file from the SharePoint needs to be retrieved (names.csv)
-                return_val = File.open_binary(context, relative_url)
             else:
                 screen_label.text = screen_label.text + f"\n{bcolors.WARNING}Invalid connection type.{bcolors.ENDC}"
                 return_val = False
@@ -219,7 +218,7 @@ def connect(main_screen, context, connection_type, content=None, file_name=None,
                 time.sleep(30)
             elif i > 1 and not duplicate and connection_type != 'qr_batch':  # if failed thrice, write to backup.txt
                 screen_label.text = screen_label.text + f"\n{bcolors.FAIL}Reconnect failed again.{bcolors.ENDC}{bcolors.OKBLUE} Data will be stored locally and " \
-                      f"uploaded at the next upload point, or if triggered from the menu.{bcolors.ENDC}"
+                                                        f"uploaded at the next upload point, or if triggered from the menu.{bcolors.ENDC}"
                 if os.path.exists(backup_file) and connection_type == 'upload':
                     with open(backup_file, "a") as backup:
                         backup.write(f"{content}\n@@@@@\n{file_name}\n@@@@@\n{location}\n----------\n")
@@ -229,10 +228,6 @@ def connect(main_screen, context, connection_type, content=None, file_name=None,
                 elif connection_type == 'execute_query':
                     with open(backup_file, "a") as backup:
                         backup.write(f"$$$$$\n{content}\n----------\n")
-                return False
-            elif i > 1 and connection_type == 'qr_batch':
-                screen_label.text = screen_label.text + f"\n{bcolors.FAIL}Reconnect failed again.{bcolors.OKBLUE} Try again when you have " \
-                      f"internet connection.{bcolors.ENDC}{bcolors.ENDC}"
                 return False
         i += 1
 
@@ -268,7 +263,7 @@ def upload_backup(context, main_screen_widget, from_menu=False):
                         successful = connect(main_screen_widget, context, 'upload', content, file_name, location, True)
                     if not successful:
                         screen_label.text = screen_label.text + f"\n{bcolors.FAIL}Upload of backed up data failed.{bcolors.ENDC}{bcolors.OKBLUE} Program will " \
-                                                        f"try again at next upload, or you can trigger upload manually from the menu.{bcolors.ENDC}"
+                                                                f"try again at next upload, or you can trigger upload manually from the menu.{bcolors.ENDC}"
                         return False
                     flag = 0
                     content = ""
@@ -359,133 +354,63 @@ def qr_batch(main_screen_widget):
     screen_label = main_screen_widget.ids.screen_label
     setup_screen_label(screen_label)
     screen_label.text = screen_label.text + "\n\nThe batch QR code function is used to quickly create multiple QR codes by referencing a .csv file." \
-          "\n-If QR Toolbox is in local mode, the CSV file must be stored in the root folder of the program (where it was installed), and named 'names.csv'." \
-          "\n    The Tool will then automatically create QR codes for each line in the csv, and save each QR Code image to the Tools root folder" \
-          "\n    (this folder is usually called 'QR-Toolbox', and should be found in C:/Users/<user>/AppData/Local/Programs). Where <user> refers" \
-          "\n    to your user name on your computer. However, if you changed the install location, it may not be at that file path." \
-          "\n-If QR Toolbox is in online mode, the csv file must be stored on the SharePoint site where QR codes are" \
-          "\n    located, and must also be named 'names.csv'. The Tool will then do the same as above, but will also store each" \
-          "\n    QR code image to the SharePoint site." \
-          "\n-'names.csv' may consist of two columns 'first' & 'second'. The 'first' and 'second' columns could be " \
-          "\n    populated with participant's first and last names, or other information, and will be joined together with a space in between.\n"
+                                            "\n-If QR Toolbox is in local mode, the CSV file must be stored in the root folder of the program (where it was installed), and named 'names.csv'." \
+                                            "\n    The Tool will then automatically create QR codes for each line in the csv, and save each QR Code image to the Tools root folder" \
+                                            "\n    (this folder is usually called 'QR-Toolbox', and should be found in C:/Users/<user>/AppData/Local/Programs). Where <user> refers" \
+                                            "\n    to your user name on your computer. However, if you changed the install location, it may not be at that file path." \
+                                            "\n-If QR Toolbox is in online mode, the csv file must be stored on the SharePoint site where QR codes are" \
+                                            "\n    located, and must also be named 'names.csv'. The Tool will then do the same as above, but will also store each" \
+                                            "\n    QR code image to the SharePoint site." \
+                                            "\n-'names.csv' may consist of two columns 'first' & 'second'. The 'first' and 'second' columns could be " \
+                                            "\n    populated with participant's first and last names, or other information, and will be joined together with a space in between.\n"
 
     # this code creates a batch of QR codes from a csv file stored in the local directory
     # QR code image size and input filename can be modified below
 
     success = True
     # This one creates the batch of QR codes in the same folder as this file
-    if storageChoice == 'a':
-        with open(localQRBatchFile) as csvfile:
-            reader = csv.reader(csvfile)
+    with open(localQRBatchFile) as csvfile:
+        reader = csv.reader(csvfile)
 
-            for row in reader:
-                labeldata = row[0] if len(row) == 1 else row[0] + " " + row[1] if row[1] != '' else row[0]
+        for row in reader:
+            labeldata = row[0] if len(row) == 1 else row[0] + " " + row[1] if row[1] != '' else row[0]
 
-                # convert special char to code character
-                codeLabelData = convert(main_screen_widget, labeldata, special_characters, char_dict_special_to_code)
+            # convert special char to code character
+            codeLabelData = convert(main_screen_widget, labeldata, special_characters, char_dict_special_to_code)
 
-                qr = qrcode.QRCode(
-                    version=1,
-                    error_correction=qrcode.constants.ERROR_CORRECT_L,
-                    box_size=10,
-                    border=4)
+            qr = qrcode.QRCode(
+                version=1,
+                error_correction=qrcode.constants.ERROR_CORRECT_L,
+                box_size=10,
+                border=4)
 
-                qr.add_data(codeLabelData)
-                qr.make(fit=True)
-                screen_label.text = screen_label.text + "\nCreating QR code: " + labeldata
+            qr.add_data(codeLabelData)
+            qr.make(fit=True)
+            screen_label.text = screen_label.text + "\nCreating QR code: " + labeldata
 
-                # draw QR image
+            # draw QR image
 
-                img = qr.make_image()
-                qrFile = labeldata + ".jpg"
-                qrFile = convert(main_screen_widget, qrFile, bad_file_name_list, None, True)  # remove special chars that can't be in filename
-                img.save(archive_folder + "/" + qrFile)
+            img = qr.make_image()
+            qrFile = labeldata + ".jpg"
+            qrFile = convert(main_screen_widget, qrFile, bad_file_name_list, None,
+                             True)  # remove special chars that can't be in filename
+            img.save(archive_folder + "/" + qrFile)
 
-                # open QR image and add qr data as name
-                img = Image.open(archive_folder + "/" + qrFile)
-                draw = ImageDraw.Draw(img)
-                font = ImageFont.truetype("arial", 24)
-                color = 0
-                draw.text((37, 10), labeldata, font=font, fill=color)
-                img.save(archive_folder + "/" + qrFile)
-                if storageChoice == 'a':
-                    try:
-                        img.save(storagePath + "/" + qrFile)
-                    except:
-                        success = False
-    elif storageChoice == 'b':  # For storing the new QR Codes online, if that was selected
-        resp = connect(main_screen_widget, ctx, 'qr_batch')  # runs the retrieval of the names.csv file from SharePoint through connect()
-
-        if type(resp) == bool:  # if a boolean value is returned, then the retrieval failed
-            return False
-        elif resp.status_code == 404:
-            screen_label.text = screen_label.text + f"\n\n{bcolors.FAIL}The batch file '" + relative_url + "' doesn't exist. " \
-                f"Please create a 'names.csv' file and add it to the SharePoint site.{bcolors.ENDC}"
-            return False
-
-        with open(remoteQRBatchFile, 'wb') as output_file:
-            output_file.write(resp.content)
-
-        with open(remoteQRBatchFile) as csvfile:
-            reader = csv.reader(csvfile)
-
-            for row in reader:  # get each row from the CSV file
-                labeldata = row[0] if len(row) == 1 else row[0] + " " + row[1] if row[1] != '' else row[0]
-                # above: gets data from 1 row or 2 rows depending on what is in each
-
-                # Check for special char
-                if special_char_bool is False:
-                    skip_label = False
-                    for special_char in special_characters:
-                        if special_char in labeldata:
-                            skip_label = True
-                    if skip_label:
-                        screen_label.text = screen_label.text + "\nQR Code was skipped due to special character."
-                        return
-
-                # convert special char to code character
-                codeLabelData = convert(main_screen_widget, labeldata, special_characters, char_dict_special_to_code)
-
-                qr = qrcode.QRCode(
-                    version=1,
-                    error_correction=qrcode.constants.ERROR_CORRECT_L,
-                    box_size=10,
-                    border=4)
-
-                qr.add_data(codeLabelData)
-                qr.make(fit=True)
-                screen_label.text = screen_label.text + "\nCreating QR code: " + labeldata
-
-                # draw QR image
-
-                img = qr.make_image()
-                qrfile = labeldata + ".jpg"
-                qrfile = convert(main_screen_widget, qrfile, bad_file_name_list, None, True)  # convert chars that can't be in filename
-                img.save(archive_folder + "/" + qrfile)
-
-                # open QR image and add qr data as name
-
-                img = Image.open(archive_folder + "/" + qrfile)
-                draw = ImageDraw.Draw(img)
-                font = ImageFont.truetype("arial", 18)
-                color = 0
-                draw.text((37, 10), labeldata, font=font, fill=color)
-                img.save(archive_folder + "/" + qrfile)
-
-                with open(archive_folder + "/" + qrfile, 'rb') as content_file:  # upload file
-                    file_content = content_file.read()
-                success = connect(main_screen_widget, ctx, 'upload', file_content, qrfile, qrfolder)
-
-        os.remove(remoteQRBatchFile)
-
+            # open QR image and add qr data as name
+            img = Image.open(archive_folder + "/" + qrFile)
+            draw = ImageDraw.Draw(img)
+            font = ImageFont.truetype("arial", 24)
+            color = 0
+            draw.text((37, 10), labeldata, font=font, fill=color)
+            img.save(archive_folder + "/" + qrFile)
+            try:
+                img.save(storagePath + "/" + qrFile)
+            except:
+                success = False
     if success:
         screen_label.text = screen_label.text + f"\n\n{bcolors.OKGREEN}Success!{bcolors.ENDC}\n"
-        if storageChoice == 'b':  # if the other upload was successful, also try to upload the backed-up data
-            upload_backup(ctx, main_screen_widget)
     else:
-        screen_label.text = screen_label.text + f"\n{bcolors.FAIL}Some or no files were saved in {storagePath}, only in Archive folder.{bcolors.ENDC}" if \
-            storageChoice == 'a' else screen_label.text + f"\n{bcolors.WARNING}Some or no files were saved in {storagePath}, only in Archive folder.{bcolors.ENDC}"
-
+        screen_label.text = screen_label.text + f"\n{bcolors.FAIL}Some or no files were saved in {storagePath}, only in Archive folder.{bcolors.ENDC}"
 
 
 """
@@ -499,14 +424,9 @@ def qr_single(main_screen_widget, text):
     screen_label = main_screen_widget.ids.screen_label
     setup_screen_label(screen_label)
 
-    if storageChoice == 'b' and special_char_bool is False:
-        skip_label = False
-        for special_char in special_characters:
-            if special_char in text:
-                skip_label = True
-        if skip_label:
-            screen_label.text = screen_label.text + "\nQR Code was skipped due to special character."
-            return
+    if text == "":  # if no text is entered into the text box
+        screen_label.text = screen_label.text + "\nSkipped because no text was entered."
+        return
 
     text_copy = text
     screen_label.text = screen_label.text + "\nCreating QR code: " + text
@@ -529,7 +449,8 @@ def qr_single(main_screen_widget, text):
     # draw label
     img = qr.make_image()
     fileName = text + ".jpg"
-    fileName = convert(main_screen_widget, fileName, bad_file_name_list, None, True)  # convert chars that can't be in a file name
+    fileName = convert(main_screen_widget, fileName, bad_file_name_list, None,
+                       True)  # convert chars that can't be in a file name
     img.save(archive_folder + "/" + fileName)
 
     # Open QR image and add QR data as name
@@ -541,25 +462,16 @@ def qr_single(main_screen_widget, text):
     img.save(archive_folder + "/" + fileName)
 
     succeed = True
-    # Store QR code locally, if that was chosen
-    if storageChoice == 'a':
-        try:
-            img.save(storagePath + "/" + fileName)
-        except:
-            succeed = False
-    elif storageChoice == 'b':  # Store QR code online, if chosen
-        # upload file
-        with open(archive_folder + "/" + fileName, 'rb') as content_file:
-            file_content = content_file.read()
-        succeed = connect(main_screen_widget, ctx, 'upload', file_content, fileName, qrfolder)
+    # Store QR code locally
+    try:
+        img.save(storagePath + "/" + fileName)
+    except:
+        succeed = False
 
     if succeed:
         screen_label.text = screen_label.text + f"\n{bcolors.OKGREEN}Success!{bcolors.ENDC}"
-        if storageChoice == 'b':
-            upload_backup(ctx, main_screen_widget)  # if the other upload was successful, also try to upload the backed-up data
     else:
-        screen_label.text = screen_label.text + f"\n{bcolors.FAIL}File not saved in {storagePath}, only in Archive folder.{bcolors.ENDC}" if \
-            storageChoice == 'a' else screen_label.text + f"\n{bcolors.WARNING}Successful locally, not online.{bcolors.ENDC}"
+        screen_label.text = screen_label.text + f"\n{bcolors.FAIL}File not saved in {storagePath}, only in Archive folder.{bcolors.ENDC}"
 
 
 """
@@ -593,10 +505,10 @@ def cons(main_screen_widget):
             except:
                 screen_label.text = screen_label.text + f"\n{bcolors.WARNING}[WARNING] Either the system was unable to write the consolidated file " \
                                                         f"to the specified shared directory or the file " + cons_filename + " is currently in use " \
-                                                        f"or unavailable. The consolidated record may be incomplete.{bcolors.ENDC}\n"
+                                                                                                                            f"or unavailable. The consolidated record may be incomplete.{bcolors.ENDC}\n"
     else:
         screen_label.text = screen_label.text + f"\n{bcolors.WARNING}A shared folder has not been established. Specify a shared folder using the " \
-              f"Establish Share Folder option before continuing\n{bcolors.ENDC}"
+                                                f"Establish Share Folder option before continuing\n{bcolors.ENDC}"
         pass
 
 
@@ -607,7 +519,6 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.popup import Popup
 from kivy.uix.scrollview import ScrollView
 from kivy.core.window import Window
-
 
 """
 This function allows the user to select a shared folder. If user escapes, a share folder is not created
@@ -659,11 +570,9 @@ This class is the main class for the GUI, it is the main screen within which all
 class MainScreenWidget(BoxLayout):
     sys_id = os.environ["COMPUTERNAME"]
 
-
     def __init__(self, **kwargs):
         super(MainScreenWidget, self).__init__(**kwargs)
         Window.bind(on_request_close=self.exit)
-
 
     """
     This function starts a VideoStream, and captures any QR Codes it sees (in a certain distance)
@@ -720,7 +629,8 @@ class MainScreenWidget(BoxLayout):
                             if line == '\n': continue  # if line is newline only then skip it
                             line_array = line.split(",")
                             last_system_id = line_array[0]
-                            date_time = datetime.datetime.strptime(line_array[1], "%Y-%m-%d %H:%M:%S.%f")  # get date from file
+                            date_time = datetime.datetime.strptime(line_array[1],
+                                                                   "%Y-%m-%d %H:%M:%S.%f")  # get date from file
                             date_time_online = f"{date_time.month}/{date_time.day}/{date_time.year} " \
                                                f"{date_time.hour}:{date_time.minute}"  # store in this format: "%m/%d/%Y %H:%M"
 
@@ -732,7 +642,8 @@ class MainScreenWidget(BoxLayout):
                                 status = status[:len(status) - 1]  # else just remove the newline char from the status
 
                             # Convert barcodeDataSpecial's special chars to regular chars
-                            barcodeDataReg = convert(self, barcodeDataSpecial, special_characters, char_dict_special_to_reg)
+                            barcodeDataReg = convert(self, barcodeDataSpecial, special_characters,
+                                                     char_dict_special_to_reg)
 
                             if status == "IN":  # if status is IN, use 4 params
                                 contentstr = "{},{},{},{}\n".format(last_system_id, date_time_online,
@@ -743,7 +654,8 @@ class MainScreenWidget(BoxLayout):
                                 contentstr = "{},{},{},{},{}\n".format(last_system_id, date_time_online, barcodeDataReg,
                                                                        status, duration)  # for online CSV file
                                 contentstr2 = '{},{},{},{},{}\n'.format(last_system_id, date_time,
-                                                                        barcodeDataSpecial, status, duration)  # for list item
+                                                                        barcodeDataSpecial, status,
+                                                                        duration)  # for list item
                             create_list_item(self, ctx, contentstr2)
                             contentStrings = contentStrings + contentstr
 
@@ -801,7 +713,8 @@ class MainScreenWidget(BoxLayout):
                     img = Image.new('RGB', (400, 15), color='white')
                     img.putalpha(0)
                     d = ImageDraw.Draw(img)
-                    textToPrint = convert(self, barcodeData, trouble_characters, None, True, True)  # replace \t,\n,\r with ' '
+                    textToPrint = convert(self, barcodeData, trouble_characters, None, True,
+                                          True)  # replace \t,\n,\r with ' '
                     try:
                         d.text((0, 0), textToPrint + ' (' + barcodeType + ')', fill='blue')
                     except UnicodeEncodeError:
@@ -837,7 +750,8 @@ class MainScreenWidget(BoxLayout):
                             # Convert barcodeData's special chars to regular chars
                             barcodeDataNew = convert(self, barcodeData, special_characters, char_dict_special_to_reg)
 
-                            contentstr = "{},{},{},{}\n".format(system_id, timestr, barcodeDataNew, "IN")  # for online CSV file
+                            contentstr = "{},{},{},{}\n".format(system_id, timestr, barcodeDataNew,
+                                                                "IN")  # for online CSV file
                             contentstr2 = '{},{},{},{}\n'.format(system_id, timestr, barcodeData, "IN")  # for list item
                             checked_in = create_list_item(self, ctx, contentstr2)
                             contentStrings = contentStrings + contentstr
@@ -860,21 +774,25 @@ class MainScreenWidget(BoxLayout):
                             found_status[index_loc] = "OUT"
                             found_time[index_loc] = datetime_scanned
                             txt.write("{},{},{},{},{}\n".format(system_id, datetime_scanned,
-                                                                barcodeData, "OUT", time_check))  # write to local CSV file
+                                                                barcodeData, "OUT",
+                                                                time_check))  # write to local CSV file
                             txt.flush()
 
                             checked_out = True
                             if storageChoice.lower() == 'b':  # if user chose online/Sharepoint version
-                                barcodeDataNew = convert(self, barcodeData, special_characters, char_dict_special_to_reg)
+                                barcodeDataNew = convert(self, barcodeData, special_characters,
+                                                         char_dict_special_to_reg)
                                 # (above) convert qr code text special chars to reg chars
-                                contentstr = "{},{},{},{},{}\n".format(system_id, timestr, barcodeDataNew, "OUT", time_check)
+                                contentstr = "{},{},{},{},{}\n".format(system_id, timestr, barcodeDataNew, "OUT",
+                                                                       time_check)
                                 contentstr2 = "{},{},{},{},{}\n".format(system_id, timestr, barcodeData, "OUT",
                                                                         time_check)
 
                                 checked_out = create_list_item(self, ctx, contentstr2)
                                 contentStrings = contentStrings + contentstr
 
-                            sys.stdout.write('\a')  # When this letter is sent to terminal, a beep sound is emitted but no text
+                            sys.stdout.write(
+                                '\a')  # When this letter is sent to terminal, a beep sound is emitted but no text
                             sys.stdout.flush()
                             if checked_out:
                                 screen_label.text = screen_label.text + f"\n{barcodeData} checking OUT at {str(datetime_scanned)} at location: " \
@@ -936,14 +854,15 @@ class MainScreenWidget(BoxLayout):
                         csv2.write(data)
                 else:
                     screen_label.text = screen_label.text + f"\n{bcolors.WARNING}[ALERT]: Storage folder not established or is unavailable. " \
-                          f"Files will only be saved to the working directory\n{bcolors.ENDC}"
+                                                            f"Files will only be saved to the working directory\n{bcolors.ENDC}"
             elif storageChoice.lower() == 'b':  # if online was chosen, upload data to SharePoint as well
                 success = connect(self, ctx, 'upload', contentStrings, file_name, bkcsvfolder)
                 if success:
                     upload_backup(ctx, self)
 
             if os.path.exists(args["output"]) and os.stat(args["output"]).st_size == 0:  # delete barcodes.txt if empty
-                os.remove(args["output"])  # not removed until the end in case something goes wrong above and it's needed
+                os.remove(
+                    args["output"])  # not removed until the end in case something goes wrong above and it's needed
             vs.stop()
             vs.stream.release()
             vs = None
@@ -952,18 +871,17 @@ class MainScreenWidget(BoxLayout):
             not_done = True  # set these so qr reader waits on user choice before starting video
             user_chose_storage = False
 
-
     """
     This function prepares the program and then runs the video() function to read QR Codes
         - The preparation involves setting up and starting the popup, and checking if a video stream already exists
         - It also runs the video stream on a different thread, so that the user can do 2 things at once with the program
     """
 
-
     def qr_reader(self):
         restart_session_popup = RestartSessionWidget()
-        restart_session_popup.restart_popup = Popup(title="Do you want to start a new session or restart the previous one?",
-                      content=restart_session_popup, size_hint=(None, None), size=(725, 170), auto_dismiss=True)
+        restart_session_popup.restart_popup = Popup(
+            title="Do you want to start a new session or restart the previous one?",
+            content=restart_session_popup, size_hint=(None, None), size=(725, 170), auto_dismiss=True)
 
         global vs
         if vs is not None:
@@ -975,54 +893,55 @@ class MainScreenWidget(BoxLayout):
         restart_session_popup.main_screen = self
         threading.Thread(target=self.video, daemon=True).start()
 
-
     """ This function calls the qr_batch function and runs the qr_batch generator """
 
-
     def qr_batch(self):
-        qr_batch(self)
-
+        global storagePath
+        if storagePath == "":
+            storagePath = store(self)
+        if storagePath != "": qr_batch(self)
 
     """ This function creates a popup widget to prompt the user for text for the QR code, can be multi-line """
 
-
     def qr_single(self):
-        qr_single_widget = QRSingleWidget()
-        qr_single_widget.qr_single_popup = Popup(
-            title="Enter text to generate a single QR Code and click OK. The resulting image will be saved in the "
-                  "tool's origin folder, and selected storage location.", content=qr_single_widget,
-            size_hint=(None, None), size=(327, 290), auto_dismiss=True)
-        qr_single_widget.main_screen = self
-        qr_single_widget.qr_single_popup.open()
+        global storagePath
+        if storagePath == "":
+            storagePath = store(self)
 
+        if storagePath != "":
+            qr_single_widget = QRSingleWidget()
+            qr_single_widget.qr_single_popup = Popup(
+                title="Enter text to generate a single QR Code and click OK. The resulting image will be saved in the "
+                      "tool's origin folder, and selected storage location.", content=qr_single_widget,
+                size_hint=(None, None), size=(327, 290), auto_dismiss=True)
+            qr_single_widget.main_screen = self
+            qr_single_widget.qr_single_popup.open()
 
     """ This function shows the setup menu as a popup widget w/4 buttons """
 
-
     def setup(self):
         setup_popup = SetupWidget()
-        setup_popup.setup_popup = Popup(title="Choose an option", content=setup_popup, size_hint=(None, None), size=(251, 475),
+        setup_popup.setup_popup = Popup(title="Choose an option", content=setup_popup, size_hint=(None, None),
+                                        size=(251, 475),
                                         auto_dismiss=True)
         setup_popup.main_screen = self
         setup_popup.setup_popup.open()
 
-
     """ This function provides more information on the purpose and development of this software """
-
 
     def about(self):
         # displays the about screen
         text = "[u]QR Toolbox v1.3[/u]\n"
         text = text + "About: The QR Toolbox is a suite a tools for creating and reading QR codes. The toolbox is platform " \
-              "agnostic, lightweight, open source, and written in pure Python. This toolbox may be used to track resources," \
-              " serve as a check-in capability for personnel, or customized to meet other operational needs. \n"
+                      "agnostic, lightweight, open source, and written in pure Python. This toolbox may be used to track resources," \
+                      " serve as a check-in capability for personnel, or customized to meet other operational needs. \n"
         text = text + "Version: 1.3 \n\n"
         text = text + "Credits: The QR Toolbox consists of a number of python packages, namely: \n qrcode - " \
-              "Lincoln Loop info@lincolnloop.com; \n pyzbar - Lawrence Hudson quicklizard@googlemail.com; \n OpenCV code - " \
-              "Adrian Rosebrock https://www.pyimagesearch.com/author/adrian/; \n Code integration, minor enhancements, & " \
-              "platform development - Timothy Boe boe.timothy@epa.gov and Muhammad Karimi karimi.muhammad@epa.gov \n"
+                      "Lincoln Loop info@lincolnloop.com; \n pyzbar - Lawrence Hudson quicklizard@googlemail.com; \n OpenCV code - " \
+                      "Adrian Rosebrock https://www.pyimagesearch.com/author/adrian/; \n Code integration, minor enhancements, & " \
+                      "platform development - Timothy Boe boe.timothy@epa.gov and Muhammad Karimi karimi.muhammad@epa.gov \n"
         text = text + "Contact: Timothy Boe: boe.timothy@epa.gov; or Paul Lemieux: lemieux.paul@epa.gov; USEPA Homeland Security " \
-              "Research Program \n"
+                      "Research Program \n"
         screen_label = self.ids.screen_label
         screen_label.text = text
         screen_label.font_size = 18
@@ -1032,14 +951,14 @@ class MainScreenWidget(BoxLayout):
         global clear_screen
         clear_screen = True
 
-
     """ This function is triggered when the user clicks the Menu 'Exit' button """
-
 
     def exit(self, *args):
         exit_widget = ExitWidget()
-        exit_widget.exit_widget_popup = Popup(title="                             Are you sure you want to quit?\n(unsaved data, "
-                "such as from an open QR Reader, will be lost)", content=exit_widget, size_hint=(None, None), size=(417, 155), auto_dismiss=True)
+        exit_widget.exit_widget_popup = Popup(
+            title="                             Are you sure you want to quit?\n(unsaved data, "
+                  "such as from an open QR Reader, will be lost)", content=exit_widget, size_hint=(None, None),
+            size=(417, 155), auto_dismiss=True)
         exit_widget.exit_widget_popup.open()
         return True
 
@@ -1051,13 +970,11 @@ class RestartSessionWidget(BoxLayout):
     restart_popup = None
     main_screen = None
 
-
     """ 
     This function Checks to see if there is any previous sessions and session data, and if there is it will pull that back in
             @param check is to see if we should checkStorage or not
     """
-    
-    
+
     def set_check_storage(self, check):
         global not_done, user_chose_storage
         screen_label = self.main_screen.ids.screen_label
@@ -1078,10 +995,8 @@ class StorageWidget(BoxLayout):
     storage_popup = None
     main_screen = None
 
-
     """ This function sets the storage based on the users selection (local or online) """
-    
-    
+
     def set_storage(self, storage):
         global storageChoice
         if storage:  # Local button was pressed
@@ -1103,7 +1018,6 @@ class CameraWidget(BoxLayout):
     camera_popup = None
     main_screen = None
 
-
     """
     This function asks the user what camera will be used to read QR Codes
     Only 3 options
@@ -1111,7 +1025,6 @@ class CameraWidget(BoxLayout):
         2. B - USB or connected webcam
         3. C - PiCamera (from Raspberry Pi)
     """
-
 
     def set_camera(self, camera_choice):
         global cameraSource
@@ -1127,47 +1040,43 @@ class CameraWidget(BoxLayout):
 class SetupWidget(BoxLayout):
     setup_popup = None
     main_screen = None
-    
 
     """ Redirects program to either the consolidate() method or the upload_backup() method above, based on users choice """
-    
-    
+
     def upload_consolidate(self):
         if storageChoice == 'a':
             cons(self.main_screen)
         else:
             upload_backup(ctx, self.main_screen, True)  # since it comes only from menu, send True
 
-
     """ Creates and starts the popup for changing the storage location """
-
 
     def change_storage_location(self):
         storage_location = StorageWidget()
-        storage_location.storage_popup = Popup(title="Select a storage location", content=storage_location, size_hint=(None, None),
+        storage_location.storage_popup = Popup(title="Select a storage location", content=storage_location,
+                                               size_hint=(None, None),
                                                size=(500, 400), auto_dismiss=True)
         storage_location.main_screen = self.main_screen
         storage_location.storage_popup.open()
 
-
     """  Creates and starts the popup for changing the camera source """
-
 
     def change_camera_source(self):
         camera_location = CameraWidget()
-        camera_location.camera_popup = Popup(title="Which camera do you want to use?", content=camera_location, size_hint=(None, None),
-                                               size=(261, 375), auto_dismiss=True)
+        camera_location.camera_popup = Popup(title="Which camera do you want to use?", content=camera_location,
+                                             size_hint=(None, None),
+                                             size=(261, 375), auto_dismiss=True)
         camera_location.main_screen = self.main_screen
         camera_location.camera_popup.open()
 
-
     """ Creates and starts the popup that allows the user to choose whether or not special characters will be converted (if not, they're skipped) """
-
 
     def set_special_character_conversion(self):
         special_char_widget = AskSpecialCharConversionWidget()
-        special_char_widget.special_char_popup = Popup(title="Do you want to allow conversion of QR Codes with special characters? (Only affects QR "
-        "Creator functions when using Sharepoint storage.)", content=special_char_widget, size_hint=(None, None), size=(375, 300), auto_dismiss=True)
+        special_char_widget.special_char_popup = Popup(
+            title="Do you want to allow conversion of QR Codes with special characters? (Only affects QR "
+                  "Creator functions when using Sharepoint storage.)", content=special_char_widget,
+            size_hint=(None, None), size=(375, 300), auto_dismiss=True)
         special_char_widget.main_screen = self.main_screen
         special_char_widget.special_char_popup.open()
 
@@ -1179,9 +1088,7 @@ class QRSingleWidget(BoxLayout):
     qr_single_popup = None
     main_screen = None
 
-
     """ Calls the qr_single function with the text the user entered """
-
 
     def setup_qr_single(self, text):
         qr_single(self.main_screen, text)
@@ -1194,9 +1101,7 @@ class AskSpecialCharConversionWidget(BoxLayout):
     special_char_popup = None
     main_screen = None
 
-
     """ This function Sets the boolean variable based on users choice, and prints the according message (when special chars come up, acts accor) """
-
 
     def set_special_char_bool(self, ask_bool):
         global special_char_bool
@@ -1216,9 +1121,7 @@ class AskSpecialCharConversionWidget(BoxLayout):
 class ExitWidget(BoxLayout):
     exit_widget_popup = None
 
-
     """ This function closes the program if the user clicked 'Yes' when asked """
-
 
     def confirm_exit(self):
         self.get_root_window().close()
@@ -1238,22 +1141,19 @@ class ScreenWidget(ScrollView):
 class QRToolboxApp(App):
     main_screen = None
 
-
     """ Builds the QRToolboxApp instance by instantiating the MainScreenWidget and returning that as the Main Widget for the app """
-
 
     def build(self):
         self.main_screen = MainScreenWidget()
         return self.main_screen
 
-
     """ This function runs the storage selection popup at the start of the App, and sets some global vars """
-
 
     def on_start(self):
         global clear_screen, not_yet
         storage_location = StorageWidget()
-        storage_location.storage_popup = Popup(title="Select a storage location", content=storage_location, size_hint=(None, None),
+        storage_location.storage_popup = Popup(title="Select a storage location", content=storage_location,
+                                               size_hint=(None, None),
                                                size=(500, 400), auto_dismiss=False)
         storage_location.main_screen = self.main_screen
         clear_screen = True
