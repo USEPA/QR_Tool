@@ -13,6 +13,7 @@ from pyzbar.pyzbar import ZBarSymbol
 
 from pathlib import Path
 from pylibdmtx import pylibdmtx
+from arcgis.gis import GIS
 
 block_cipher = None
 

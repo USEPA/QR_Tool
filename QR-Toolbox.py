@@ -29,6 +29,11 @@ from time import strftime
 from tkinter import *
 from tkinter import filedialog
 
+from arcgis.gis import GIS
+# from arcgis import geometry
+# from arcgis import features
+# from arcgis.features import FeatureLayer
+
 
 # colors
 
@@ -44,7 +49,7 @@ class bcolors:
     UNDERLINE = ''
 
 
-# import csv packages
+# Import csv packages
 import cv2
 import imutils
 import numpy as np
@@ -1005,6 +1010,7 @@ class StorageWidget(BoxLayout):
             storagePath = store(self.main_screen)
         elif not storage:
             storageChoice = "b"
+            _ = GIS("https://epa.maps.arcgis.com/home/content.html", client_id="szzEfRyeyk2TygQ5", verify_cert=False)  # Online
             screen_label = self.main_screen.ids.screen_label
             setup_screen_label(screen_label)
             screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}Storage location set to online (SharePoint).{bcolors.ENDC}"
