@@ -8,12 +8,12 @@ Author(s): Code integration, minor enhancements, & platform development - Timoth
     OpenCV code - Adrian Rosebrock https://www.pyimagesearch.com/author/adrian/;
 Contact: Timothy Boe boe.timothy@epa.gov
 Requirements: Python 3.7+, pyzbar, imutils, opencv-python, qrcode[pil], Pillow, Office365-REST-Python-Client, Kivy, kivy-deps.angle,
-kivy-deps.glew, kivy-deps.gstreamer, kivy-deps.sdl2, Kivy-Garden
+kivy-deps.glew, kivy-deps.gstreamer, kivy-deps.sdl2, Kivy-Garden, arcgis
 
 Specific versions:
 {"pyzbar": "0.1.8", "imutils": "0.5.3", "qrcode": "6.1", "Pillow": "7.0.0", "opencv-python": "4.2.0.32",
 "Office365-REST-Python-Client": "2.2.1", "Kivy": "1.11.1", "kivy-deps.angle": "0.2.0", "kivy-deps.glew": "0.2.0",
-"kivy-deps.gstreamer": "0.2.0", "kivy-deps.sdl2": "0.2.0", "Kivy-Garden": "0.1.4"}
+"kivy-deps.gstreamer": "0.2.0", "kivy-deps.sdl2": "0.2.0", "Kivy-Garden": "0.1.4", "arcgis": ""}
 """
 
 # import the necessary packages
@@ -24,6 +24,7 @@ import os
 import os.path
 import shutil
 import time
+import winsound
 from datetime import timedelta
 from time import strftime
 from tkinter import *
@@ -634,15 +635,13 @@ class MainScreenWidget(BoxLayout):
                             if line == '\n': continue  # if line is newline only then skip it
                             line_array = line.split(",")
                             last_system_id = line_array[0]
-                            date_time = datetime.datetime.strptime(line_array[1],
-                                                                   "%Y-%m-%d %H:%M:%S.%f")  # get date from file
-                            date_time_online = f"{date_time.month}/{date_time.day}/{date_time.year} " \
-                                               f"{date_time.hour}:{date_time.minute}"  # store in this format: "%m/%d/%Y %H:%M"
+                            file_date = datetime.datetime.strptime(line_array[1], "%m/%d/%Y").date()  # get date from file
+                            file_time = datetime.datetime.strptime(line_array[2], "%H:%M:%S.%f").time()  # get time from file
 
-                            barcodeDataSpecial = line_array[2]  # get the QR Code from the file
-                            status = line_array[3]  # get the status from the file
+                            barcodeDataSpecial = line_array[3]  # get the QR Code from the file
+                            status = line_array[4]  # get the status from the file
                             if "OUT" in status:  # if the status is OUT, also get the QRCodes' duration from the file
-                                duration = line_array[4][:len(line_array[4]) - 1:]  # also remove newline char
+                                duration = line_array[5][:len(line_array[5]) - 1:]  # also remove newline char
                             else:
                                 status = status[:len(status) - 1]  # else just remove the newline char from the status
 
@@ -650,15 +649,15 @@ class MainScreenWidget(BoxLayout):
                             barcodeDataReg = convert(self, barcodeDataSpecial, special_characters,
                                                      char_dict_special_to_reg)
 
-                            if status == "IN":  # if status is IN, use 4 params
-                                contentstr = "{},{},{},{}\n".format(last_system_id, date_time_online,
+                            if status == "IN":  # if status is IN, use 5 params
+                                contentstr = "{},{},{},{},{}\n".format(last_system_id, file_date, file_time,
                                                                     barcodeDataReg, status)  # for online CSV file
-                                contentstr2 = '{},{},{},{}\n'.format(last_system_id, date_time,
+                                contentstr2 = '{},{},{},{},{}\n'.format(last_system_id, file_date, file_time,
                                                                      barcodeDataSpecial, status)  # for list item
-                            else:  # if status is OUT, use 5 params
-                                contentstr = "{},{},{},{},{}\n".format(last_system_id, date_time_online, barcodeDataReg,
+                            else:  # if status is OUT, use 6 params
+                                contentstr = "{},{},{},{},{},{}\n".format(last_system_id, file_date, file_time, barcodeDataReg,
                                                                        status, duration)  # for online CSV file
-                                contentstr2 = '{},{},{},{},{}\n'.format(last_system_id, date_time,
+                                contentstr2 = '{},{},{},{},{},{}\n'.format(last_system_id, file_date, file_time,
                                                                         barcodeDataSpecial, status,
                                                                         duration)  # for list item
                             create_list_item(self, ctx, contentstr2)
@@ -699,7 +698,8 @@ class MainScreenWidget(BoxLayout):
 
                 # find the barcodes in the frame and decode each of the barcodes
                 barcodes = pyzbar.decode(frame, symbols=[ZBarSymbol.QRCODE])
-                timestr = strftime("%m/%d/%Y %H:%M")
+                datestr = strftime("%m/%d/%Y")
+                timestr = datetime.datetime.now().strftime("%H:%M:%S.%f")
 
                 # loop over the detected barcodes
                 for barcode in barcodes:
@@ -733,8 +733,10 @@ class MainScreenWidget(BoxLayout):
                     # if the barcode text is currently not in our CSV file, write the timestamp + barcode to disk and update the set
                     # of barcode data has never been seen, check the user in and record id, date, and time information
                     if barcodeData not in found:
-                        datetime_scanned = datetime.datetime.now()
-                        txt.write("{},{},{},{}\n".format(system_id, datetime_scanned,
+                        datetime_scanned = datetime.datetime.now()  # this one appended to found_time arr
+                        date_scanned = datetime.datetime.now().strftime("%m/%d/%Y")
+                        time_scanned = datetime.datetime.now().strftime("%H:%M:%S.%f")
+                        txt.write("{},{},{},{},{}\n".format(system_id, date_scanned, time_scanned,
                                                          barcodeData, "IN"))
                         txt.flush()
 
@@ -755,21 +757,21 @@ class MainScreenWidget(BoxLayout):
                             # Convert barcodeData's special chars to regular chars
                             barcodeDataNew = convert(self, barcodeData, special_characters, char_dict_special_to_reg)
 
-                            contentstr = "{},{},{},{}\n".format(system_id, timestr, barcodeDataNew,
-                                                                "IN")  # for online CSV file
-                            contentstr2 = '{},{},{},{}\n'.format(system_id, timestr, barcodeData, "IN")  # for list item
+                            contentstr = "{},{},{},{},{}\n".format(system_id, datestr, timestr, barcodeDataNew, "IN")  # for online CSV file
+                            contentstr2 = '{},{},{},{},{}\n'.format(system_id, datestr, timestr, barcodeData, "IN")  # for list item
                             checked_in = create_list_item(self, ctx, contentstr2)
                             contentStrings = contentStrings + contentstr
 
-                        sys.stdout.write('\a')  # beeping sound
-                        sys.stdout.flush()
+                        winsound.Beep(500, 400)  # makes a beeping sound on scan in
                         if checked_in:
                             screen_label.text = screen_label.text + f"\n{barcodeData} checking IN at {str(datetime_scanned)} at location: {system_id}"
 
                     # if barcode information is found...
                     elif barcodeData in found:
                         # get current time and also total time passed since user checked in
-                        datetime_scanned = datetime.datetime.now()
+                        datetime_scanned = datetime.datetime.now()  # this one appended to found_time arr
+                        date_scanned = datetime.datetime.now().strftime("%m/%d/%Y")  # this one prints to csv
+                        time_scanned = datetime.datetime.now().strftime("%H:%M:%S.%f")  # this one prints to csv
                         time_check = datetime_scanned - found_time[found.index(barcodeData)]
                         status_check = found_status[found.index(barcodeData)]
 
@@ -778,7 +780,7 @@ class MainScreenWidget(BoxLayout):
                             index_loc = found.index(barcodeData)
                             found_status[index_loc] = "OUT"
                             found_time[index_loc] = datetime_scanned
-                            txt.write("{},{},{},{},{}\n".format(system_id, datetime_scanned,
+                            txt.write("{},{},{},{},{},{}\n".format(system_id, date_scanned, time_scanned,
                                                                 barcodeData, "OUT",
                                                                 time_check))  # write to local CSV file
                             txt.flush()
@@ -788,17 +790,15 @@ class MainScreenWidget(BoxLayout):
                                 barcodeDataNew = convert(self, barcodeData, special_characters,
                                                          char_dict_special_to_reg)
                                 # (above) convert qr code text special chars to reg chars
-                                contentstr = "{},{},{},{},{}\n".format(system_id, timestr, barcodeDataNew, "OUT",
+                                contentstr = "{},{},{},{},{},{}\n".format(system_id, datestr, timestr, barcodeDataNew, "OUT",
                                                                        time_check)
-                                contentstr2 = "{},{},{},{},{}\n".format(system_id, timestr, barcodeData, "OUT",
+                                contentstr2 = "{},{},{},{},{},{}\n".format(system_id, datestr, timestr, barcodeData, "OUT",
                                                                         time_check)
 
                                 checked_out = create_list_item(self, ctx, contentstr2)
                                 contentStrings = contentStrings + contentstr
 
-                            sys.stdout.write(
-                                '\a')  # When this letter is sent to terminal, a beep sound is emitted but no text
-                            sys.stdout.flush()
+                            winsound.Beep(500, 400)  # makes a beeping sound on scan
                             if checked_out:
                                 screen_label.text = screen_label.text + f"\n{barcodeData} checking OUT at {str(datetime_scanned)} at location: " \
                                                                         f"{system_id} for duration of {str(time_check)}"
