@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 from kivy_deps import sdl2, glew
 from kivy.app import App
-import pkg_resources, csv, tkinter, cv2, imutils, qrcode, office365
+import pkg_resources, csv, tkinter, cv2, imutils, qrcode, office365, winsound
 from tkinter import filedialog
 from imutils.video import VideoStream
 from office365.runtime.auth.authentication_context import AuthenticationContext
