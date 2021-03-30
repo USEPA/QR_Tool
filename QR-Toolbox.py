@@ -67,12 +67,13 @@ from kivy.app import App
 from Setup.settings import settings
 
 # Sharepoint related variables
-listTitle = "QR Timestamps"
-qrfolder = "QRCodes"
-bkcsvfolder = "HXWTEST"
+listTitle = settings['listTitle']
+qrfolder = settings['qrfolder']
+bkcsvfolder = settings['bkcsvfolder']
+mainDirectory = settings['mainDirectory']
 remoteQRBatchFile = "System_Data/names-remote.csv"
-localQRBatchFile = "names.csv"
-relative_url = "/sites/Emergency%20Response/EOCIncident/EOC%20Documents/QRCodes/names.csv"
+localQRBatchFile = settings['localQRBatchFile']
+relative_url = settings['relative_url']
 qr_storage_file = "System_Data/qr-data.txt"  # file that contains saved session information
 backup_file = "System_Data/backup.txt"  # file that contains data that couldn't be uploaded, to later be uploaded
 archive_folder = "Archive"
@@ -330,8 +331,7 @@ This function uploads the passed data to the SharePoint site in the specified su
 
 
 def upload_file(context, file_content, filename, sub_folder):
-    list_title = "EOC Documents"
-    library = context.web.lists.get_by_title(list_title)
+    library = context.web.lists.get_by_title(mainDirectory)
 
     file_context = library.context
     info = FileCreationInformation()
@@ -339,7 +339,7 @@ def upload_file(context, file_content, filename, sub_folder):
     info.url = filename
     info.overwrite = True
 
-    # upload file to sub folder 'eoctest'
+    # upload file to sub folder as defined by 'sub_folder', this value is generally either variable qrfolder or bkcsvfolder as defined above
     target_file = library.rootFolder.folders.get_by_url(sub_folder).files.add(info)
     file_context.execute_query()
 
@@ -374,7 +374,7 @@ def qr_batch(main_screen_widget):
     # QR code image size and input filename can be modified below
 
     success = True
-    # This one creates the batch of QR codes in the same folder as this file
+    # This one creates the batch of QR codes in the chosen folder as well as the Archive folder
     if storageChoice == 'a':
         with open(localQRBatchFile) as csvfile:
             reader = csv.reader(csvfile)
@@ -415,13 +415,13 @@ def qr_batch(main_screen_widget):
                     except:
                         success = False
     elif storageChoice == 'b':  # For storing the new QR Codes online, if that was selected
-        resp = connect(main_screen_widget, ctx, 'qr_batch')  # runs the retrieval of the names.csv file from SharePoint through connect()
+        resp = connect(main_screen_widget, ctx, 'qr_batch')  # runs the retrieval of the csv file from SharePoint through connect()
 
         if type(resp) == bool:  # if a boolean value is returned, then the retrieval failed
             return False
         elif resp.status_code == 404:
             screen_label.text = screen_label.text + f"\n\n{bcolors.FAIL}The batch file '" + relative_url + "' doesn't exist. " \
-                f"Please create a 'names.csv' file and add it to the SharePoint site.{bcolors.ENDC}"
+                f"Please create a CSV file with the appropriate name and add it to the SharePoint site with the correct file path.{bcolors.ENDC}"
             return False
 
         with open(remoteQRBatchFile, 'wb') as output_file:
@@ -596,8 +596,8 @@ def cons(main_screen_widget):
                                                         f"to the specified shared directory or the file " + cons_filename + " is currently in use " \
                                                         f"or unavailable. The consolidated record may be incomplete.{bcolors.ENDC}\n"
     else:
-        screen_label.text = screen_label.text + f"\n{bcolors.WARNING}A shared folder has not been established. Specify a shared folder using the " \
-              f"Establish Share Folder option before continuing\n{bcolors.ENDC}"
+        screen_label.text = screen_label.text + f"\n{bcolors.WARNING}A storage location has not been established. Specify a storage folder using the " \
+              f"'Choose Storage Location' option before continuing\n{bcolors.ENDC}"
         pass
 
 
@@ -659,7 +659,6 @@ This class is the main class for the GUI, it is the main screen within which all
 
 class MainScreenWidget(BoxLayout):
     sys_id = os.environ["COMPUTERNAME"]
-
 
     def __init__(self, **kwargs):
         super(MainScreenWidget, self).__init__(**kwargs)
