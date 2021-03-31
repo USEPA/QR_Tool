@@ -577,10 +577,10 @@ def cons(main_screen_widget):
     time_header = str(datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S'))
     cons_filename = os.path.join(storagePath, 'Consolidated_Record_' + time_header + '.csv')
     if os.path.exists(storagePath):
-        QRT_files = [fn for fn in os.listdir(storagePath) if fn.startswith('QRT')]
+        QRT_files = [fn for fn in os.listdir(storagePath) if fn.startswith('QRT-R-') and fn.endswith('.csv') and fn.__contains__("_")]
 
         if not QRT_files:
-            screen_label.text = screen_label.text + "\nNo entries to combine. Check the shared directory and try again"
+            screen_label.text = screen_label.text + "\nNo entries to combine. Check the storage directory and try again"
         else:
             try:
                 with open(cons_filename, 'wb') as outfile:
@@ -664,7 +664,6 @@ class MainScreenWidget(BoxLayout):
         super(MainScreenWidget, self).__init__(**kwargs)
         Window.bind(on_request_close=self.exit)
 
-
     """
     This function starts a VideoStream, and captures any QR Codes it sees (in a certain distance)
     Those codes are decoded, and written to a local CSV file along with the Computer Name, date, time, and IN/OUT
@@ -692,7 +691,7 @@ class MainScreenWidget(BoxLayout):
             args = vars(ap.parse_args())
             # initialize time and date and make filename friendly
             time_header = str(datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S'))
-            file_name = "QRT" + "-" + system_id + "_" + time_header + ".csv"
+            file_name = "QRT-R-" + system_id + "_" + time_header + ".csv"
 
             # initialize the video stream and allow the camera sensor to warm up
 
@@ -955,13 +954,11 @@ class MainScreenWidget(BoxLayout):
             not_done = True  # set these so qr reader waits on user choice before starting video
             user_chose_storage = False
 
-
     """
     This function prepares the program and then runs the video() function to read QR Codes
         - The preparation involves setting up and starting the popup, and checking if a video stream already exists
         - It also runs the video stream on a different thread, so that the user can do 2 things at once with the program
     """
-
 
     def qr_reader(self):
         restart_session_popup = RestartSessionWidget()
@@ -978,16 +975,12 @@ class MainScreenWidget(BoxLayout):
         restart_session_popup.main_screen = self
         threading.Thread(target=self.video, daemon=True).start()
 
-
     """ This function calls the qr_batch function and runs the qr_batch generator """
-
 
     def qr_batch(self):
         qr_batch(self)
 
-
     """ This function creates a popup widget to prompt the user for text for the QR code, can be multi-line """
-
 
     def qr_single(self):
         qr_single_widget = QRSingleWidget()
@@ -998,9 +991,7 @@ class MainScreenWidget(BoxLayout):
         qr_single_widget.main_screen = self
         qr_single_widget.qr_single_popup.open()
 
-
     """ This function shows the setup menu as a popup widget w/4 buttons """
-
 
     def setup(self):
         setup_popup = SetupWidget()
@@ -1009,9 +1000,7 @@ class MainScreenWidget(BoxLayout):
         setup_popup.main_screen = self
         setup_popup.setup_popup.open()
 
-
     """ This function provides more information on the purpose and development of this software """
-
 
     def about(self):
         # displays the about screen
@@ -1035,9 +1024,7 @@ class MainScreenWidget(BoxLayout):
         global clear_screen
         clear_screen = True
 
-
     """ This function is triggered when the user clicks the Menu 'Exit' button """
-
 
     def exit(self, *args):
         exit_widget = ExitWidget()
@@ -1054,13 +1041,11 @@ class RestartSessionWidget(BoxLayout):
     restart_popup = None
     main_screen = None
 
-
     """ 
     This function Checks to see if there is any previous sessions and session data, and if there is it will pull that back in
             @param check is to see if we should checkStorage or not
     """
-    
-    
+
     def set_check_storage(self, check):
         global not_done, user_chose_storage
         screen_label = self.main_screen.ids.screen_label
@@ -1081,9 +1066,7 @@ class StorageWidget(BoxLayout):
     storage_popup = None
     main_screen = None
 
-
     """ This function sets the storage based on the users selection (local or online) """
-    
     
     def set_storage(self, storage):
         global storageChoice
@@ -1106,7 +1089,6 @@ class CameraWidget(BoxLayout):
     camera_popup = None
     main_screen = None
 
-
     """
     This function asks the user what camera will be used to read QR Codes
     Only 3 options
@@ -1114,7 +1096,6 @@ class CameraWidget(BoxLayout):
         2. B - USB or connected webcam
         3. C - PiCamera (from Raspberry Pi)
     """
-
 
     def set_camera(self, camera_choice):
         global cameraSource
@@ -1130,10 +1111,8 @@ class CameraWidget(BoxLayout):
 class SetupWidget(BoxLayout):
     setup_popup = None
     main_screen = None
-    
 
     """ Redirects program to either the consolidate() method or the upload_backup() method above, based on users choice """
-    
     
     def upload_consolidate(self):
         if storageChoice == 'a':
@@ -1141,9 +1120,7 @@ class SetupWidget(BoxLayout):
         else:
             upload_backup(ctx, self.main_screen, True)  # since it comes only from menu, send True
 
-
     """ Creates and starts the popup for changing the storage location """
-
 
     def change_storage_location(self):
         storage_location = StorageWidget()
@@ -1152,9 +1129,7 @@ class SetupWidget(BoxLayout):
         storage_location.main_screen = self.main_screen
         storage_location.storage_popup.open()
 
-
     """  Creates and starts the popup for changing the camera source """
-
 
     def change_camera_source(self):
         camera_location = CameraWidget()
@@ -1163,9 +1138,7 @@ class SetupWidget(BoxLayout):
         camera_location.main_screen = self.main_screen
         camera_location.camera_popup.open()
 
-
     """ Creates and starts the popup that allows the user to choose whether or not special characters will be converted (if not, they're skipped) """
-
 
     def set_special_character_conversion(self):
         special_char_widget = AskSpecialCharConversionWidget()
@@ -1182,9 +1155,7 @@ class QRSingleWidget(BoxLayout):
     qr_single_popup = None
     main_screen = None
 
-
     """ Calls the qr_single function with the text the user entered """
-
 
     def setup_qr_single(self, text):
         qr_single(self.main_screen, text)
@@ -1197,9 +1168,7 @@ class AskSpecialCharConversionWidget(BoxLayout):
     special_char_popup = None
     main_screen = None
 
-
     """ This function Sets the boolean variable based on users choice, and prints the according message (when special chars come up, acts accor) """
-
 
     def set_special_char_bool(self, ask_bool):
         global special_char_bool
@@ -1219,9 +1188,7 @@ class AskSpecialCharConversionWidget(BoxLayout):
 class ExitWidget(BoxLayout):
     exit_widget_popup = None
 
-
     """ This function closes the program if the user clicked 'Yes' when asked """
-
 
     def confirm_exit(self):
         self.get_root_window().close()
@@ -1241,17 +1208,13 @@ class ScreenWidget(ScrollView):
 class QRToolboxApp(App):
     main_screen = None
 
-
     """ Builds the QRToolboxApp instance by instantiating the MainScreenWidget and returning that as the Main Widget for the app """
-
 
     def build(self):
         self.main_screen = MainScreenWidget()
         return self.main_screen
 
-
     """ This function runs the storage selection popup at the start of the App, and sets some global vars """
-
 
     def on_start(self):
         global clear_screen, not_yet
