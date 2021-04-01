@@ -606,8 +606,8 @@ os.environ['KIVY_GL_BACKEND'] = 'angle_sdl2'
 
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.popup import Popup
-from kivy.uix.scrollview import ScrollView
 from kivy.core.window import Window
+from libs.garden.recyclelabel import RecycleLabel
 
 
 """
@@ -681,7 +681,7 @@ class MainScreenWidget(BoxLayout):
         setup_screen_label(screen_label)
 
         screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}[ALERT] Starting video stream...{bcolors.ENDC}\n"
-        screen_label.text = screen_label.text + f"{bcolors.OKBLUE}To exit, click on the webcam window and press 'Q'{bcolors.ENDC}"
+        screen_label.text = screen_label.text + f"{bcolors.OKBLUE}To exit, close the webcam window{bcolors.ENDC}"
 
         if user_chose_storage:
             # construct the argument parser and parse the arguments
@@ -721,7 +721,6 @@ class MainScreenWidget(BoxLayout):
                             last_system_id = line_array[0]
                             file_date = datetime.datetime.strptime(line_array[1], "%m/%d/%Y").date()  # get date from file
                             file_time = datetime.datetime.strptime(line_array[2], "%H:%M:%S.%f").time()  # get time from file
-                            print(file_date, file_time)
 
                             barcodeDataSpecial = line_array[3]  # get the QR Code from the file
                             status = line_array[4]  # get the status from the file
@@ -904,10 +903,10 @@ class MainScreenWidget(BoxLayout):
 
                 # show the output frame
                 cv2.imshow("QR Toolbox", frame)
-                key = cv2.waitKey(1) & 0xFF
+                cv2.waitKey(1)
 
-                # if the `q` key was pressed, break from the loop
-                if key == ord("q") or key == ord("Q"):
+                # if the user closes the window, close the window (lol)
+                if cv2.getWindowProperty('QR Toolbox', 0) == -1:
                     break
 
             # close the output CSV file and do a bit of cleanup
@@ -1193,13 +1192,6 @@ class ExitWidget(BoxLayout):
     def confirm_exit(self):
         self.get_root_window().close()
         App.get_running_app().stop()
-
-
-""" This class exists to instantiate a scrollview (which is used on the main screen to allow user to scroll the text displayed) """
-
-
-class ScreenWidget(ScrollView):
-    pass
 
 
 """ This class represents the app itself, and everything starts from and runs from this """

@@ -3,21 +3,17 @@
 <MainScreenWidget>:
     id: main
     orientation: 'vertical'
-    ScreenWidget:
-        do_scroll_x: False
-        do_scroll_y: True
-        bar_width: 5
-        Label:
-            id: screen_label
-            size_hint_y: None
-            height: self.texture_size[1]
-            text_size: (self.parent.width, None)
-            text: f"\n\n[size=50][u][color=#009999]QR TOOLBOX[/color][/size][/u]\n\n\n\n\n\n[size=30]QR Toolbox v1.3\n\nUSEPA Homeland Security Research Program\n\nSystem ID: {root.sys_id}[/size]\n"
-            font_size: 18
-            halign: 'center'
-            valign: 'middle'
-            padding: (10, 10)
-            markup: True
+    RecycleLabel:
+        id: screen_label
+        size_hint_y: 1
+        height: self.parent.height
+        text_size: (self.parent.width, None)
+        text: f"\n\n[size=50][u][color=#009999]QR TOOLBOX[/color][/size][/u]\n\n\n\n\n\n[size=30]QR Toolbox v1.3\n\nUSEPA Homeland Security Research Program\n\nSystem ID: {root.sys_id}[/size]\n"
+        font_size: 18
+        halign: 'center'
+        valign: 'middle'
+        padding: (10, 10)
+        markup: True
     BoxLayout:
         orientation: 'horizontal'
         size_hint_y: None
