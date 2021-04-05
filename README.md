@@ -2,14 +2,50 @@
 ### Name: EPA QR Tool
 ### Version: 1.3
 
-### Description 
+### Description
 A python-based tool for tracking assets (e.g., people, equipment) through the use of QR codes. The system uses USB-interface webcams along with the open-source python-based software for scanning and generating QR codes. The system was designed to read QR codes attached to assets. QR stations (consisting of a laptop and webcam) can be staged at various locations for the purpose of tracking an entity for logistical and health and safety purposes.
 
 # Installation
-Run the QR-Toolbox-Installer-v1.3.exe file in the Setup folder. Refer to and follow the User Guide in the Documentation folder.
+Run the QR-Toolbox-Installer-v1.3.exe file in the Setup folder (or where you downloaded as part of a release). The installer allows for single-user installation, no admin rights needed, and system (all-users) installation, where admin rights will be needed.
+
+Then, after installation, find your installation location and fill out the three variables in the settings.py file, which is found in the Setup folder.
+Refer to and follow the User Guide in the Documentation folder for more information.
 
 # Quick Start Guide
-Test
+This Guide contains info on how to quickly get started using the application.
+
+### Running the Program
+- Launch the tool 
+  - By double-clicking on the software shortcut on your desktop or in your start menu
+- Create a single QR Code
+  - Click 'QR Creator - Single'
+- Create multiple QR Codes
+  - Click 'QR Creator - Batch'
+- Modify QR Codes created through 'QR Creator - Batch' 
+  - Navigate to "C:/Users/<yourusername>/AppData/Local/Programs/QR-Toolbox" or wherever you installed the program files
+and find 'names.csv'
+    - Once there, open that file and change the text as you wish
+- Scan QR Codes
+  - Click 'QR Reader'
+- To Restart a Scanning Session
+  - Click "QR Reader" and then click "Restart previous session"
+- Upload Backed-Up Data
+  - Click the 'Setup' button and then 'Upload/Consolidate' when in Online Storage Mode
+- Consolidate CSV Files
+  - Click the 'Setup' button and then 'Upload/Consolidate' when in Local Storage Mode (will consolidate CSV files in the chosen location)
+- Change the Camera
+  - Click the 'Setup' button and then 'Change Camera Source', then choose the camera source you want
+- Change Storage Location
+  - Click the 'Setup' button and then 'Change Storage (Local/Online)', then choose the storage location you want
+- Choose Special Character Conversion
+  - Click the 'Setup' button and then 'Special Character Conversion', then choose your preference
+- Find the Saved Files
+  - Navigate to either "C:/Users/<yourusername>/AppData/Local/Programs/QR-Toolbox", or to wherever you installed the program files and then navigate
+to 'Archive' within those program files, to see the QR Codes and CSV files
+- To Exit
+  - Click either the "Exit" button or the 'X' button in the top right corner of the window
+
+See the User Guide in the Documentation folder for more detailed information.
 
 # Important Notes
 Note: the tool requires a Sharepoint ID and passcode to operate (see the settings.py in Setup folder). 
