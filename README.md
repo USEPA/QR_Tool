@@ -16,7 +16,7 @@ This Guide contains info on how to quickly get started using the application.
 
 ### Running the Program
 1. To Launch the Tool
-   - By double-clicking on the software shortcut on your desktop or in your start menu
+   - Double-click on the software shortcut on your desktop or in your start menu
 2. To Create a Single QR Code
     - Click 'QR Creator - Single'
 3. To Create Multiple QR Codes
