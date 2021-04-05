@@ -15,37 +15,37 @@ Refer to and follow the User Guide in the Documentation folder for more informat
 This Guide contains info on how to quickly get started using the application.
 
 ### Running the Program
-- Launch the tool 
-  - By double-clicking on the software shortcut on your desktop or in your start menu
-- Create a single QR Code
-  - Click 'QR Creator - Single'
-- Create multiple QR Codes
-  - Click 'QR Creator - Batch'
-- Modify QR Codes created through 'QR Creator - Batch' 
-  - Navigate to "C:/Users/<yourusername>/AppData/Local/Programs/QR-Toolbox" or wherever you installed the program files
+1. To Launch the Tool
+   - By double-clicking on the software shortcut on your desktop or in your start menu
+2. To Create a Single QR Code
+    - Click 'QR Creator - Single'
+3. To Create Multiple QR Codes
+    - Click 'QR Creator - Batch'
+4. To Modify QR Codes Created Through 'QR Creator - Batch' 
+    - Navigate to "C:/Users/<yourusername>/AppData/Local/Programs/QR-Toolbox" or wherever you installed the program files
 and find 'names.csv'
-    - Once there, open that file and change the text as you wish
-- Scan QR Codes
-  - Click 'QR Reader'
-- To Restart a Scanning Session
-  - Click "QR Reader" and then click "Restart previous session"
-- Upload Backed-Up Data
-  - Click the 'Setup' button and then 'Upload/Consolidate' when in Online Storage Mode
-- Consolidate CSV Files
-  - Click the 'Setup' button and then 'Upload/Consolidate' when in Local Storage Mode (will consolidate CSV files in the chosen location)
-- Change the Camera
-  - Click the 'Setup' button and then 'Change Camera Source', then choose the camera source you want
-- Change Storage Location
-  - Click the 'Setup' button and then 'Change Storage (Local/Online)', then choose the storage location you want
-- Choose Special Character Conversion
-  - Click the 'Setup' button and then 'Special Character Conversion', then choose your preference
-- Find the Saved Files
-  - Navigate to either "C:/Users/<yourusername>/AppData/Local/Programs/QR-Toolbox", or to wherever you installed the program files and then navigate
+        - Once there, open that file and change the text as you wish
+5. To Scan QR Codes
+    - Click 'QR Reader'
+6. To Restart a Scanning Session
+    - Click "QR Reader" and then click "Restart previous session"
+7. To Upload Backed-Up Data
+    - Click the 'Setup' button and then 'Upload/Consolidate' when in Online Storage Mode
+8. To Consolidate CSV Files
+    - Click the 'Setup' button and then 'Upload/Consolidate' when in Local Storage Mode (will consolidate CSV files in the chosen location)
+9. To Change the Camera
+    - Click the 'Setup' button and then 'Change Camera Source', then choose the camera source you want
+10. To Change Storage Location
+    - Click the 'Setup' button and then 'Change Storage (Local/Online)', then choose the storage location you want
+11. To Choose Special Character Conversion
+    - Click the 'Setup' button and then 'Special Character Conversion', then choose your preference
+12. To Find the Saved Files
+    - Navigate to either "C:/Users/<yourusername>/AppData/Local/Programs/QR-Toolbox", or to wherever you installed the program files and then navigate
 to 'Archive' within those program files, to see the QR Codes and CSV files
-- To Exit
-  - Click either the "Exit" button or the 'X' button in the top right corner of the window
+13. To Exit
+    - Click either the "Exit" button or the 'X' button in the top right corner of the window
 
-See the User Guide in the Documentation folder for more detailed information.
+_See the User Guide in the Documentation folder for more detailed information._
 
 # Important Notes
 Note: the tool requires a Sharepoint ID and passcode to operate (see the settings.py in Setup folder). 
