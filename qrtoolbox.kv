@@ -104,6 +104,7 @@
             on_release: root.change_storage_location()
             on_release: root.setup_popup.dismiss()
         Button:
+            id: specialcharbutton
             text: "Special Character Conversion"
             size_hint: None, None
             size: 225, 100
@@ -145,6 +146,7 @@
             text: "PiCamera"
             size_hint: None, None
             size: 235, 100
+            disabled: True
             on_release: root.set_camera("PiCamera")
             on_release: root.camera_popup.dismiss()
 

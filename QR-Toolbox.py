@@ -84,18 +84,19 @@ ctx = ClientContext(settings['url'], context_auth)
 
 # load variables
 # set store folder default, assign system ID, and wait time
-storagePath = ""
+storagePath = ""  # the path to the local storage directory if chosen
 checkStorage = False  # whether system should check if there is any backed up data or previous session data
 user_chose_storage = False
 not_done = True
 system_id = os.environ['COMPUTERNAME']
-t_value = timedelta(seconds=10)
-cameraSource = "Integrated"
-storageChoice = ""
+t_value = timedelta(seconds=10)  # time between scans for the same qr code
+cameraSource = "Integrated"  # the camera source, defaults to integrated (so source 0)
+storageChoice = ""  # users choice of local ('a') or online ('b') mode
 special_char_bool = True
 vs = None  # global video stream variable, to ensure only 1 instance of it exists at a time
 clear_screen = False  # if True, clear screen, else don't clear it (true only in 4 cases)
 not_yet = False  # prevents the screen from being cleared immediately at the start (only used at the start)
+isSpecialCharDisabled = False  # if true, user can't click on Special Char Conversion btn, if false they can click it
 
 # Lists and Dictionaries used for special character handling and conversion
 trouble_characters = ['\t', '\n', '\r']
@@ -211,8 +212,8 @@ def connect(main_screen, context, connection_type, content=None, file_name=None,
                 screen_label.text = screen_label.text + f"\n{bcolors.OKGREEN}Connection successful.{bcolors.ENDC}"
             return return_val
         except:
-            # e = sys.exc_info()[0]  # used for error checking
-            # print(e)
+            e = sys.exc_info()[0]  # used for error checking
+            print(e)
             if i == 0:
                 screen_label.text = screen_label.text + f"\n{bcolors.FAIL}Connection lost. Trying again in 10 seconds.{bcolors.ENDC}"
                 time.sleep(10)
@@ -224,10 +225,18 @@ def connect(main_screen, context, connection_type, content=None, file_name=None,
                       f"uploaded at the next upload point, or if triggered from the menu.{bcolors.ENDC}"
                 if os.path.exists(backup_file) and connection_type == 'upload':
                     with open(backup_file, "a") as backup:
-                        backup.write(f"{content}\n@@@@@\n{file_name}\n@@@@@\n{location}\n----------\n")
+                        if ".jpg" in file_name:
+                            backup.write(f"QRCode\n@@@@@\n{file_name}\n@@@@@\n{location}\n----------\n")
+                            with open(f"System_Data/{file_name}", "wb") as output: output.write(content)
+                        else:
+                            backup.write(f"{content}\n@@@@@\n{file_name}\n@@@@@\n{location}\n----------\n")
                 elif connection_type == 'upload':
                     with open(backup_file, "w") as backup:
-                        backup.write(f"{content}\n@@@@@\n{file_name}\n@@@@@\n{location}\n----------\n")
+                        if ".jpg" in file_name:
+                            backup.write(f"QRCode\n@@@@@\n{file_name}\n@@@@@\n{location}\n----------\n")
+                            with open(f"System_Data/{file_name}", "wb") as output: output.write(content)
+                        else:
+                            backup.write(f"{content}\n@@@@@\n{file_name}\n@@@@@\n{location}\n----------\n")
                 elif connection_type == 'execute_query':
                     with open(backup_file, "a") as backup:
                         backup.write(f"$$$$$\n{content}\n----------\n")
@@ -267,11 +276,29 @@ def upload_backup(context, main_screen_widget, from_menu=False):
                     if flag == 3:  # means it was a list item
                         successful = create_list_item(main_screen_widget, context, content, True)
                     else:  # means it was a file to be uploaded
+                        if ".jpg" in file_name and content == "QRCode\n":  # if file is a qr code, update content var
+                            if os.path.exists(f"System_Data/{file_name}"):  # make sure file exists still
+                                try:
+                                    with open(f"System_Data/{file_name}", "rb") as file:  # must read qr code as a binary file
+                                        content = file.read()  # content var must be in bytes format for this to work properly
+                                        with open(f"System_Data/NEWTEST.jpg", "wb") as output:
+                                            output.write(file.read())
+                                except:  # if error, print it, reset vars and continue
+                                    screen_label.text = screen_label.text + f"\n{bcolors.FAIL}An error has occurred. Make sure the file is not open, moved, or deleted.{bcolors.ENDC}"
+                                    flag = 0; content = ""; file_name = ""; location = ""
+                                    continue
+                            else:  # if not, print error reset vars and continue
+                                screen_label.text = screen_label.text + f"\n{bcolors.FAIL}File (System_Data/{file_name}) not found. If a QR Code is repeated or if you are uploading backed up data a 2nd or more times,{bcolors.ENDC}" \
+                                                    f"{bcolors.FAIL} then this is generally normal behaviour since some data is successfully uploaded and others are not.{bcolors.ENDC}"
+                                flag = 0; content = ""; file_name = ""; location = ""
+                                continue
                         successful = connect(main_screen_widget, context, 'upload', content, file_name, location, True)
                     if not successful:
                         screen_label.text = screen_label.text + f"\n{bcolors.FAIL}Upload of backed up data failed.{bcolors.ENDC}{bcolors.OKBLUE} Program will " \
                                                         f"try again at next upload, or you can trigger upload manually from the menu.{bcolors.ENDC}"
                         return False
+                    elif successful and ".jpg" in file_name:
+                        os.remove(f"System_Data/{file_name}")  # remove the qr code .jpg file if successful upload
                     flag = 0
                     content = ""
                     file_name = ""
@@ -300,22 +327,25 @@ def create_list_item(main_screen, context, content, duplicate=False):
     screen_label = main_screen.ids.screen_label
     setup_screen_label(screen_label)
 
-    screen_label.text = screen_label.text + "\nCreating list item example..."
+    screen_label.text = screen_label.text + "\nCreating list item..."
     list_object = context.web.lists.get_by_title(listTitle)
     values = content.split(",")
     sid = values[0]
-    tstr = values[1]
-    barstr = values[2]
-    status = values[3]
+    tstr = values[1] + " " + values[2]
+    barstr = values[3]
+    status = values[4]
 
-    item_properties = {'__metadata': {'type': 'SP.Data.QR_x0020_TimestampsListItem'}, 'Title': barstr,
+    # Convert barstrs' special chars to regular chars for upload to SharePoint list
+    barstrReg = convert(main_screen,barstr, special_characters, char_dict_special_to_reg)
+
+    item_properties = {'__metadata': {'type': 'SP.Data.QR_x0020_TimestampsListItem'}, 'Title': barstrReg,
                        'QR_x0020_Terminal': sid, 'Time_x0020_Stamp': tstr, 'Info': status}
-    item = list_object.add_item(item_properties)
+    list_object.add_item(item_properties)
     succeed = connect(main_screen, context, 'execute_query', content, duplicate=duplicate)
     if succeed:
-        screen_label.text = screen_label.text + "\nList item '{0}' has been created.".format(item.properties["Title"])
+        screen_label.text = screen_label.text + f"\nList item '{barstr}' has been created."
     else:
-        screen_label.text = screen_label.text + f"\n{bcolors.WARNING}List item '{item.properties['Title']}' has NOT been created.{bcolors.ENDC}"
+        screen_label.text = screen_label.text + f"\n{bcolors.WARNING}List item '{barstr}' has NOT been created.{bcolors.ENDC}"
     return succeed
 
 
@@ -420,8 +450,8 @@ def qr_batch(main_screen_widget):
         if type(resp) == bool:  # if a boolean value is returned, then the retrieval failed
             return False
         elif resp.status_code == 404:
-            screen_label.text = screen_label.text + f"\n\n{bcolors.FAIL}The batch file '" + relative_url + "' doesn't exist. " \
-                f"Please create a CSV file with the appropriate name and add it to the SharePoint site with the correct file path.{bcolors.ENDC}"
+            screen_label.text = screen_label.text + f"\n\n{bcolors.FAIL}The batch file {bcolors.ENDC}{bcolors.FAIL}'{relative_url}{bcolors.ENDC}{bcolors.FAIL}' doesn't exist. " \
+                f"Please create a CSV file with the appropriate name and add it to the {bcolors.FAIL}SharePoint site with the correct file path.{bcolors.ENDC}{bcolors.ENDC}"
             return False
 
         with open(remoteQRBatchFile, 'wb') as output_file:
@@ -559,7 +589,7 @@ def qr_single(main_screen_widget, text):
         if storageChoice == 'b':
             upload_backup(ctx, main_screen_widget)  # if the other upload was successful, also try to upload the backed-up data
     else:
-        screen_label.text = screen_label.text + f"\n{bcolors.FAIL}File not saved in {storagePath}, only in Archive folder.{bcolors.ENDC}" if \
+        screen_label.text = screen_label.text + f"\n{bcolors.FAIL}File not saved in storage directory or none was established, saved only in Archive folder.{bcolors.ENDC}" if \
             storageChoice == 'a' else screen_label.text + f"\n{bcolors.WARNING}Successful locally, not online.{bcolors.ENDC}"
 
 
@@ -672,16 +702,13 @@ class MainScreenWidget(BoxLayout):
     """
 
     def video(self):
-        global not_done, user_chose_storage, vs
-
-        while not_done:
-            pass
+        global user_chose_storage, vs
 
         screen_label = self.ids.screen_label
         setup_screen_label(screen_label)
 
         screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}[ALERT] Starting video stream...{bcolors.ENDC}\n"
-        screen_label.text = screen_label.text + f"{bcolors.OKBLUE}To exit, close the webcam window{bcolors.ENDC}"
+        screen_label.text = screen_label.text + f"{bcolors.OKBLUE}To exit, close the webcam window.{bcolors.ENDC}"
 
         if user_chose_storage:
             # construct the argument parser and parse the arguments
@@ -694,15 +721,19 @@ class MainScreenWidget(BoxLayout):
             file_name = "QRT-R-" + system_id + "_" + time_header + ".csv"
 
             # initialize the video stream and allow the camera sensor to warm up
-
-            if cameraSource == 'Integrated':  # start correct camera based on user choice at beginning
-                vs = VideoStream(src=0).start()  # for integrated/built in webcam
-            elif cameraSource == 'Separate':
-                vs = VideoStream(src=1).start()  # for separate webcam (usually USB connected)
-            elif cameraSource == 'PiCamera':
-                vs = VideoStream(usePiCamera=True).start()  # for mobile solution like Raspberry Pi Camera
-            else:
-                screen_label.text = screen_label.text + f"\n{bcolors.FAIL}An error has occurred.{bcolors.ENDC}"
+            try:
+                if cameraSource == 'Integrated':  # start correct camera based on user choice at beginning
+                    vs = VideoStream(src=0).start()  # for integrated/built in webcam
+                elif cameraSource == 'Separate':
+                    vs = VideoStream(src=1).start()  # for separate webcam (usually USB connected)
+                elif cameraSource == 'PiCamera':
+                    vs = VideoStream(usePiCamera=True).start()  # for mobile solution like Raspberry Pi Camera
+                else:
+                    screen_label.text = screen_label.text + f"\n{bcolors.FAIL}An error has occurred.{bcolors.ENDC}"
+                    return
+            except:  # if an error occurs in creating video stream, print to user and return
+                screen_label.text = screen_label.text + f"\n{bcolors.FAIL}An error occurred starting the QR Reader. Check your cameras and try again.{bcolors.ENDC}"
+                vs = None
                 return
 
             time.sleep(5.0)  # give camera time
@@ -713,8 +744,8 @@ class MainScreenWidget(BoxLayout):
             if os.path.isfile(args["output"]) and checkStorage:  # check if user wanted to restart prev session
                 if storageChoice.lower() == 'b':  # do this only if QR Toolbox is in online-mode
                     # Write previous records back to contentStrings
-                    with open(args["output"], "r") as txt:
-                        screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}Restoring records...{bcolors.ENDC}"
+                    with open(args["output"], "r", encoding='utf-8') as txt:
+                        screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}Restoring records (online mode)...{bcolors.ENDC}"
                         for line in txt:  # get each record from the file by line
                             if line == '\n': continue  # if line is newline only then skip it
                             line_array = line.split(",")
@@ -728,10 +759,8 @@ class MainScreenWidget(BoxLayout):
                                 duration = line_array[5][:len(line_array[5]) - 1:]  # also remove newline char
                             else:
                                 status = status[:len(status) - 1]  # else just remove the newline char from the status
-
                             # Convert barcodeDataSpecial's special chars to regular chars
                             barcodeDataReg = convert(self, barcodeDataSpecial, special_characters, char_dict_special_to_reg)
-
                             if status == "IN":  # if status is IN, use 5 params
                                 contentstr = "{},{},{},{},{}\n".format(last_system_id, file_date, file_time,
                                                                     barcodeDataReg, status)  # for online CSV file
@@ -744,7 +773,8 @@ class MainScreenWidget(BoxLayout):
                                                                         barcodeDataSpecial, status, duration)  # for list item
                             create_list_item(self, ctx, contentstr2)
                             contentStrings = contentStrings + contentstr
-
+                if storageChoice.lower() == 'a':
+                    screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}Restoring records (local mode)...{bcolors.ENDC}\n{open(args['output'], 'r', encoding='utf-8').read()}"
                 txt = open(args["output"], "a", encoding="utf-8")  # reopen txt file for appending (to continue records)
                 screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}Previous records restored.{bcolors.ENDC}"
             else:
@@ -760,8 +790,9 @@ class MainScreenWidget(BoxLayout):
 
             # Check if there are any stored QR codes that were scanned in in an earlier instance of the system
             if checkStorage:
-                if os.path.exists(qr_storage_file):
+                if os.path.exists(qr_storage_file) and os.stat(qr_storage_file).st_size != 0:
                     with open(qr_storage_file, "r") as qr_data_file:
+                        screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}Restarting session...{bcolors.ENDC}"
                         for line in qr_data_file:  # if yes, read them in line by line
                             if line == '\n': continue
                             line_array = line.split(",")
@@ -769,14 +800,19 @@ class MainScreenWidget(BoxLayout):
                             found_time.append(datetime.datetime.strptime(line_array[1], "%Y-%m-%d %H:%M:%S.%f"))
                             found_status.append(line_array[2][:len(line_array[2]) - 1:])
                         screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}Previous session restarted.{bcolors.ENDC}"
-                else:
-                    screen_label.text = screen_label.text + f"\n{bcolors.WARNING}No previous session found [qr-data.txt not found].{bcolors.ENDC}"
+                elif not os.path.exists(qr_storage_file) or os.stat(qr_storage_file).st_size == 0:
+                    screen_label.text = screen_label.text + f"\n{bcolors.WARNING}No previous session found [qr-data.txt not found or is empty].{bcolors.ENDC}"
 
             # loop over the frames from the video stream
             while True:
                 # grab the frame from the threaded video stream and resize it to have a maximum width of 400 pixels
-                frame = vs.read()
-                frame = imutils.resize(frame, width=400)
+                frame = None
+                try:  # if the video stream stops working or is changed
+                    frame = vs.read()
+                    frame = imutils.resize(frame, width=400)
+                except:  # then catch and break the loop, and do clean up
+                    screen_label.text = screen_label.text + f"\n{bcolors.FAIL}Video stream lost. Check your cameras. Proceeding to clean up.{bcolors.ENDC}"
+                    break
 
                 # find the barcodes in the frame and decode each of the barcodes
                 barcodes = pyzbar.decode(frame, symbols=[ZBarSymbol.QRCODE])
@@ -918,7 +954,7 @@ class MainScreenWidget(BoxLayout):
             checkStorage = False  # Reset the global variable that tells code to check the qr_storage_file
 
             # This part is necessary to show special characters properly on any of the local CSVs
-            if os.path.exists(args["output"]):
+            if os.path.exists(args["output"]) and os.stat(args["output"]).st_size != 0:
                 barcodesTxt = open(args["output"], 'r', encoding="utf-8")
                 newCSV = open(archive_folder + "/" + file_name, 'w', encoding="ANSI")
 
@@ -927,27 +963,28 @@ class MainScreenWidget(BoxLayout):
 
                 barcodesTxt.close()
                 newCSV.close()
-            else:
+            elif not os.path.exists(args["output"]):
                 data = f"\n{bcolors.FAIL}[ERROR] barcodes.txt not found as expected.{bcolors.ENDC}"
                 screen_label.text = screen_label.text + data
 
-            if storageChoice == 'a':  # if local was chosen, also store barcodes file at the location given
+            if storageChoice == 'a' and os.stat(args["output"]).st_size != 0:  # if local was chosen, also store barcodes file at the location given
                 if os.path.exists(storagePath):  # check if file path exists
                     with open(os.path.join(storagePath, file_name), "w", encoding="ANSI") as csv2:
                         csv2.write(data)
                 else:
                     screen_label.text = screen_label.text + f"\n{bcolors.WARNING}[ALERT]: Storage folder not established or is unavailable. " \
                           f"Files will only be saved to the working directory\n{bcolors.ENDC}"
-            elif storageChoice.lower() == 'b':  # if online was chosen, upload data to SharePoint as well
+            elif storageChoice.lower() == 'b' and os.stat(args["output"]).st_size != 0:  # if online was chosen, upload data to SharePoint as well
                 success = connect(self, ctx, 'upload', contentStrings, file_name, bkcsvfolder)
                 if success:
                     upload_backup(ctx, self)
 
             if os.path.exists(args["output"]) and os.stat(args["output"]).st_size == 0:  # delete barcodes.txt if empty
                 os.remove(args["output"])  # not removed until the end in case something goes wrong above and it's needed
-            vs.stop()
-            vs.stream.release()
-            vs = None
+            if vs is not None:
+                vs.stop()
+                vs.stream.release()
+                vs = None
             cv2.destroyAllWindows()
 
             not_done = True  # set these so qr reader waits on user choice before starting video
@@ -961,8 +998,8 @@ class MainScreenWidget(BoxLayout):
 
     def qr_reader(self):
         restart_session_popup = RestartSessionWidget()
-        restart_session_popup.restart_popup = Popup(title="Do you want to start a new session or restart the previous one?",
-                      content=restart_session_popup, size_hint=(None, None), size=(725, 170), auto_dismiss=True)
+        restart_session_popup.restart_popup = Popup(title="Do you want to start a new session or restart the previous one?\nNote: CSV files are not created nor uploaded until after the QR Reader is closed.",
+                      content=restart_session_popup, size_hint=(None, None), size=(725, 183), auto_dismiss=True)
 
         global vs
         if vs is not None:
@@ -972,7 +1009,6 @@ class MainScreenWidget(BoxLayout):
 
         restart_session_popup.restart_popup.open()
         restart_session_popup.main_screen = self
-        threading.Thread(target=self.video, daemon=True).start()
 
     """ This function calls the qr_batch function and runs the qr_batch generator """
 
@@ -993,10 +1029,12 @@ class MainScreenWidget(BoxLayout):
     """ This function shows the setup menu as a popup widget w/4 buttons """
 
     def setup(self):
+        global isSpecialCharDisabled
         setup_popup = SetupWidget()
         setup_popup.setup_popup = Popup(title="Choose an option", content=setup_popup, size_hint=(None, None), size=(251, 475),
                                         auto_dismiss=True)
         setup_popup.main_screen = self
+        setup_popup.ids.specialcharbutton.disabled = isSpecialCharDisabled
         setup_popup.setup_popup.open()
 
     """ This function provides more information on the purpose and development of this software """
@@ -1046,7 +1084,7 @@ class RestartSessionWidget(BoxLayout):
     """
 
     def set_check_storage(self, check):
-        global not_done, user_chose_storage
+        global user_chose_storage
         screen_label = self.main_screen.ids.screen_label
         setup_screen_label(screen_label)
         if check:
@@ -1054,7 +1092,8 @@ class RestartSessionWidget(BoxLayout):
             checkStorage = True
             screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}Previous session will be restarted, if one exists.{bcolors.ENDC}"
         user_chose_storage = True
-        not_done = False
+
+        threading.Thread(target=self.main_screen.video, daemon=True).start()
 
 
 """ This class represents the information displayed when you want to set the storage location (text and 2 buttons, local or online) """
@@ -1068,16 +1107,18 @@ class StorageWidget(BoxLayout):
     """ This function sets the storage based on the users selection (local or online) """
     
     def set_storage(self, storage):
-        global storageChoice
+        global storageChoice, isSpecialCharDisabled
         if storage:  # Local button was pressed
             global storagePath
             storageChoice = "a"
             storagePath = store(self.main_screen)
+            isSpecialCharDisabled = True
         elif not storage:
             storageChoice = "b"
             screen_label = self.main_screen.ids.screen_label
             setup_screen_label(screen_label)
             screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}Storage location set to online (SharePoint).{bcolors.ENDC}"
+            isSpecialCharDisabled = False
 
 
 """ This class represents the displayed when you select "Choose Camera Source" from the Setup menu, and is text with 3 buttons """
@@ -1204,6 +1245,7 @@ class QRToolboxApp(App):
 
     def build(self):
         self.main_screen = MainScreenWidget()
+        Window.size = (900, 650)
         return self.main_screen
 
     """ This function runs the storage selection popup at the start of the App, and sets some global vars """
