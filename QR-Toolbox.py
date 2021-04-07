@@ -619,7 +619,7 @@ def cons(main_screen_widget):
                         with open(fname, 'rb') as infile:
                             shutil.copyfileobj(infile, outfile)
                             screen_label.text = screen_label.text + f"\n{fname} has been imported."
-                screen_label.text = screen_label.text + f"\n{bcolors.OKGREEN}\nConsolidated file created in the specified shared drive under " \
+                screen_label.text = screen_label.text + f"\n\n{bcolors.OKGREEN}Consolidated file created in the specified shared drive under " \
                                                         f"the filename " + cons_filename + f"{bcolors.ENDC}\n"
             except:
                 screen_label.text = screen_label.text + f"\n{bcolors.WARNING}[WARNING] Either the system was unable to write the consolidated file " \
