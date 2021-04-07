@@ -391,14 +391,19 @@ def qr_batch(main_screen_widget):
     setup_screen_label(screen_label)
     screen_label.text = screen_label.text + "\n\nThe batch QR code function is used to quickly create multiple QR codes by referencing a .csv file." \
           "\n-If QR Toolbox is in local mode, the CSV file must be stored in the root folder of the program (where it was installed), and named 'names.csv'." \
-          "\n    The Tool will then automatically create QR codes for each line in the csv, and save each QR Code image to the Tools root folder" \
-          "\n    (this folder is usually called 'QR-Toolbox', and should be found in C:/Users/<user>/AppData/Local/Programs). Where <user> refers" \
-          "\n    to your user name on your computer. However, if you changed the install location, it may not be at that file path." \
+          "\n    * The file name can be changed, but this change must also be reflected in the Setup/settings.py file for the " \
+          "\n       variable 'localQRBatchFile'." \
+          "\n    * The Tool will then automatically create QR codes for each line in the csv, and save each QR Code image to the" \
+          "\n       Tools root folder (this folder is usually called 'QR-Toolbox', and should be found in" \
+          "\n       C:/Users/<user>/AppData/Local/Programs), where <user> refers to your user name on your computer." \
+          "\n    * However, if you changed the install location, it may not be at that file path." \
           "\n-If QR Toolbox is in online mode, the csv file must be stored on the SharePoint site where QR codes are" \
-          "\n    located, and must also be named 'names.csv'. The Tool will then do the same as above, but will also store each" \
-          "\n    QR code image to the SharePoint site." \
+          "\n    located, and must also be named 'names.csv'. This file name can also be changed, but again this change must" \
+          "\n    be reflected in the Setup/settings.py file for the variable 'relative_url'. The Tool will then" \
+          "\n    do the same as above, but will also store each QR code image to the SharePoint site." \
           "\n-'names.csv' may consist of two columns 'first' & 'second'. The 'first' and 'second' columns could be " \
-          "\n    populated with participant's first and last names, or other information, and will be joined together with a space in between.\n"
+          "\n    populated with participant's first and last names, or other information, and will be joined together with a space in" \
+          "\n    between.\n"
 
     # this code creates a batch of QR codes from a csv file stored in the local directory
     # QR code image size and input filename can be modified below
