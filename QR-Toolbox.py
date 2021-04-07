@@ -739,6 +739,7 @@ class MainScreenWidget(BoxLayout):
             except:  # if an error occurs in creating video stream, print to user and return
                 screen_label.text = screen_label.text + f"\n{bcolors.FAIL}An error occurred starting the QR Reader. Check your cameras and try again.{bcolors.ENDC}"
                 vs = None
+                self.ids.qrreader.disabled = False  # makes QR Reader btn enabled again
                 return
 
             time.sleep(5.0)  # give camera time
@@ -992,8 +993,8 @@ class MainScreenWidget(BoxLayout):
                 vs = None
             cv2.destroyAllWindows()
 
-            not_done = True  # set these so qr reader waits on user choice before starting video
             user_chose_storage = False
+            self.ids.qrreader.disabled = False  # makes QR Reader btn enabled again
 
     """
     This function prepares the program and then runs the video() function to read QR Codes
@@ -1098,6 +1099,7 @@ class RestartSessionWidget(BoxLayout):
             screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}Previous session will be restarted, if one exists.{bcolors.ENDC}"
         user_chose_storage = True
 
+        self.main_screen.ids.qrreader.disabled = True  # disables QR Reader btn so user can't start multiple streams
         threading.Thread(target=self.main_screen.video, daemon=True).start()
 
 
@@ -1203,7 +1205,10 @@ class QRSingleWidget(BoxLayout):
     """ Calls the qr_single function with the text the user entered """
 
     def setup_qr_single(self, text):
-        qr_single(self.main_screen, text)
+        if text != "" and text is not None:
+            qr_single(self.main_screen, text)
+        else:
+            self.main_screen.ids.screen_label.text = self.main_screen.ids.screen_label.text + f"\n{bcolors.WARNING}QR Code text can't be empty.{bcolors.ENDC}"
 
 
 """ This class represents the information when the special char conversion button is clicked (text with 2 buttons) """
