@@ -1,6 +1,6 @@
 # -*- coding: windows-1252 -*-
 """
-Name: QR Toolbox v1.3
+Name: QR Toolbox v1.4
 Description: The QR Toolbox is a suite a tools for creating and reading QR codes. See the About screen for more
 information
 Author(s): Code integration, minor enhancements, & platform development - Timothy Boe boe.timothy@epa.gov; Muhammad Karimi karimi.muhammad@epa.gov
@@ -8,12 +8,12 @@ Author(s): Code integration, minor enhancements, & platform development - Timoth
     OpenCV code - Adrian Rosebrock https://www.pyimagesearch.com/author/adrian/;
 Contact: Timothy Boe boe.timothy@epa.gov
 Requirements: Python 3.7+, pyzbar, imutils, opencv-python, qrcode[pil], Pillow, Office365-REST-Python-Client, Kivy, kivy-deps.angle,
-kivy-deps.glew, kivy-deps.gstreamer, kivy-deps.sdl2, Kivy-Garden
+kivy-deps.glew, kivy-deps.gstreamer, kivy-deps.sdl2, Kivy-Garden, arcgis
 
 Specific versions:
 {"pyzbar": "0.1.8", "imutils": "0.5.3", "qrcode": "6.1", "Pillow": "7.0.0", "opencv-python": "4.2.0.32",
 "Office365-REST-Python-Client": "2.2.1", "Kivy": "1.11.1", "kivy-deps.angle": "0.2.0", "kivy-deps.glew": "0.2.0",
-"kivy-deps.gstreamer": "0.2.0", "kivy-deps.sdl2": "0.2.0", "Kivy-Garden": "0.1.4"}
+"kivy-deps.gstreamer": "0.2.0", "kivy-deps.sdl2": "0.2.0", "Kivy-Garden": "0.1.4", "arcgis": ""}
 """
 
 # import the necessary packages
@@ -30,6 +30,11 @@ from time import strftime
 from tkinter import *
 from tkinter import filedialog
 
+from arcgis.gis import GIS
+# from arcgis import geometry
+# from arcgis import features
+# from arcgis.features import FeatureLayer
+
 
 # colors
 
@@ -45,7 +50,7 @@ class bcolors:
     UNDERLINE = ''
 
 
-# import csv packages
+# Import csv packages
 import cv2
 import imutils
 import numpy as np
@@ -101,10 +106,10 @@ isSpecialCharDisabled = False  # if true, user can't click on Special Char Conve
 # Lists and Dictionaries used for special character handling and conversion
 trouble_characters = ['\t', '\n', '\r']
 bad_file_name_list = ['*', ':', '"', '<', '>', ',', '/', '|', '?', '\t', '\r', '\n', '\\']
-special_characters = ["à", "á", "â", "ã", "ä", "å", "æ", "ç", "è", "é", "ê", "ë", "ì", "í", "î", "ï", "ð", "ñ", "ò",
-                      "ó", "ô", "õ", "ö", "ø", "ù", "ú", "û", "ü", "ý", "þ", "ÿ", "À", "Á", "Â", "Ã", "Ä", "Å", "Æ",
-                      "Ç", "È", "É", "Ê", "Ë", "Ì", "Í", "Î", "Ï", "Ð", "Ñ", "Ò", "Ó", "Ô", "Õ", "Ö", "Ø", "Ù", "Ú",
-                      "Û", "Ü", "Ý", "Þ", "ß"]
+special_characters = ["Ã ", "Ã¡", "Ã¢", "Ã£", "Ã¤", "Ã¥", "Ã¦", "Ã§", "Ã¨", "Ã©", "Ãª", "Ã«", "Ã¬", "Ã­", "Ã®", "Ã¯", "Ã°", "Ã±", "Ã²",
+                      "Ã³", "Ã´", "Ãµ", "Ã¶", "Ã¸", "Ã¹", "Ãº", "Ã»", "Ã¼", "Ã½", "Ã¾", "Ã¿", "Ã€", "Ã", "Ã‚", "Ãƒ", "Ã„", "Ã…", "Ã†",
+                      "Ã‡", "Ãˆ", "Ã‰", "ÃŠ", "Ã‹", "ÃŒ", "Ã", "ÃŽ", "Ã", "Ã", "Ã‘", "Ã’", "Ã“", "Ã”", "Ã•", "Ã–", "Ã˜", "Ã™", "Ãš",
+                      "Ã›", "Ãœ", "Ã", "Ãž", "ÃŸ"]
 code_characters = ["!@!a1!", "!@!a2!", "!@!a3!", "!@!a4!", "!@!a5!", "!@!a6!", "!@!a7!", "!@!c1!", "!@!e1!", "!@!e2!",
                    "!@!e3!", "!@!e4!", "!@!i1!", "!@!i2!", "!@!i3!", "!@!i4!", "!@!o1!", "!@!n1!", "!@!o2!", "!@!o3!",
                    "!@!o4!", "!@!o5!", "!@!o6!", "!@!o7!", "!@!u1!", "!@!u2!", "!@!u3!", "!@!u4!", "!@!y1!", "!@!b1!",
@@ -112,36 +117,35 @@ code_characters = ["!@!a1!", "!@!a2!", "!@!a3!", "!@!a4!", "!@!a5!", "!@!a6!", "
                    "!@!E2!", "!@!E3!", "!@!E4!", "!@!I1!", "!@!I2!", "!@!I3!", "!@!I4!", "!@!O1!", "!@!N1!", "!@!O2!",
                    "!@!O3!", "!@!O4!", "!@!O5!", "!@!O6!", "!@!O7!", "!@!U1!", "!@!U2!", "!@!U3!", "!@!U4!", "!@!Y1!",
                    "!@!B1!", "!@!Y2!"]
-char_dict_special_to_code = {"à": "!@!a1!", "á": "!@!a2!", "â": "!@!a3!", "ã": "!@!a4!", "ä": "!@!a5!", "å": "!@!a6!",
-                             "æ": "!@!a7!", "ç": "!@!c1!", "è": "!@!e1!", "é": "!@!e1!", "ê": "!@!e3!", "ë": "!@!e4!",
-                             "ì": "!@!i1!", "í": "!@!i2!", "î": "!@!i3!", "ï": "!@!i4!", "ð": "!@!o1!", "ñ": "!@!n1!",
-                             "ò": "!@!o2!", "ó": "!@!o3!", "ô": "!@!o4!", "õ": "!@!o5!", "ö": "!@!o6!", "ø": "!@!o7!",
-                             "ù": "!@!u1!", "ú": "!@!u2!", "û": "!@!u3!", "ü": "!@!u4!", "ý": "!@!y1!", "þ": "!@!b1!",
-                             "ÿ": "!@!y2!", "À": "!@!A1!", "Á": "!@!A2!", "Â": "!@!A3!", "Ã": "!@!A4!", "Ä": "!@!A5!",
-                             "Å": "!@!A6!", "Æ": "!@!A7!", "Ç": "!@!C1!", "È": "!@!E1!", "É": "!@!E2!", "Ê": "!@!E3!",
-                             "Ë": "!@!E4!", "Ì": "!@!I1!", "Í": "!@!I2!", "Î": "!@!I3!", "Ï": "!@!I4!", "Ð": "!@!O1!",
-                             "Ñ": "!@!N1!", "Ò": "!@!O2!", "Ó": "!@!O3!", "Ô": "!@!O4!", "Õ": "!@!O5!", "Ö": "!@!O6!",
-                             "Ø": "!@!O7!", "Ù": "!@!U1!", "Ú": "!@!U2!", "Û": "!@!U3!", "Ü": "!@!U4!", "Ý": "!@!Y1!",
-                             "Þ": "!@!B1!", "ß": "!@!Y2!"}
-char_dict_code_to_special = {"!@!a1!": "à", "!@!a2!": "á", "!@!a3!": "â", "!@!a4!": "ã", "!@!a5!": "ä", "!@!a6!": "å",
-                             "!@!a7!": "æ", "!@!c1!": "ç", "!@!e1!": "è", "!@!e2!": "é", "!@!e3!": "ê", "!@!e4!": "ë",
-                             "!@!i1!": "ì", "!@!i2!": "í", "!@!i3!": "î", "!@!i4!": "ï", "!@!o1!": "ð", "!@!n1!": "ñ",
-                             "!@!o2!": "ò", "!@!o3!": "ó", "!@!o4!": "ô", "!@!o5!": "õ", "!@!o6!": "ö", "!@!o7!": "ø",
-                             "!@!u1!": "ù", "!@!u2!": "ú", "!@!u3!": "û", "!@!u4!": "ü", "!@!y1!": "ý", "!@!b1!": "þ",
-                             "!@!y2!": "ÿ", "!@!A1!": "À", "!@!A2!": "Á", "!@!A3!": "Â", "!@!A4!": "Ã", "!@!A5!": "Ä",
-                             "!@!A6!": "Å", "!@!A7!": "Æ", "!@!C1!": "Ç", "!@!E1!": "È", "!@!E2!": "É", "!@!E3!": "Ê",
-                             "!@!E4!": "Ë", "!@!I1!": "Ì", "!@!I2!": "Í", "!@!I3!": "Î", "!@!I4!": "Ï", "!@!O1!": "Ð",
-                             "!@!N1!": "Ñ", "!@!O2!": "Ò", "!@!O3!": "Ó", "!@!O4!": "Ô", "!@!O5!": "Õ", "!@!O6!": "Ö",
-                             "!@!O7!": "Ø", "!@!U1!": "Ù", "!@!U2!": "Ú", "!@!U3!": "Û", "!@!U4!": "Ü", "!@!Y1!": "Ý",
-                             "!@!B1!": "Þ", "!@!Y2!": "ß"}
-char_dict_special_to_reg = {"à": "a", "á": "a", "â": "a", "ã": "a", "ä": "a", "å": "a", "æ": "a", "ç": "c", "è": "e",
-                            "é": "e", "ê": "e", "ë": "e", "ì": "i", "í": "i", "î": "i", "ï": "i", "ð": "o", "ñ": "n",
-                            "ò": "o", "ó": "o", "ô": "o", "õ": "o", "ö": "o", "ø": "o", "ù": "u", "ú": "u", "û": "u",
-                            "ü": "u", "ý": "y", "þ": "b", "ÿ": "y", "À": "A", "Á": "A", "Â": "A", "Ã": "A", "Ä": "A",
-                            "Å": "A", "Æ": "A", "Ç": "C", "È": "E", "É": "E", "Ê": "E", "Ë": "E", "Ì": "I", "Í": "I",
-                            "Î": "I", "Ï": "I", "Ð": "O", "Ñ": "N", "Ò": "O", "Ó": "O", "Ô": "O", "Õ": "O", "Ö": "O",
-                            "Ø": "O", "Ù": "U", "Ú": "U", "Û": "U", "Ü": "U", "Ý": "Y", "Þ": "B", "ß": "Y"}
-
+char_dict_special_to_code = {"Ã ": "!@!a1!", "Ã¡": "!@!a2!", "Ã¢": "!@!a3!", "Ã£": "!@!a4!", "Ã¤": "!@!a5!", "Ã¥": "!@!a6!",
+                             "Ã¦": "!@!a7!", "Ã§": "!@!c1!", "Ã¨": "!@!e1!", "Ã©": "!@!e1!", "Ãª": "!@!e3!", "Ã«": "!@!e4!",
+                             "Ã¬": "!@!i1!", "Ã­": "!@!i2!", "Ã®": "!@!i3!", "Ã¯": "!@!i4!", "Ã°": "!@!o1!", "Ã±": "!@!n1!",
+                             "Ã²": "!@!o2!", "Ã³": "!@!o3!", "Ã´": "!@!o4!", "Ãµ": "!@!o5!", "Ã¶": "!@!o6!", "Ã¸": "!@!o7!",
+                             "Ã¹": "!@!u1!", "Ãº": "!@!u2!", "Ã»": "!@!u3!", "Ã¼": "!@!u4!", "Ã½": "!@!y1!", "Ã¾": "!@!b1!",
+                             "Ã¿": "!@!y2!", "Ã€": "!@!A1!", "Ã": "!@!A2!", "Ã‚": "!@!A3!", "Ãƒ": "!@!A4!", "Ã„": "!@!A5!",
+                             "Ã…": "!@!A6!", "Ã†": "!@!A7!", "Ã‡": "!@!C1!", "Ãˆ": "!@!E1!", "Ã‰": "!@!E2!", "ÃŠ": "!@!E3!",
+                             "Ã‹": "!@!E4!", "ÃŒ": "!@!I1!", "Ã": "!@!I2!", "ÃŽ": "!@!I3!", "Ã": "!@!I4!", "Ã": "!@!O1!",
+                             "Ã‘": "!@!N1!", "Ã’": "!@!O2!", "Ã“": "!@!O3!", "Ã”": "!@!O4!", "Ã•": "!@!O5!", "Ã–": "!@!O6!",
+                             "Ã˜": "!@!O7!", "Ã™": "!@!U1!", "Ãš": "!@!U2!", "Ã›": "!@!U3!", "Ãœ": "!@!U4!", "Ã": "!@!Y1!",
+                             "Ãž": "!@!B1!", "ÃŸ": "!@!Y2!"}
+char_dict_code_to_special = {"!@!a1!": "Ã ", "!@!a2!": "Ã¡", "!@!a3!": "Ã¢", "!@!a4!": "Ã£", "!@!a5!": "Ã¤", "!@!a6!": "Ã¥",
+                             "!@!a7!": "Ã¦", "!@!c1!": "Ã§", "!@!e1!": "Ã¨", "!@!e2!": "Ã©", "!@!e3!": "Ãª", "!@!e4!": "Ã«",
+                             "!@!i1!": "Ã¬", "!@!i2!": "Ã­", "!@!i3!": "Ã®", "!@!i4!": "Ã¯", "!@!o1!": "Ã°", "!@!n1!": "Ã±",
+                             "!@!o2!": "Ã²", "!@!o3!": "Ã³", "!@!o4!": "Ã´", "!@!o5!": "Ãµ", "!@!o6!": "Ã¶", "!@!o7!": "Ã¸",
+                             "!@!u1!": "Ã¹", "!@!u2!": "Ãº", "!@!u3!": "Ã»", "!@!u4!": "Ã¼", "!@!y1!": "Ã½", "!@!b1!": "Ã¾",
+                             "!@!y2!": "Ã¿", "!@!A1!": "Ã€", "!@!A2!": "Ã", "!@!A3!": "Ã‚", "!@!A4!": "Ãƒ", "!@!A5!": "Ã„",
+                             "!@!A6!": "Ã…", "!@!A7!": "Ã†", "!@!C1!": "Ã‡", "!@!E1!": "Ãˆ", "!@!E2!": "Ã‰", "!@!E3!": "ÃŠ",
+                             "!@!E4!": "Ã‹", "!@!I1!": "ÃŒ", "!@!I2!": "Ã", "!@!I3!": "ÃŽ", "!@!I4!": "Ã", "!@!O1!": "Ã",
+                             "!@!N1!": "Ã‘", "!@!O2!": "Ã’", "!@!O3!": "Ã“", "!@!O4!": "Ã”", "!@!O5!": "Ã•", "!@!O6!": "Ã–",
+                             "!@!O7!": "Ã˜", "!@!U1!": "Ã™", "!@!U2!": "Ãš", "!@!U3!": "Ã›", "!@!U4!": "Ãœ", "!@!Y1!": "Ã",
+                             "!@!B1!": "Ãž", "!@!Y2!": "ÃŸ"}
+char_dict_special_to_reg = {"Ã ": "a", "Ã¡": "a", "Ã¢": "a", "Ã£": "a", "Ã¤": "a", "Ã¥": "a", "Ã¦": "a", "Ã§": "c", "Ã¨": "e",
+                            "Ã©": "e", "Ãª": "e", "Ã«": "e", "Ã¬": "i", "Ã­": "i", "Ã®": "i", "Ã¯": "i", "Ã°": "o", "Ã±": "n",
+                            "Ã²": "o", "Ã³": "o", "Ã´": "o", "Ãµ": "o", "Ã¶": "o", "Ã¸": "o", "Ã¹": "u", "Ãº": "u", "Ã»": "u",
+                            "Ã¼": "u", "Ã½": "y", "Ã¾": "b", "Ã¿": "y", "Ã€": "A", "Ã": "A", "Ã‚": "A", "Ãƒ": "A", "Ã„": "A",
+                            "Ã…": "A", "Ã†": "A", "Ã‡": "C", "Ãˆ": "E", "Ã‰": "E", "ÃŠ": "E", "Ã‹": "E", "ÃŒ": "I", "Ã": "I",
+                            "ÃŽ": "I", "Ã": "I", "Ã": "O", "Ã‘": "N", "Ã’": "O", "Ã“": "O", "Ã”": "O", "Ã•": "O", "Ã–": "O",
+                            "Ã˜": "O", "Ã™": "U", "Ãš": "U", "Ã›": "U", "Ãœ": "U", "Ã": "Y", "Ãž": "B", "ÃŸ": "Y"}
 
 """
 This function converts the passed data based on the other parameters, and returns the converted data
@@ -162,14 +166,16 @@ True so that the logic results in the replacement of those chars with space rath
 """
 
 
-def convert(main_screen, data_to_convert, character_list, conversion_dict, is_for_file_name=False, is_for_trouble=False):
+def convert(main_screen, data_to_convert, character_list, conversion_dict, is_for_file_name=False,
+            is_for_trouble=False):
     old_data = data_to_convert
     screen_label = main_screen.ids.screen_label
     setup_screen_label(screen_label)
 
     for char in character_list:
         if char in data_to_convert:
-            data_to_convert = data_to_convert.replace(char, conversion_dict[char]) if not is_for_file_name else data_to_convert.replace(char, "-") \
+            data_to_convert = data_to_convert.replace(char, conversion_dict[
+                char]) if not is_for_file_name else data_to_convert.replace(char, "-") \
                 if not is_for_trouble else data_to_convert.replace(char, " ")
     if old_data != data_to_convert and is_for_file_name and is_for_trouble is not True:
         screen_label.text = screen_label.text + f"\n{bcolors.FAIL}Error saving file with name {old_data}, saved as {data_to_convert} instead.{bcolors.ENDC}"
@@ -203,8 +209,6 @@ def connect(main_screen, context, connection_type, content=None, file_name=None,
                 upload_file(ctx, content, file_name, location)
             elif connection_type == 'execute_query':  # if list item needs to be created and added
                 context.execute_query()
-            elif connection_type == 'qr_batch':  # if a file from the SharePoint needs to be retrieved (names.csv)
-                return_val = File.open_binary(context, relative_url)
             else:
                 screen_label.text = screen_label.text + f"\n{bcolors.WARNING}Invalid connection type.{bcolors.ENDC}"
                 return_val = False
@@ -222,7 +226,7 @@ def connect(main_screen, context, connection_type, content=None, file_name=None,
                 time.sleep(30)
             elif i > 1 and not duplicate and connection_type != 'qr_batch':  # if failed thrice, write to backup.txt
                 screen_label.text = screen_label.text + f"\n{bcolors.FAIL}Reconnect failed again.{bcolors.ENDC}{bcolors.OKBLUE} Data will be stored locally and " \
-                      f"uploaded at the next upload point, or if triggered from the menu.{bcolors.ENDC}"
+                                                        f"uploaded at the next upload point, or if triggered from the menu.{bcolors.ENDC}"
                 if os.path.exists(backup_file) and connection_type == 'upload':
                     with open(backup_file, "a") as backup:
                         if ".jpg" in file_name:
@@ -240,10 +244,6 @@ def connect(main_screen, context, connection_type, content=None, file_name=None,
                 elif connection_type == 'execute_query':
                     with open(backup_file, "a") as backup:
                         backup.write(f"$$$$$\n{content}\n----------\n")
-                return False
-            elif i > 1 and connection_type == 'qr_batch':
-                screen_label.text = screen_label.text + f"\n{bcolors.FAIL}Reconnect failed again.{bcolors.OKBLUE} Try again when you have " \
-                      f"internet connection.{bcolors.ENDC}{bcolors.ENDC}"
                 return False
         i += 1
 
@@ -295,7 +295,7 @@ def upload_backup(context, main_screen_widget, from_menu=False):
                         successful = connect(main_screen_widget, context, 'upload', content, file_name, location, True)
                     if not successful:
                         screen_label.text = screen_label.text + f"\n{bcolors.FAIL}Upload of backed up data failed.{bcolors.ENDC}{bcolors.OKBLUE} Program will " \
-                                                        f"try again at next upload, or you can trigger upload manually from the menu.{bcolors.ENDC}"
+                                                                f"try again at next upload, or you can trigger upload manually from the menu.{bcolors.ENDC}"
                         return False
                     elif successful and ".jpg" in file_name:
                         os.remove(f"System_Data/{file_name}")  # remove the qr code .jpg file if successful upload
@@ -409,119 +409,50 @@ def qr_batch(main_screen_widget):
     # QR code image size and input filename can be modified below
 
     success = True
-    # This one creates the batch of QR codes in the chosen folder as well as the Archive folder
-    if storageChoice == 'a':
-        with open(localQRBatchFile) as csvfile:
-            reader = csv.reader(csvfile)
+    # This one creates the batch of QR codes in the same folder as this file
+    with open(localQRBatchFile) as csvfile:
+        reader = csv.reader(csvfile)
 
-            for row in reader:
-                labeldata = row[0] if len(row) == 1 else row[0] + " " + row[1] if row[1] != '' else row[0]
+        for row in reader:
+            labeldata = row[0] if len(row) == 1 else row[0] + " " + row[1] if row[1] != '' else row[0]
 
-                # convert special char to code character
-                codeLabelData = convert(main_screen_widget, labeldata, special_characters, char_dict_special_to_code)
+            # convert special char to code character
+            codeLabelData = convert(main_screen_widget, labeldata, special_characters, char_dict_special_to_code)
 
-                qr = qrcode.QRCode(
-                    version=1,
-                    error_correction=qrcode.constants.ERROR_CORRECT_L,
-                    box_size=10,
-                    border=4)
+            qr = qrcode.QRCode(
+                version=1,
+                error_correction=qrcode.constants.ERROR_CORRECT_L,
+                box_size=10,
+                border=4)
 
-                qr.add_data(codeLabelData)
-                qr.make(fit=True)
-                screen_label.text = screen_label.text + "\nCreating QR code: " + labeldata
+            qr.add_data(codeLabelData)
+            qr.make(fit=True)
+            screen_label.text = screen_label.text + "\nCreating QR code: " + labeldata
 
-                # draw QR image
+            # draw QR image
 
-                img = qr.make_image()
-                qrFile = labeldata + ".jpg"
-                qrFile = convert(main_screen_widget, qrFile, bad_file_name_list, None, True)  # remove special chars that can't be in filename
-                img.save(archive_folder + "/" + qrFile)
+            img = qr.make_image()
+            qrFile = labeldata + ".jpg"
+            qrFile = convert(main_screen_widget, qrFile, bad_file_name_list, None,
+                             True)  # remove special chars that can't be in filename
+            img.save(archive_folder + "/" + qrFile)
 
-                # open QR image and add qr data as name
-                img = Image.open(archive_folder + "/" + qrFile)
-                draw = ImageDraw.Draw(img)
-                font = ImageFont.truetype("arial", 24)
-                color = 0
-                draw.text((37, 10), labeldata, font=font, fill=color)
-                img.save(archive_folder + "/" + qrFile)
-                if storageChoice == 'a':
-                    try:
-                        img.save(storagePath + "/" + qrFile)
-                    except:
-                        success = False
-    elif storageChoice == 'b':  # For storing the new QR Codes online, if that was selected
-        resp = connect(main_screen_widget, ctx, 'qr_batch')  # runs the retrieval of the csv file from SharePoint through connect()
-
-        if type(resp) == bool:  # if a boolean value is returned, then the retrieval failed
-            return False
-        elif resp.status_code == 404:
-            screen_label.text = screen_label.text + f"\n\n{bcolors.FAIL}The batch file {bcolors.ENDC}{bcolors.FAIL}'{relative_url}{bcolors.ENDC}{bcolors.FAIL}' doesn't exist. " \
-                f"Please create a CSV file with the appropriate name and add it to the {bcolors.FAIL}SharePoint site with the correct file path.{bcolors.ENDC}{bcolors.ENDC}"
-            return False
-
-        with open(remoteQRBatchFile, 'wb') as output_file:
-            output_file.write(resp.content)
-
-        with open(remoteQRBatchFile) as csvfile:
-            reader = csv.reader(csvfile)
-
-            for row in reader:  # get each row from the CSV file
-                labeldata = row[0] if len(row) == 1 else row[0] + " " + row[1] if row[1] != '' else row[0]
-                # above: gets data from 1 row or 2 rows depending on what is in each
-
-                # Check for special char
-                if special_char_bool is False:
-                    skip_label = False
-                    for special_char in special_characters:
-                        if special_char in labeldata:
-                            skip_label = True
-                    if skip_label:
-                        screen_label.text = screen_label.text + "\nQR Code was skipped due to special character."
-                        return
-
-                # convert special char to code character
-                codeLabelData = convert(main_screen_widget, labeldata, special_characters, char_dict_special_to_code)
-
-                qr = qrcode.QRCode(
-                    version=1,
-                    error_correction=qrcode.constants.ERROR_CORRECT_L,
-                    box_size=10,
-                    border=4)
-
-                qr.add_data(codeLabelData)
-                qr.make(fit=True)
-                screen_label.text = screen_label.text + "\nCreating QR code: " + labeldata
-
-                # draw QR image
-
-                img = qr.make_image()
-                qrfile = labeldata + ".jpg"
-                qrfile = convert(main_screen_widget, qrfile, bad_file_name_list, None, True)  # convert chars that can't be in filename
-                img.save(archive_folder + "/" + qrfile)
-
-                # open QR image and add qr data as name
-
-                img = Image.open(archive_folder + "/" + qrfile)
-                draw = ImageDraw.Draw(img)
-                font = ImageFont.truetype("arial", 18)
-                color = 0
-                draw.text((37, 10), labeldata, font=font, fill=color)
-                img.save(archive_folder + "/" + qrfile)
-
-                with open(archive_folder + "/" + qrfile, 'rb') as content_file:  # upload file
-                    file_content = content_file.read()
-                success = connect(main_screen_widget, ctx, 'upload', file_content, qrfile, qrfolder)
-
-        os.remove(remoteQRBatchFile)
+            # open QR image and add qr data as name
+            img = Image.open(archive_folder + "/" + qrFile)
+            draw = ImageDraw.Draw(img)
+            font = ImageFont.truetype("arial", 24)
+            color = 0
+            draw.text((37, 10), labeldata, font=font, fill=color)
+            img.save(archive_folder + "/" + qrFile)
+            try:
+                img.save(storagePath + "/" + qrFile)
+            except:
+                success = False
 
     if success:
         screen_label.text = screen_label.text + f"\n\n{bcolors.OKGREEN}Success!{bcolors.ENDC}\n"
-        if storageChoice == 'b':  # if the other upload was successful, also try to upload the backed-up data
-            upload_backup(ctx, main_screen_widget)
     else:
-        screen_label.text = screen_label.text + f"\n{bcolors.FAIL}Some or no files were saved in {storagePath}, only in Archive folder.{bcolors.ENDC}" if \
-            storageChoice == 'a' else screen_label.text + f"\n{bcolors.WARNING}Some or no files were saved in {storagePath}, only in Archive folder.{bcolors.ENDC}"
-
+        screen_label.text = screen_label.text + f"\n{bcolors.FAIL}Some or no files were saved in {storagePath}, only in Archive folder.{bcolors.ENDC}"
 
 
 """
@@ -535,14 +466,9 @@ def qr_single(main_screen_widget, text):
     screen_label = main_screen_widget.ids.screen_label
     setup_screen_label(screen_label)
 
-    if storageChoice == 'b' and special_char_bool is False:
-        skip_label = False
-        for special_char in special_characters:
-            if special_char in text:
-                skip_label = True
-        if skip_label:
-            screen_label.text = screen_label.text + "\nQR Code was skipped due to special character."
-            return
+    if text == "":  # if no text is entered into the text box
+        screen_label.text = screen_label.text + "\nSkipped because no text was entered."
+        return
 
     text_copy = text
     screen_label.text = screen_label.text + "\nCreating QR code: " + text
@@ -565,7 +491,8 @@ def qr_single(main_screen_widget, text):
     # draw label
     img = qr.make_image()
     fileName = text + ".jpg"
-    fileName = convert(main_screen_widget, fileName, bad_file_name_list, None, True)  # convert chars that can't be in a file name
+    fileName = convert(main_screen_widget, fileName, bad_file_name_list, None,
+                       True)  # convert chars that can't be in a file name
     img.save(archive_folder + "/" + fileName)
 
     # Open QR image and add QR data as name
@@ -577,25 +504,16 @@ def qr_single(main_screen_widget, text):
     img.save(archive_folder + "/" + fileName)
 
     succeed = True
-    # Store QR code locally, if that was chosen
-    if storageChoice == 'a':
-        try:
-            img.save(storagePath + "/" + fileName)
-        except:
-            succeed = False
-    elif storageChoice == 'b':  # Store QR code online, if chosen
-        # upload file
-        with open(archive_folder + "/" + fileName, 'rb') as content_file:
-            file_content = content_file.read()
-        succeed = connect(main_screen_widget, ctx, 'upload', file_content, fileName, qrfolder)
+    # Store QR code locally
+    try:
+        img.save(storagePath + "/" + fileName)
+    except:
+        succeed = False
 
     if succeed:
         screen_label.text = screen_label.text + f"\n{bcolors.OKGREEN}Success!{bcolors.ENDC}"
-        if storageChoice == 'b':
-            upload_backup(ctx, main_screen_widget)  # if the other upload was successful, also try to upload the backed-up data
     else:
-        screen_label.text = screen_label.text + f"\n{bcolors.FAIL}File not saved in storage directory or none was established, saved only in Archive folder.{bcolors.ENDC}" if \
-            storageChoice == 'a' else screen_label.text + f"\n{bcolors.WARNING}Successful locally, not online.{bcolors.ENDC}"
+        screen_label.text = screen_label.text + f"\n{bcolors.FAIL}File not saved in {storagePath}, only in Archive folder.{bcolors.ENDC}"
 
 
 """
@@ -629,7 +547,7 @@ def cons(main_screen_widget):
             except:
                 screen_label.text = screen_label.text + f"\n{bcolors.WARNING}[WARNING] Either the system was unable to write the consolidated file " \
                                                         f"to the specified shared directory or the file " + cons_filename + " is currently in use " \
-                                                        f"or unavailable. The consolidated record may be incomplete.{bcolors.ENDC}\n"
+                                                                                                                            f"or unavailable. The consolidated record may be incomplete.{bcolors.ENDC}\n"
     else:
         screen_label.text = screen_label.text + f"\n{bcolors.WARNING}A storage location has not been established. Specify a storage folder using the " \
               f"'Choose Storage Location' option before continuing\n{bcolors.ENDC}"
@@ -643,7 +561,6 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.popup import Popup
 from kivy.core.window import Window
 from libs.garden.recyclelabel import RecycleLabel
-
 
 """
 This function allows the user to select a shared folder. If user escapes, a share folder is not created
@@ -767,6 +684,7 @@ class MainScreenWidget(BoxLayout):
                                 status = status[:len(status) - 1]  # else just remove the newline char from the status
                             # Convert barcodeDataSpecial's special chars to regular chars
                             barcodeDataReg = convert(self, barcodeDataSpecial, special_characters, char_dict_special_to_reg)
+
                             if status == "IN":  # if status is IN, use 5 params
                                 contentstr = "{},{},{},{},{}\n".format(last_system_id, file_date, file_time,
                                                                     barcodeDataReg, status)  # for online CSV file
@@ -777,6 +695,7 @@ class MainScreenWidget(BoxLayout):
                                                                        status, duration)  # for online CSV file
                                 contentstr2 = '{},{},{},{},{},{}\n'.format(last_system_id, file_date, file_time,
                                                                         barcodeDataSpecial, status, duration)  # for list item
+
                             create_list_item(self, ctx, contentstr2)
                             contentStrings = contentStrings + contentstr
                 if storageChoice.lower() == 'a':
@@ -842,7 +761,8 @@ class MainScreenWidget(BoxLayout):
                     img = Image.new('RGB', (400, 15), color='white')
                     img.putalpha(0)
                     d = ImageDraw.Draw(img)
-                    textToPrint = convert(self, barcodeData, trouble_characters, None, True, True)  # replace \t,\n,\r with ' '
+                    textToPrint = convert(self, barcodeData, trouble_characters, None, True,
+                                          True)  # replace \t,\n,\r with ' '
                     try:
                         d.text((0, 0), textToPrint + ' (' + barcodeType + ')', fill='blue')
                     except UnicodeEncodeError:
@@ -859,6 +779,7 @@ class MainScreenWidget(BoxLayout):
                         datetime_scanned = datetime.datetime.now()  # this one appended to found_time arr
                         date_scanned = datetime.datetime.now().strftime("%m/%d/%Y")  # this one prints to csv
                         time_scanned = datetime.datetime.now().strftime("%H:%M:%S.%f")  # this one prints to csv
+
                         txt.write("{},{},{},{},{}\n".format(system_id, date_scanned, time_scanned,
                                                          barcodeData, "IN"))
                         txt.flush()
@@ -905,11 +826,13 @@ class MainScreenWidget(BoxLayout):
                             found_time[index_loc] = datetime_scanned
                             txt.write("{},{},{},{},{},{}\n".format(system_id, date_scanned, time_scanned,
                                                                 barcodeData, "OUT", time_check))  # write to local CSV file
+
                             txt.flush()
 
                             checked_out = True
                             if storageChoice.lower() == 'b':  # if user chose online/Sharepoint version
-                                barcodeDataNew = convert(self, barcodeData, special_characters, char_dict_special_to_reg)
+                                barcodeDataNew = convert(self, barcodeData, special_characters,
+                                                         char_dict_special_to_reg)
                                 # (above) convert qr code text special chars to reg chars
                                 contentstr = "{},{},{},{},{},{}\n".format(system_id, datestr, timestr, barcodeDataNew, "OUT", time_check)
                                 contentstr2 = "{},{},{},{},{},{}\n".format(system_id, datestr, timestr, barcodeData, "OUT",
@@ -918,7 +841,8 @@ class MainScreenWidget(BoxLayout):
                                 checked_out = create_list_item(self, ctx, contentstr2)
                                 contentStrings = contentStrings + contentstr
 
-                            winsound.Beep(500, 400)  # makes a beeping sound on scan in
+                            winsound.Beep(500, 400)  # makes a beeping sound on scan
+
                             if checked_out:
                                 screen_label.text = screen_label.text + f"\n{barcodeData} checking OUT at {str(datetime_scanned)} at location: " \
                                                                         f"{system_id} for duration of {str(time_check)}"
@@ -991,6 +915,7 @@ class MainScreenWidget(BoxLayout):
                 vs.stop()
                 vs.stream.release()
                 vs = None
+
             cv2.destroyAllWindows()
 
             user_chose_storage = False
@@ -1019,25 +944,34 @@ class MainScreenWidget(BoxLayout):
     """ This function calls the qr_batch function and runs the qr_batch generator """
 
     def qr_batch(self):
-        qr_batch(self)
+        global storagePath
+        if storagePath == "":
+            storagePath = store(self)
+        if storagePath != "": qr_batch(self)
 
     """ This function creates a popup widget to prompt the user for text for the QR code, can be multi-line """
 
     def qr_single(self):
-        qr_single_widget = QRSingleWidget()
-        qr_single_widget.qr_single_popup = Popup(
-            title="Enter text to generate a single QR Code and click OK. The resulting image will be saved in the "
-                  "tool's origin folder, and selected storage location.", content=qr_single_widget,
-            size_hint=(None, None), size=(327, 290), auto_dismiss=True)
-        qr_single_widget.main_screen = self
-        qr_single_widget.qr_single_popup.open()
+        global storagePath
+        if storagePath == "":
+            storagePath = store(self)
+
+        if storagePath != "":
+            qr_single_widget = QRSingleWidget()
+            qr_single_widget.qr_single_popup = Popup(
+                title="Enter text to generate a single QR Code and click OK. The resulting image will be saved in the "
+                      "tool's origin folder, and selected storage location.", content=qr_single_widget,
+                size_hint=(None, None), size=(327, 290), auto_dismiss=True)
+            qr_single_widget.main_screen = self
+            qr_single_widget.qr_single_popup.open()
 
     """ This function shows the setup menu as a popup widget w/4 buttons """
 
     def setup(self):
         global isSpecialCharDisabled
         setup_popup = SetupWidget()
-        setup_popup.setup_popup = Popup(title="Choose an option", content=setup_popup, size_hint=(None, None), size=(251, 475),
+        setup_popup.setup_popup = Popup(title="Choose an option", content=setup_popup, size_hint=(None, None),
+                                        size=(251, 475),
                                         auto_dismiss=True)
         setup_popup.main_screen = self
         setup_popup.ids.specialcharbutton.disabled = isSpecialCharDisabled
@@ -1047,17 +981,17 @@ class MainScreenWidget(BoxLayout):
 
     def about(self):
         # displays the about screen
-        text = "[u]QR Toolbox v1.3[/u]\n"
+        text = "[u]QR Toolbox v1.4[/u]\n"
         text = text + "About: The QR Toolbox is a suite a tools for creating and reading QR codes. The toolbox is platform " \
-              "agnostic, lightweight, open source, and written in pure Python. This toolbox may be used to track resources," \
-              " serve as a check-in capability for personnel, or customized to meet other operational needs. \n"
-        text = text + "Version: 1.3 \n\n"
+                      "agnostic, lightweight, open source, and written in pure Python. This toolbox may be used to track resources," \
+                      " serve as a check-in capability for personnel, or customized to meet other operational needs. \n"
+        text = text + "Version: 1.4 \n\n"
         text = text + "Credits: The QR Toolbox consists of a number of python packages, namely: \n qrcode - " \
-              "Lincoln Loop info@lincolnloop.com; \n pyzbar - Lawrence Hudson quicklizard@googlemail.com; \n OpenCV code - " \
-              "Adrian Rosebrock https://www.pyimagesearch.com/author/adrian/; \n Code integration, minor enhancements, & " \
-              "platform development - Timothy Boe boe.timothy@epa.gov and Muhammad Karimi karimi.muhammad@epa.gov \n"
+                      "Lincoln Loop info@lincolnloop.com; \n pyzbar - Lawrence Hudson quicklizard@googlemail.com; \n OpenCV code - " \
+                      "Adrian Rosebrock https://www.pyimagesearch.com/author/adrian/; \n Code integration, minor enhancements, & " \
+                      "platform development - Timothy Boe boe.timothy@epa.gov and Muhammad Karimi karimi.muhammad@epa.gov \n"
         text = text + "Contact: Timothy Boe: boe.timothy@epa.gov; or Paul Lemieux: lemieux.paul@epa.gov; USEPA Homeland Security " \
-              "Research Program \n"
+                      "Research Program \n"
         screen_label = self.ids.screen_label
         screen_label.text = text
         screen_label.font_size = 18
@@ -1071,8 +1005,10 @@ class MainScreenWidget(BoxLayout):
 
     def exit(self, *args):
         exit_widget = ExitWidget()
-        exit_widget.exit_widget_popup = Popup(title="                             Are you sure you want to quit?\n(unsaved data, "
-                "such as from an open QR Reader, will be lost)", content=exit_widget, size_hint=(None, None), size=(417, 155), auto_dismiss=True)
+        exit_widget.exit_widget_popup = Popup(
+            title="                             Are you sure you want to quit?\n(unsaved data, "
+                  "such as from an open QR Reader, will be lost)", content=exit_widget, size_hint=(None, None),
+            size=(417, 155), auto_dismiss=True)
         exit_widget.exit_widget_popup.open()
         return True
 
@@ -1112,7 +1048,7 @@ class StorageWidget(BoxLayout):
     main_screen = None
 
     """ This function sets the storage based on the users selection (local or online) """
-    
+
     def set_storage(self, storage):
         global storageChoice, isSpecialCharDisabled
         if storage:  # Local button was pressed
@@ -1122,6 +1058,7 @@ class StorageWidget(BoxLayout):
             isSpecialCharDisabled = True
         elif not storage:
             storageChoice = "b"
+            _ = GIS("https://epa.maps.arcgis.com/home/content.html", client_id="szzEfRyeyk2TygQ5", verify_cert=False)  # Online
             screen_label = self.main_screen.ids.screen_label
             setup_screen_label(screen_label)
             screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}Storage location set to online (SharePoint).{bcolors.ENDC}"
@@ -1160,7 +1097,7 @@ class SetupWidget(BoxLayout):
     main_screen = None
 
     """ Redirects program to either the consolidate() method or the upload_backup() method above, based on users choice """
-    
+
     def upload_consolidate(self):
         if storageChoice == 'a':
             cons(self.main_screen)
@@ -1171,7 +1108,8 @@ class SetupWidget(BoxLayout):
 
     def change_storage_location(self):
         storage_location = StorageWidget()
-        storage_location.storage_popup = Popup(title="Select a storage location", content=storage_location, size_hint=(None, None),
+        storage_location.storage_popup = Popup(title="Select a storage location", content=storage_location,
+                                               size_hint=(None, None),
                                                size=(500, 400), auto_dismiss=True)
         storage_location.main_screen = self.main_screen
         storage_location.storage_popup.open()
@@ -1180,8 +1118,9 @@ class SetupWidget(BoxLayout):
 
     def change_camera_source(self):
         camera_location = CameraWidget()
-        camera_location.camera_popup = Popup(title="Which camera do you want to use?", content=camera_location, size_hint=(None, None),
-                                               size=(261, 375), auto_dismiss=True)
+        camera_location.camera_popup = Popup(title="Which camera do you want to use?", content=camera_location,
+                                             size_hint=(None, None),
+                                             size=(261, 375), auto_dismiss=True)
         camera_location.main_screen = self.main_screen
         camera_location.camera_popup.open()
 
@@ -1189,8 +1128,10 @@ class SetupWidget(BoxLayout):
 
     def set_special_character_conversion(self):
         special_char_widget = AskSpecialCharConversionWidget()
-        special_char_widget.special_char_popup = Popup(title="Do you want to allow conversion of QR Codes with special characters? (Only affects QR "
-        "Creator functions when using Sharepoint storage.)", content=special_char_widget, size_hint=(None, None), size=(375, 300), auto_dismiss=True)
+        special_char_widget.special_char_popup = Popup(
+            title="Do you want to allow conversion of QR Codes with special characters? (Only affects QR "
+                  "Creator functions when using Sharepoint storage.)", content=special_char_widget,
+            size_hint=(None, None), size=(375, 300), auto_dismiss=True)
         special_char_widget.main_screen = self.main_screen
         special_char_widget.special_char_popup.open()
 
@@ -1263,7 +1204,8 @@ class QRToolboxApp(App):
     def on_start(self):
         global clear_screen, not_yet
         storage_location = StorageWidget()
-        storage_location.storage_popup = Popup(title="Select a storage location", content=storage_location, size_hint=(None, None),
+        storage_location.storage_popup = Popup(title="Select a storage location", content=storage_location,
+                                               size_hint=(None, None),
                                                size=(500, 400), auto_dismiss=False)
         storage_location.main_screen = self.main_screen
         clear_screen = True
