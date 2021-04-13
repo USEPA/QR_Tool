@@ -15,6 +15,8 @@ from pathlib import Path
 from pylibdmtx import pylibdmtx
 from arcgis.gis import GIS
 
+Tree('C:/Users/mkarimi/PycharmProjects/QR_Tool')
+
 block_cipher = None
 
 

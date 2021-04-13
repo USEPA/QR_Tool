@@ -72,12 +72,13 @@ from kivy.app import App
 from Setup.settings import settings
 
 # Sharepoint related variables
-listTitle = "QR Timestamps"
-qrfolder = "QRCodes"
-bkcsvfolder = "HXWTEST"
+listTitle = settings['listTitle']
+qrfolder = settings['qrfolder']
+bkcsvfolder = settings['bkcsvfolder']
+mainDirectory = settings['mainDirectory']
 remoteQRBatchFile = "System_Data/names-remote.csv"
-localQRBatchFile = "names.csv"
-relative_url = "/sites/Emergency%20Response/EOCIncident/EOC%20Documents/QRCodes/names.csv"
+localQRBatchFile = settings['localQRBatchFile']
+relative_url = settings['relative_url']
 qr_storage_file = "System_Data/qr-data.txt"  # file that contains saved session information
 backup_file = "System_Data/backup.txt"  # file that contains data that couldn't be uploaded, to later be uploaded
 archive_folder = "Archive"
@@ -88,26 +89,27 @@ ctx = ClientContext(settings['url'], context_auth)
 
 # load variables
 # set store folder default, assign system ID, and wait time
-storagePath = ""
+storagePath = ""  # the path to the local storage directory if chosen
 checkStorage = False  # whether system should check if there is any backed up data or previous session data
 user_chose_storage = False
 not_done = True
 system_id = os.environ['COMPUTERNAME']
-t_value = timedelta(seconds=10)
-cameraSource = "Integrated"
-storageChoice = ""
+t_value = timedelta(seconds=10)  # time between scans for the same qr code
+cameraSource = "Integrated"  # the camera source, defaults to integrated (so source 0)
+storageChoice = ""  # users choice of local ('a') or online ('b') mode
 special_char_bool = True
 vs = None  # global video stream variable, to ensure only 1 instance of it exists at a time
 clear_screen = False  # if True, clear screen, else don't clear it (true only in 4 cases)
 not_yet = False  # prevents the screen from being cleared immediately at the start (only used at the start)
+isSpecialCharDisabled = False  # if true, user can't click on Special Char Conversion btn, if false they can click it
 
 # Lists and Dictionaries used for special character handling and conversion
 trouble_characters = ['\t', '\n', '\r']
 bad_file_name_list = ['*', ':', '"', '<', '>', ',', '/', '|', '?', '\t', '\r', '\n', '\\']
-special_characters = ["‡", "·", "‚", "„", "‰", "Â", "Ê", "Á", "Ë", "È", "Í", "Î", "Ï", "Ì", "Ó", "Ô", "", "Ò", "Ú",
-                      "Û", "Ù", "ı", "ˆ", "¯", "˘", "˙", "˚", "¸", "˝", "˛", "ˇ", "¿", "¡", "¬", "√", "ƒ", "≈", "∆",
-                      "«", "»", "…", " ", "À", "Ã", "Õ", "Œ", "œ", "–", "—", "“", "”", "‘", "’", "÷", "ÿ", "Ÿ", "⁄",
-                      "€", "‹", "›", "ﬁ", "ﬂ"]
+special_characters = ["√†", "√°", "√¢", "√£", "√§", "√•", "√¶", "√ß", "√®", "√©", "√™", "√´", "√¨", "√≠", "√Æ", "√Ø", "√∞", "√±", "√≤",
+                      "√≥", "√¥", "√µ", "√∂", "√∏", "√π", "√∫", "√ª", "√º", "√Ω", "√æ", "√ø", "√Ä", "√Å", "√Ç", "√É", "√Ñ", "√Ö", "√Ü",
+                      "√á", "√à", "√â", "√ä", "√ã", "√å", "√ç", "√é", "√è", "√ê", "√ë", "√í", "√ì", "√î", "√ï", "√ñ", "√ò", "√ô", "√ö",
+                      "√õ", "√ú", "√ù", "√û", "√ü"]
 code_characters = ["!@!a1!", "!@!a2!", "!@!a3!", "!@!a4!", "!@!a5!", "!@!a6!", "!@!a7!", "!@!c1!", "!@!e1!", "!@!e2!",
                    "!@!e3!", "!@!e4!", "!@!i1!", "!@!i2!", "!@!i3!", "!@!i4!", "!@!o1!", "!@!n1!", "!@!o2!", "!@!o3!",
                    "!@!o4!", "!@!o5!", "!@!o6!", "!@!o7!", "!@!u1!", "!@!u2!", "!@!u3!", "!@!u4!", "!@!y1!", "!@!b1!",
@@ -115,35 +117,35 @@ code_characters = ["!@!a1!", "!@!a2!", "!@!a3!", "!@!a4!", "!@!a5!", "!@!a6!", "
                    "!@!E2!", "!@!E3!", "!@!E4!", "!@!I1!", "!@!I2!", "!@!I3!", "!@!I4!", "!@!O1!", "!@!N1!", "!@!O2!",
                    "!@!O3!", "!@!O4!", "!@!O5!", "!@!O6!", "!@!O7!", "!@!U1!", "!@!U2!", "!@!U3!", "!@!U4!", "!@!Y1!",
                    "!@!B1!", "!@!Y2!"]
-char_dict_special_to_code = {"‡": "!@!a1!", "·": "!@!a2!", "‚": "!@!a3!", "„": "!@!a4!", "‰": "!@!a5!", "Â": "!@!a6!",
-                             "Ê": "!@!a7!", "Á": "!@!c1!", "Ë": "!@!e1!", "È": "!@!e1!", "Í": "!@!e3!", "Î": "!@!e4!",
-                             "Ï": "!@!i1!", "Ì": "!@!i2!", "Ó": "!@!i3!", "Ô": "!@!i4!", "": "!@!o1!", "Ò": "!@!n1!",
-                             "Ú": "!@!o2!", "Û": "!@!o3!", "Ù": "!@!o4!", "ı": "!@!o5!", "ˆ": "!@!o6!", "¯": "!@!o7!",
-                             "˘": "!@!u1!", "˙": "!@!u2!", "˚": "!@!u3!", "¸": "!@!u4!", "˝": "!@!y1!", "˛": "!@!b1!",
-                             "ˇ": "!@!y2!", "¿": "!@!A1!", "¡": "!@!A2!", "¬": "!@!A3!", "√": "!@!A4!", "ƒ": "!@!A5!",
-                             "≈": "!@!A6!", "∆": "!@!A7!", "«": "!@!C1!", "»": "!@!E1!", "…": "!@!E2!", " ": "!@!E3!",
-                             "À": "!@!E4!", "Ã": "!@!I1!", "Õ": "!@!I2!", "Œ": "!@!I3!", "œ": "!@!I4!", "–": "!@!O1!",
-                             "—": "!@!N1!", "“": "!@!O2!", "”": "!@!O3!", "‘": "!@!O4!", "’": "!@!O5!", "÷": "!@!O6!",
-                             "ÿ": "!@!O7!", "Ÿ": "!@!U1!", "⁄": "!@!U2!", "€": "!@!U3!", "‹": "!@!U4!", "›": "!@!Y1!",
-                             "ﬁ": "!@!B1!", "ﬂ": "!@!Y2!"}
-char_dict_code_to_special = {"!@!a1!": "‡", "!@!a2!": "·", "!@!a3!": "‚", "!@!a4!": "„", "!@!a5!": "‰", "!@!a6!": "Â",
-                             "!@!a7!": "Ê", "!@!c1!": "Á", "!@!e1!": "Ë", "!@!e2!": "È", "!@!e3!": "Í", "!@!e4!": "Î",
-                             "!@!i1!": "Ï", "!@!i2!": "Ì", "!@!i3!": "Ó", "!@!i4!": "Ô", "!@!o1!": "", "!@!n1!": "Ò",
-                             "!@!o2!": "Ú", "!@!o3!": "Û", "!@!o4!": "Ù", "!@!o5!": "ı", "!@!o6!": "ˆ", "!@!o7!": "¯",
-                             "!@!u1!": "˘", "!@!u2!": "˙", "!@!u3!": "˚", "!@!u4!": "¸", "!@!y1!": "˝", "!@!b1!": "˛",
-                             "!@!y2!": "ˇ", "!@!A1!": "¿", "!@!A2!": "¡", "!@!A3!": "¬", "!@!A4!": "√", "!@!A5!": "ƒ",
-                             "!@!A6!": "≈", "!@!A7!": "∆", "!@!C1!": "«", "!@!E1!": "»", "!@!E2!": "…", "!@!E3!": " ",
-                             "!@!E4!": "À", "!@!I1!": "Ã", "!@!I2!": "Õ", "!@!I3!": "Œ", "!@!I4!": "œ", "!@!O1!": "–",
-                             "!@!N1!": "—", "!@!O2!": "“", "!@!O3!": "”", "!@!O4!": "‘", "!@!O5!": "’", "!@!O6!": "÷",
-                             "!@!O7!": "ÿ", "!@!U1!": "Ÿ", "!@!U2!": "⁄", "!@!U3!": "€", "!@!U4!": "‹", "!@!Y1!": "›",
-                             "!@!B1!": "ﬁ", "!@!Y2!": "ﬂ"}
-char_dict_special_to_reg = {"‡": "a", "·": "a", "‚": "a", "„": "a", "‰": "a", "Â": "a", "Ê": "a", "Á": "c", "Ë": "e",
-                            "È": "e", "Í": "e", "Î": "e", "Ï": "i", "Ì": "i", "Ó": "i", "Ô": "i", "": "o", "Ò": "n",
-                            "Ú": "o", "Û": "o", "Ù": "o", "ı": "o", "ˆ": "o", "¯": "o", "˘": "u", "˙": "u", "˚": "u",
-                            "¸": "u", "˝": "y", "˛": "b", "ˇ": "y", "¿": "A", "¡": "A", "¬": "A", "√": "A", "ƒ": "A",
-                            "≈": "A", "∆": "A", "«": "C", "»": "E", "…": "E", " ": "E", "À": "E", "Ã": "I", "Õ": "I",
-                            "Œ": "I", "œ": "I", "–": "O", "—": "N", "“": "O", "”": "O", "‘": "O", "’": "O", "÷": "O",
-                            "ÿ": "O", "Ÿ": "U", "⁄": "U", "€": "U", "‹": "U", "›": "Y", "ﬁ": "B", "ﬂ": "Y"}
+char_dict_special_to_code = {"√†": "!@!a1!", "√°": "!@!a2!", "√¢": "!@!a3!", "√£": "!@!a4!", "√§": "!@!a5!", "√•": "!@!a6!",
+                             "√¶": "!@!a7!", "√ß": "!@!c1!", "√®": "!@!e1!", "√©": "!@!e1!", "√™": "!@!e3!", "√´": "!@!e4!",
+                             "√¨": "!@!i1!", "√≠": "!@!i2!", "√Æ": "!@!i3!", "√Ø": "!@!i4!", "√∞": "!@!o1!", "√±": "!@!n1!",
+                             "√≤": "!@!o2!", "√≥": "!@!o3!", "√¥": "!@!o4!", "√µ": "!@!o5!", "√∂": "!@!o6!", "√∏": "!@!o7!",
+                             "√π": "!@!u1!", "√∫": "!@!u2!", "√ª": "!@!u3!", "√º": "!@!u4!", "√Ω": "!@!y1!", "√æ": "!@!b1!",
+                             "√ø": "!@!y2!", "√Ä": "!@!A1!", "√Å": "!@!A2!", "√Ç": "!@!A3!", "√É": "!@!A4!", "√Ñ": "!@!A5!",
+                             "√Ö": "!@!A6!", "√Ü": "!@!A7!", "√á": "!@!C1!", "√à": "!@!E1!", "√â": "!@!E2!", "√ä": "!@!E3!",
+                             "√ã": "!@!E4!", "√å": "!@!I1!", "√ç": "!@!I2!", "√é": "!@!I3!", "√è": "!@!I4!", "√ê": "!@!O1!",
+                             "√ë": "!@!N1!", "√í": "!@!O2!", "√ì": "!@!O3!", "√î": "!@!O4!", "√ï": "!@!O5!", "√ñ": "!@!O6!",
+                             "√ò": "!@!O7!", "√ô": "!@!U1!", "√ö": "!@!U2!", "√õ": "!@!U3!", "√ú": "!@!U4!", "√ù": "!@!Y1!",
+                             "√û": "!@!B1!", "√ü": "!@!Y2!"}
+char_dict_code_to_special = {"!@!a1!": "√†", "!@!a2!": "√°", "!@!a3!": "√¢", "!@!a4!": "√£", "!@!a5!": "√§", "!@!a6!": "√•",
+                             "!@!a7!": "√¶", "!@!c1!": "√ß", "!@!e1!": "√®", "!@!e2!": "√©", "!@!e3!": "√™", "!@!e4!": "√´",
+                             "!@!i1!": "√¨", "!@!i2!": "√≠", "!@!i3!": "√Æ", "!@!i4!": "√Ø", "!@!o1!": "√∞", "!@!n1!": "√±",
+                             "!@!o2!": "√≤", "!@!o3!": "√≥", "!@!o4!": "√¥", "!@!o5!": "√µ", "!@!o6!": "√∂", "!@!o7!": "√∏",
+                             "!@!u1!": "√π", "!@!u2!": "√∫", "!@!u3!": "√ª", "!@!u4!": "√º", "!@!y1!": "√Ω", "!@!b1!": "√æ",
+                             "!@!y2!": "√ø", "!@!A1!": "√Ä", "!@!A2!": "√Å", "!@!A3!": "√Ç", "!@!A4!": "√É", "!@!A5!": "√Ñ",
+                             "!@!A6!": "√Ö", "!@!A7!": "√Ü", "!@!C1!": "√á", "!@!E1!": "√à", "!@!E2!": "√â", "!@!E3!": "√ä",
+                             "!@!E4!": "√ã", "!@!I1!": "√å", "!@!I2!": "√ç", "!@!I3!": "√é", "!@!I4!": "√è", "!@!O1!": "√ê",
+                             "!@!N1!": "√ë", "!@!O2!": "√í", "!@!O3!": "√ì", "!@!O4!": "√î", "!@!O5!": "√ï", "!@!O6!": "√ñ",
+                             "!@!O7!": "√ò", "!@!U1!": "√ô", "!@!U2!": "√ö", "!@!U3!": "√õ", "!@!U4!": "√ú", "!@!Y1!": "√ù",
+                             "!@!B1!": "√û", "!@!Y2!": "√ü"}
+char_dict_special_to_reg = {"√†": "a", "√°": "a", "√¢": "a", "√£": "a", "√§": "a", "√•": "a", "√¶": "a", "√ß": "c", "√®": "e",
+                            "√©": "e", "√™": "e", "√´": "e", "√¨": "i", "√≠": "i", "√Æ": "i", "√Ø": "i", "√∞": "o", "√±": "n",
+                            "√≤": "o", "√≥": "o", "√¥": "o", "√µ": "o", "√∂": "o", "√∏": "o", "√π": "u", "√∫": "u", "√ª": "u",
+                            "√º": "u", "√Ω": "y", "√æ": "b", "√ø": "y", "√Ä": "A", "√Å": "A", "√Ç": "A", "√É": "A", "√Ñ": "A",
+                            "√Ö": "A", "√Ü": "A", "√á": "C", "√à": "E", "√â": "E", "√ä": "E", "√ã": "E", "√å": "I", "√ç": "I",
+                            "√é": "I", "√è": "I", "√ê": "O", "√ë": "N", "√í": "O", "√ì": "O", "√î": "O", "√ï": "O", "√ñ": "O",
+                            "√ò": "O", "√ô": "U", "√ö": "U", "√õ": "U", "√ú": "U", "√ù": "Y", "√û": "B", "√ü": "Y"}
 
 """
 This function converts the passed data based on the other parameters, and returns the converted data
@@ -214,8 +216,8 @@ def connect(main_screen, context, connection_type, content=None, file_name=None,
                 screen_label.text = screen_label.text + f"\n{bcolors.OKGREEN}Connection successful.{bcolors.ENDC}"
             return return_val
         except:
-            # e = sys.exc_info()[0]  # used for error checking
-            # print(e)
+            e = sys.exc_info()[0]  # used for error checking
+            print(e)
             if i == 0:
                 screen_label.text = screen_label.text + f"\n{bcolors.FAIL}Connection lost. Trying again in 10 seconds.{bcolors.ENDC}"
                 time.sleep(10)
@@ -227,10 +229,18 @@ def connect(main_screen, context, connection_type, content=None, file_name=None,
                                                         f"uploaded at the next upload point, or if triggered from the menu.{bcolors.ENDC}"
                 if os.path.exists(backup_file) and connection_type == 'upload':
                     with open(backup_file, "a") as backup:
-                        backup.write(f"{content}\n@@@@@\n{file_name}\n@@@@@\n{location}\n----------\n")
+                        if ".jpg" in file_name:
+                            backup.write(f"QRCode\n@@@@@\n{file_name}\n@@@@@\n{location}\n----------\n")
+                            with open(f"System_Data/{file_name}", "wb") as output: output.write(content)
+                        else:
+                            backup.write(f"{content}\n@@@@@\n{file_name}\n@@@@@\n{location}\n----------\n")
                 elif connection_type == 'upload':
                     with open(backup_file, "w") as backup:
-                        backup.write(f"{content}\n@@@@@\n{file_name}\n@@@@@\n{location}\n----------\n")
+                        if ".jpg" in file_name:
+                            backup.write(f"QRCode\n@@@@@\n{file_name}\n@@@@@\n{location}\n----------\n")
+                            with open(f"System_Data/{file_name}", "wb") as output: output.write(content)
+                        else:
+                            backup.write(f"{content}\n@@@@@\n{file_name}\n@@@@@\n{location}\n----------\n")
                 elif connection_type == 'execute_query':
                     with open(backup_file, "a") as backup:
                         backup.write(f"$$$$$\n{content}\n----------\n")
@@ -266,11 +276,29 @@ def upload_backup(context, main_screen_widget, from_menu=False):
                     if flag == 3:  # means it was a list item
                         successful = create_list_item(main_screen_widget, context, content, True)
                     else:  # means it was a file to be uploaded
+                        if ".jpg" in file_name and content == "QRCode\n":  # if file is a qr code, update content var
+                            if os.path.exists(f"System_Data/{file_name}"):  # make sure file exists still
+                                try:
+                                    with open(f"System_Data/{file_name}", "rb") as file:  # must read qr code as a binary file
+                                        content = file.read()  # content var must be in bytes format for this to work properly
+                                        with open(f"System_Data/NEWTEST.jpg", "wb") as output:
+                                            output.write(file.read())
+                                except:  # if error, print it, reset vars and continue
+                                    screen_label.text = screen_label.text + f"\n{bcolors.FAIL}An error has occurred. Make sure the file is not open, moved, or deleted.{bcolors.ENDC}"
+                                    flag = 0; content = ""; file_name = ""; location = ""
+                                    continue
+                            else:  # if not, print error reset vars and continue
+                                screen_label.text = screen_label.text + f"\n{bcolors.FAIL}File (System_Data/{file_name}) not found. If a QR Code is repeated or if you are uploading backed up data a 2nd or more times,{bcolors.ENDC}" \
+                                                    f"{bcolors.FAIL} then this is generally normal behaviour since some data is successfully uploaded and others are not.{bcolors.ENDC}"
+                                flag = 0; content = ""; file_name = ""; location = ""
+                                continue
                         successful = connect(main_screen_widget, context, 'upload', content, file_name, location, True)
                     if not successful:
                         screen_label.text = screen_label.text + f"\n{bcolors.FAIL}Upload of backed up data failed.{bcolors.ENDC}{bcolors.OKBLUE} Program will " \
                                                                 f"try again at next upload, or you can trigger upload manually from the menu.{bcolors.ENDC}"
                         return False
+                    elif successful and ".jpg" in file_name:
+                        os.remove(f"System_Data/{file_name}")  # remove the qr code .jpg file if successful upload
                     flag = 0
                     content = ""
                     file_name = ""
@@ -299,22 +327,25 @@ def create_list_item(main_screen, context, content, duplicate=False):
     screen_label = main_screen.ids.screen_label
     setup_screen_label(screen_label)
 
-    screen_label.text = screen_label.text + "\nCreating list item example..."
+    screen_label.text = screen_label.text + "\nCreating list item..."
     list_object = context.web.lists.get_by_title(listTitle)
     values = content.split(",")
     sid = values[0]
-    tstr = values[1]
-    barstr = values[2]
-    status = values[3]
+    tstr = values[1] + " " + values[2]
+    barstr = values[3]
+    status = values[4]
 
-    item_properties = {'__metadata': {'type': 'SP.Data.QR_x0020_TimestampsListItem'}, 'Title': barstr,
+    # Convert barstrs' special chars to regular chars for upload to SharePoint list
+    barstrReg = convert(main_screen,barstr, special_characters, char_dict_special_to_reg)
+
+    item_properties = {'__metadata': {'type': 'SP.Data.QR_x0020_TimestampsListItem'}, 'Title': barstrReg,
                        'QR_x0020_Terminal': sid, 'Time_x0020_Stamp': tstr, 'Info': status}
-    item = list_object.add_item(item_properties)
+    list_object.add_item(item_properties)
     succeed = connect(main_screen, context, 'execute_query', content, duplicate=duplicate)
     if succeed:
-        screen_label.text = screen_label.text + "\nList item '{0}' has been created.".format(item.properties["Title"])
+        screen_label.text = screen_label.text + f"\nList item '{barstr}' has been created."
     else:
-        screen_label.text = screen_label.text + f"\n{bcolors.WARNING}List item '{item.properties['Title']}' has NOT been created.{bcolors.ENDC}"
+        screen_label.text = screen_label.text + f"\n{bcolors.WARNING}List item '{barstr}' has NOT been created.{bcolors.ENDC}"
     return succeed
 
 
@@ -330,8 +361,7 @@ This function uploads the passed data to the SharePoint site in the specified su
 
 
 def upload_file(context, file_content, filename, sub_folder):
-    list_title = "EOC Documents"
-    library = context.web.lists.get_by_title(list_title)
+    library = context.web.lists.get_by_title(mainDirectory)
 
     file_context = library.context
     info = FileCreationInformation()
@@ -339,7 +369,7 @@ def upload_file(context, file_content, filename, sub_folder):
     info.url = filename
     info.overwrite = True
 
-    # upload file to sub folder 'eoctest'
+    # upload file to sub folder as defined by 'sub_folder', this value is generally either variable qrfolder or bkcsvfolder as defined above
     target_file = library.rootFolder.folders.get_by_url(sub_folder).files.add(info)
     file_context.execute_query()
 
@@ -360,15 +390,20 @@ def qr_batch(main_screen_widget):
     screen_label = main_screen_widget.ids.screen_label
     setup_screen_label(screen_label)
     screen_label.text = screen_label.text + "\n\nThe batch QR code function is used to quickly create multiple QR codes by referencing a .csv file." \
-                                            "\n-If QR Toolbox is in local mode, the CSV file must be stored in the root folder of the program (where it was installed), and named 'names.csv'." \
-                                            "\n    The Tool will then automatically create QR codes for each line in the csv, and save each QR Code image to the Tools root folder" \
-                                            "\n    (this folder is usually called 'QR-Toolbox', and should be found in C:/Users/<user>/AppData/Local/Programs). Where <user> refers" \
-                                            "\n    to your user name on your computer. However, if you changed the install location, it may not be at that file path." \
-                                            "\n-If QR Toolbox is in online mode, the csv file must be stored on the SharePoint site where QR codes are" \
-                                            "\n    located, and must also be named 'names.csv'. The Tool will then do the same as above, but will also store each" \
-                                            "\n    QR code image to the SharePoint site." \
-                                            "\n-'names.csv' may consist of two columns 'first' & 'second'. The 'first' and 'second' columns could be " \
-                                            "\n    populated with participant's first and last names, or other information, and will be joined together with a space in between.\n"
+          "\n-If QR Toolbox is in local mode, the CSV file must be stored in the root folder of the program (where it was installed), and named 'names.csv'." \
+          "\n    * The file name can be changed, but this change must also be reflected in the Setup/settings.py file for the " \
+          "\n       variable 'localQRBatchFile'." \
+          "\n    * The Tool will then automatically create QR codes for each line in the csv, and save each QR Code image to the" \
+          "\n       Tools root folder (this folder is usually called 'QR-Toolbox', and should be found in" \
+          "\n       C:/Users/<user>/AppData/Local/Programs), where <user> refers to your user name on your computer." \
+          "\n    * However, if you changed the install location, it may not be at that file path." \
+          "\n-If QR Toolbox is in online mode, the csv file must be stored on the SharePoint site where QR codes are" \
+          "\n    located, and must also be named 'names.csv'. This file name can also be changed, but again this change must" \
+          "\n    be reflected in the Setup/settings.py file for the variable 'relative_url'. The Tool will then" \
+          "\n    do the same as above, but will also store each QR code image to the SharePoint site." \
+          "\n-'names.csv' may consist of two columns 'first' & 'second'. The 'first' and 'second' columns could be " \
+          "\n    populated with participant's first and last names, or other information, and will be joined together with a space in" \
+          "\n    between.\n"
 
     # this code creates a batch of QR codes from a csv file stored in the local directory
     # QR code image size and input filename can be modified below
@@ -413,6 +448,7 @@ def qr_batch(main_screen_widget):
                 img.save(storagePath + "/" + qrFile)
             except:
                 success = False
+
     if success:
         screen_label.text = screen_label.text + f"\n\n{bcolors.OKGREEN}Success!{bcolors.ENDC}\n"
     else:
@@ -494,10 +530,10 @@ def cons(main_screen_widget):
     time_header = str(datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S'))
     cons_filename = os.path.join(storagePath, 'Consolidated_Record_' + time_header + '.csv')
     if os.path.exists(storagePath):
-        QRT_files = [fn for fn in os.listdir(storagePath) if fn.startswith('QRT')]
+        QRT_files = [fn for fn in os.listdir(storagePath) if fn.startswith('QRT-R-') and fn.endswith('.csv') and fn.__contains__("_")]
 
         if not QRT_files:
-            screen_label.text = screen_label.text + "\nNo entries to combine. Check the shared directory and try again"
+            screen_label.text = screen_label.text + "\nNo entries to combine. Check the storage directory and try again"
         else:
             try:
                 with open(cons_filename, 'wb') as outfile:
@@ -506,15 +542,15 @@ def cons(main_screen_widget):
                         with open(fname, 'rb') as infile:
                             shutil.copyfileobj(infile, outfile)
                             screen_label.text = screen_label.text + f"\n{fname} has been imported."
-                screen_label.text = screen_label.text + f"\n{bcolors.OKGREEN}\nConsolidated file created in the specified shared drive under " \
+                screen_label.text = screen_label.text + f"\n\n{bcolors.OKGREEN}Consolidated file created in the specified shared drive under " \
                                                         f"the filename " + cons_filename + f"{bcolors.ENDC}\n"
             except:
                 screen_label.text = screen_label.text + f"\n{bcolors.WARNING}[WARNING] Either the system was unable to write the consolidated file " \
                                                         f"to the specified shared directory or the file " + cons_filename + " is currently in use " \
                                                                                                                             f"or unavailable. The consolidated record may be incomplete.{bcolors.ENDC}\n"
     else:
-        screen_label.text = screen_label.text + f"\n{bcolors.WARNING}A shared folder has not been established. Specify a shared folder using the " \
-                                                f"Establish Share Folder option before continuing\n{bcolors.ENDC}"
+        screen_label.text = screen_label.text + f"\n{bcolors.WARNING}A storage location has not been established. Specify a storage folder using the " \
+              f"'Choose Storage Location' option before continuing\n{bcolors.ENDC}"
         pass
 
 
@@ -523,8 +559,8 @@ os.environ['KIVY_GL_BACKEND'] = 'angle_sdl2'
 
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.popup import Popup
-from kivy.uix.scrollview import ScrollView
 from kivy.core.window import Window
+from libs.garden.recyclelabel import RecycleLabel
 
 """
 This function allows the user to select a shared folder. If user escapes, a share folder is not created
@@ -588,16 +624,13 @@ class MainScreenWidget(BoxLayout):
     """
 
     def video(self):
-        global not_done, user_chose_storage, vs
-
-        while not_done:
-            pass
+        global user_chose_storage, vs
 
         screen_label = self.ids.screen_label
         setup_screen_label(screen_label)
 
         screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}[ALERT] Starting video stream...{bcolors.ENDC}\n"
-        screen_label.text = screen_label.text + f"{bcolors.OKBLUE}To exit, click on the webcam window and press 'Q'{bcolors.ENDC}"
+        screen_label.text = screen_label.text + f"{bcolors.OKBLUE}To exit, close the webcam window.{bcolors.ENDC}"
 
         if user_chose_storage:
             # construct the argument parser and parse the arguments
@@ -607,18 +640,23 @@ class MainScreenWidget(BoxLayout):
             args = vars(ap.parse_args())
             # initialize time and date and make filename friendly
             time_header = str(datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S'))
-            file_name = "QRT" + "-" + system_id + "_" + time_header + ".csv"
+            file_name = "QRT-R-" + system_id + "_" + time_header + ".csv"
 
             # initialize the video stream and allow the camera sensor to warm up
-
-            if cameraSource == 'Integrated':  # start correct camera based on user choice at beginning
-                vs = VideoStream(src=0).start()  # for integrated/built in webcam
-            elif cameraSource == 'Separate':
-                vs = VideoStream(src=1).start()  # for separate webcam (usually USB connected)
-            elif cameraSource == 'PiCamera':
-                vs = VideoStream(usePiCamera=True).start()  # for mobile solution like Raspberry Pi Camera
-            else:
-                screen_label.text = screen_label.text + f"\n{bcolors.FAIL}An error has occurred.{bcolors.ENDC}"
+            try:
+                if cameraSource == 'Integrated':  # start correct camera based on user choice at beginning
+                    vs = VideoStream(src=0).start()  # for integrated/built in webcam
+                elif cameraSource == 'Separate':
+                    vs = VideoStream(src=1).start()  # for separate webcam (usually USB connected)
+                elif cameraSource == 'PiCamera':
+                    vs = VideoStream(usePiCamera=True).start()  # for mobile solution like Raspberry Pi Camera
+                else:
+                    screen_label.text = screen_label.text + f"\n{bcolors.FAIL}An error has occurred.{bcolors.ENDC}"
+                    return
+            except:  # if an error occurs in creating video stream, print to user and return
+                screen_label.text = screen_label.text + f"\n{bcolors.FAIL}An error occurred starting the QR Reader. Check your cameras and try again.{bcolors.ENDC}"
+                vs = None
+                self.ids.qrreader.disabled = False  # makes QR Reader btn enabled again
                 return
 
             time.sleep(5.0)  # give camera time
@@ -629,8 +667,8 @@ class MainScreenWidget(BoxLayout):
             if os.path.isfile(args["output"]) and checkStorage:  # check if user wanted to restart prev session
                 if storageChoice.lower() == 'b':  # do this only if QR Toolbox is in online-mode
                     # Write previous records back to contentStrings
-                    with open(args["output"], "r") as txt:
-                        screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}Restoring records...{bcolors.ENDC}"
+                    with open(args["output"], "r", encoding='utf-8') as txt:
+                        screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}Restoring records (online mode)...{bcolors.ENDC}"
                         for line in txt:  # get each record from the file by line
                             if line == '\n': continue  # if line is newline only then skip it
                             line_array = line.split(",")
@@ -644,10 +682,8 @@ class MainScreenWidget(BoxLayout):
                                 duration = line_array[5][:len(line_array[5]) - 1:]  # also remove newline char
                             else:
                                 status = status[:len(status) - 1]  # else just remove the newline char from the status
-
                             # Convert barcodeDataSpecial's special chars to regular chars
-                            barcodeDataReg = convert(self, barcodeDataSpecial, special_characters,
-                                                     char_dict_special_to_reg)
+                            barcodeDataReg = convert(self, barcodeDataSpecial, special_characters, char_dict_special_to_reg)
 
                             if status == "IN":  # if status is IN, use 5 params
                                 contentstr = "{},{},{},{},{}\n".format(last_system_id, file_date, file_time,
@@ -658,11 +694,12 @@ class MainScreenWidget(BoxLayout):
                                 contentstr = "{},{},{},{},{},{}\n".format(last_system_id, file_date, file_time, barcodeDataReg,
                                                                        status, duration)  # for online CSV file
                                 contentstr2 = '{},{},{},{},{},{}\n'.format(last_system_id, file_date, file_time,
-                                                                        barcodeDataSpecial, status,
-                                                                        duration)  # for list item
+                                                                        barcodeDataSpecial, status, duration)  # for list item
+
                             create_list_item(self, ctx, contentstr2)
                             contentStrings = contentStrings + contentstr
-
+                if storageChoice.lower() == 'a':
+                    screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}Restoring records (local mode)...{bcolors.ENDC}\n{open(args['output'], 'r', encoding='utf-8').read()}"
                 txt = open(args["output"], "a", encoding="utf-8")  # reopen txt file for appending (to continue records)
                 screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}Previous records restored.{bcolors.ENDC}"
             else:
@@ -678,8 +715,9 @@ class MainScreenWidget(BoxLayout):
 
             # Check if there are any stored QR codes that were scanned in in an earlier instance of the system
             if checkStorage:
-                if os.path.exists(qr_storage_file):
+                if os.path.exists(qr_storage_file) and os.stat(qr_storage_file).st_size != 0:
                     with open(qr_storage_file, "r") as qr_data_file:
+                        screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}Restarting session...{bcolors.ENDC}"
                         for line in qr_data_file:  # if yes, read them in line by line
                             if line == '\n': continue
                             line_array = line.split(",")
@@ -687,14 +725,19 @@ class MainScreenWidget(BoxLayout):
                             found_time.append(datetime.datetime.strptime(line_array[1], "%Y-%m-%d %H:%M:%S.%f"))
                             found_status.append(line_array[2][:len(line_array[2]) - 1:])
                         screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}Previous session restarted.{bcolors.ENDC}"
-                else:
-                    screen_label.text = screen_label.text + f"\n{bcolors.WARNING}No previous session found [qr-data.txt not found].{bcolors.ENDC}"
+                elif not os.path.exists(qr_storage_file) or os.stat(qr_storage_file).st_size == 0:
+                    screen_label.text = screen_label.text + f"\n{bcolors.WARNING}No previous session found [qr-data.txt not found or is empty].{bcolors.ENDC}"
 
             # loop over the frames from the video stream
             while True:
                 # grab the frame from the threaded video stream and resize it to have a maximum width of 400 pixels
-                frame = vs.read()
-                frame = imutils.resize(frame, width=400)
+                frame = None
+                try:  # if the video stream stops working or is changed
+                    frame = vs.read()
+                    frame = imutils.resize(frame, width=400)
+                except:  # then catch and break the loop, and do clean up
+                    screen_label.text = screen_label.text + f"\n{bcolors.FAIL}Video stream lost. Check your cameras. Proceeding to clean up.{bcolors.ENDC}"
+                    break
 
                 # find the barcodes in the frame and decode each of the barcodes
                 barcodes = pyzbar.decode(frame, symbols=[ZBarSymbol.QRCODE])
@@ -734,8 +777,9 @@ class MainScreenWidget(BoxLayout):
                     # of barcode data has never been seen, check the user in and record id, date, and time information
                     if barcodeData not in found:
                         datetime_scanned = datetime.datetime.now()  # this one appended to found_time arr
-                        date_scanned = datetime.datetime.now().strftime("%m/%d/%Y")
-                        time_scanned = datetime.datetime.now().strftime("%H:%M:%S.%f")
+                        date_scanned = datetime.datetime.now().strftime("%m/%d/%Y")  # this one prints to csv
+                        time_scanned = datetime.datetime.now().strftime("%H:%M:%S.%f")  # this one prints to csv
+
                         txt.write("{},{},{},{},{}\n".format(system_id, date_scanned, time_scanned,
                                                          barcodeData, "IN"))
                         txt.flush()
@@ -781,8 +825,8 @@ class MainScreenWidget(BoxLayout):
                             found_status[index_loc] = "OUT"
                             found_time[index_loc] = datetime_scanned
                             txt.write("{},{},{},{},{},{}\n".format(system_id, date_scanned, time_scanned,
-                                                                barcodeData, "OUT",
-                                                                time_check))  # write to local CSV file
+                                                                barcodeData, "OUT", time_check))  # write to local CSV file
+
                             txt.flush()
 
                             checked_out = True
@@ -790,8 +834,7 @@ class MainScreenWidget(BoxLayout):
                                 barcodeDataNew = convert(self, barcodeData, special_characters,
                                                          char_dict_special_to_reg)
                                 # (above) convert qr code text special chars to reg chars
-                                contentstr = "{},{},{},{},{},{}\n".format(system_id, datestr, timestr, barcodeDataNew, "OUT",
-                                                                       time_check)
+                                contentstr = "{},{},{},{},{},{}\n".format(system_id, datestr, timestr, barcodeDataNew, "OUT", time_check)
                                 contentstr2 = "{},{},{},{},{},{}\n".format(system_id, datestr, timestr, barcodeData, "OUT",
                                                                         time_check)
 
@@ -799,6 +842,7 @@ class MainScreenWidget(BoxLayout):
                                 contentStrings = contentStrings + contentstr
 
                             winsound.Beep(500, 400)  # makes a beeping sound on scan
+
                             if checked_out:
                                 screen_label.text = screen_label.text + f"\n{barcodeData} checking OUT at {str(datetime_scanned)} at location: " \
                                                                         f"{system_id} for duration of {str(time_check)}"
@@ -825,10 +869,10 @@ class MainScreenWidget(BoxLayout):
 
                 # show the output frame
                 cv2.imshow("QR Toolbox", frame)
-                key = cv2.waitKey(1) & 0xFF
+                cv2.waitKey(1)
 
-                # if the `q` key was pressed, break from the loop
-                if key == ord("q") or key == ord("Q"):
+                # if the user closes the window, close the window (lol)
+                if cv2.getWindowProperty('QR Toolbox', 0) == -1:
                     break
 
             # close the output CSV file and do a bit of cleanup
@@ -840,7 +884,7 @@ class MainScreenWidget(BoxLayout):
             checkStorage = False  # Reset the global variable that tells code to check the qr_storage_file
 
             # This part is necessary to show special characters properly on any of the local CSVs
-            if os.path.exists(args["output"]):
+            if os.path.exists(args["output"]) and os.stat(args["output"]).st_size != 0:
                 barcodesTxt = open(args["output"], 'r', encoding="utf-8")
                 newCSV = open(archive_folder + "/" + file_name, 'w', encoding="ANSI")
 
@@ -849,32 +893,33 @@ class MainScreenWidget(BoxLayout):
 
                 barcodesTxt.close()
                 newCSV.close()
-            else:
+            elif not os.path.exists(args["output"]):
                 data = f"\n{bcolors.FAIL}[ERROR] barcodes.txt not found as expected.{bcolors.ENDC}"
                 screen_label.text = screen_label.text + data
 
-            if storageChoice == 'a':  # if local was chosen, also store barcodes file at the location given
+            if storageChoice == 'a' and os.stat(args["output"]).st_size != 0:  # if local was chosen, also store barcodes file at the location given
                 if os.path.exists(storagePath):  # check if file path exists
                     with open(os.path.join(storagePath, file_name), "w", encoding="ANSI") as csv2:
                         csv2.write(data)
                 else:
                     screen_label.text = screen_label.text + f"\n{bcolors.WARNING}[ALERT]: Storage folder not established or is unavailable. " \
-                                                            f"Files will only be saved to the working directory\n{bcolors.ENDC}"
-            elif storageChoice.lower() == 'b':  # if online was chosen, upload data to SharePoint as well
+                          f"Files will only be saved to the working directory\n{bcolors.ENDC}"
+            elif storageChoice.lower() == 'b' and os.stat(args["output"]).st_size != 0:  # if online was chosen, upload data to SharePoint as well
                 success = connect(self, ctx, 'upload', contentStrings, file_name, bkcsvfolder)
                 if success:
                     upload_backup(ctx, self)
 
             if os.path.exists(args["output"]) and os.stat(args["output"]).st_size == 0:  # delete barcodes.txt if empty
-                os.remove(
-                    args["output"])  # not removed until the end in case something goes wrong above and it's needed
-            vs.stop()
-            vs.stream.release()
-            vs = None
+                os.remove(args["output"])  # not removed until the end in case something goes wrong above and it's needed
+            if vs is not None:
+                vs.stop()
+                vs.stream.release()
+                vs = None
+
             cv2.destroyAllWindows()
 
-            not_done = True  # set these so qr reader waits on user choice before starting video
             user_chose_storage = False
+            self.ids.qrreader.disabled = False  # makes QR Reader btn enabled again
 
     """
     This function prepares the program and then runs the video() function to read QR Codes
@@ -884,9 +929,8 @@ class MainScreenWidget(BoxLayout):
 
     def qr_reader(self):
         restart_session_popup = RestartSessionWidget()
-        restart_session_popup.restart_popup = Popup(
-            title="Do you want to start a new session or restart the previous one?",
-            content=restart_session_popup, size_hint=(None, None), size=(725, 170), auto_dismiss=True)
+        restart_session_popup.restart_popup = Popup(title="Do you want to start a new session or restart the previous one?\nNote: CSV files are not created nor uploaded until after the QR Reader is closed.",
+                      content=restart_session_popup, size_hint=(None, None), size=(725, 183), auto_dismiss=True)
 
         global vs
         if vs is not None:
@@ -896,7 +940,6 @@ class MainScreenWidget(BoxLayout):
 
         restart_session_popup.restart_popup.open()
         restart_session_popup.main_screen = self
-        threading.Thread(target=self.video, daemon=True).start()
 
     """ This function calls the qr_batch function and runs the qr_batch generator """
 
@@ -925,11 +968,13 @@ class MainScreenWidget(BoxLayout):
     """ This function shows the setup menu as a popup widget w/4 buttons """
 
     def setup(self):
+        global isSpecialCharDisabled
         setup_popup = SetupWidget()
         setup_popup.setup_popup = Popup(title="Choose an option", content=setup_popup, size_hint=(None, None),
                                         size=(251, 475),
                                         auto_dismiss=True)
         setup_popup.main_screen = self
+        setup_popup.ids.specialcharbutton.disabled = isSpecialCharDisabled
         setup_popup.setup_popup.open()
 
     """ This function provides more information on the purpose and development of this software """
@@ -981,7 +1026,7 @@ class RestartSessionWidget(BoxLayout):
     """
 
     def set_check_storage(self, check):
-        global not_done, user_chose_storage
+        global user_chose_storage
         screen_label = self.main_screen.ids.screen_label
         setup_screen_label(screen_label)
         if check:
@@ -989,7 +1034,9 @@ class RestartSessionWidget(BoxLayout):
             checkStorage = True
             screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}Previous session will be restarted, if one exists.{bcolors.ENDC}"
         user_chose_storage = True
-        not_done = False
+
+        self.main_screen.ids.qrreader.disabled = True  # disables QR Reader btn so user can't start multiple streams
+        threading.Thread(target=self.main_screen.video, daemon=True).start()
 
 
 """ This class represents the information displayed when you want to set the storage location (text and 2 buttons, local or online) """
@@ -1003,17 +1050,19 @@ class StorageWidget(BoxLayout):
     """ This function sets the storage based on the users selection (local or online) """
 
     def set_storage(self, storage):
-        global storageChoice
+        global storageChoice, isSpecialCharDisabled
         if storage:  # Local button was pressed
             global storagePath
             storageChoice = "a"
             storagePath = store(self.main_screen)
+            isSpecialCharDisabled = True
         elif not storage:
             storageChoice = "b"
             _ = GIS("https://epa.maps.arcgis.com/home/content.html", client_id="szzEfRyeyk2TygQ5", verify_cert=False)  # Online
             screen_label = self.main_screen.ids.screen_label
             setup_screen_label(screen_label)
             screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}Storage location set to online (SharePoint).{bcolors.ENDC}"
+            isSpecialCharDisabled = False
 
 
 """ This class represents the displayed when you select "Choose Camera Source" from the Setup menu, and is text with 3 buttons """
@@ -1097,7 +1146,10 @@ class QRSingleWidget(BoxLayout):
     """ Calls the qr_single function with the text the user entered """
 
     def setup_qr_single(self, text):
-        qr_single(self.main_screen, text)
+        if text != "" and text is not None:
+            qr_single(self.main_screen, text)
+        else:
+            self.main_screen.ids.screen_label.text = self.main_screen.ids.screen_label.text + f"\n{bcolors.WARNING}QR Code text can't be empty.{bcolors.ENDC}"
 
 
 """ This class represents the information when the special char conversion button is clicked (text with 2 buttons) """
@@ -1134,13 +1186,6 @@ class ExitWidget(BoxLayout):
         App.get_running_app().stop()
 
 
-""" This class exists to instantiate a scrollview (which is used on the main screen to allow user to scroll the text displayed) """
-
-
-class ScreenWidget(ScrollView):
-    pass
-
-
 """ This class represents the app itself, and everything starts from and runs from this """
 
 
@@ -1151,6 +1196,7 @@ class QRToolboxApp(App):
 
     def build(self):
         self.main_screen = MainScreenWidget()
+        Window.size = (900, 650)
         return self.main_screen
 
     """ This function runs the storage selection popup at the start of the App, and sets some global vars """
