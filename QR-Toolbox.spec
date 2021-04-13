@@ -14,6 +14,8 @@ from pyzbar.pyzbar import ZBarSymbol
 from pathlib import Path
 from pylibdmtx import pylibdmtx
 
+Tree('C:/Users/mkarimi/PycharmProjects/QR_Tool')
+
 block_cipher = None
 
 
