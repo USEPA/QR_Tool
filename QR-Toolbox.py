@@ -106,10 +106,10 @@ isSpecialCharDisabled = False  # if true, user can't click on Special Char Conve
 # Lists and Dictionaries used for special character handling and conversion
 trouble_characters = ['\t', '\n', '\r']
 bad_file_name_list = ['*', ':', '"', '<', '>', ',', '/', '|', '?', '\t', '\r', '\n', '\\']
-special_characters = ["√†", "√°", "√¢", "√£", "√§", "√•", "√¶", "√ß", "√®", "√©", "√™", "√´", "√¨", "√≠", "√Æ", "√Ø", "√∞", "√±", "√≤",
-                      "√≥", "√¥", "√µ", "√∂", "√∏", "√π", "√∫", "√ª", "√º", "√Ω", "√æ", "√ø", "√Ä", "√Å", "√Ç", "√É", "√Ñ", "√Ö", "√Ü",
-                      "√á", "√à", "√â", "√ä", "√ã", "√å", "√ç", "√é", "√è", "√ê", "√ë", "√í", "√ì", "√î", "√ï", "√ñ", "√ò", "√ô", "√ö",
-                      "√õ", "√ú", "√ù", "√û", "√ü"]
+special_characters = ["‡", "·", "‚", "„", "‰", "Â", "Ê", "Á", "Ë", "È", "Í", "Î", "Ï", "Ì", "Ó", "Ô", "", "Ò", "Ú",
+                      "Û", "Ù", "ı", "ˆ", "¯", "˘", "˙", "˚", "¸", "˝", "˛", "ˇ", "¿", "¡", "¬", "√", "ƒ", "≈", "∆",
+                      "«", "»", "…", " ", "À", "Ã", "Õ", "Œ", "œ", "–", "—", "“", "”", "‘", "’", "÷", "ÿ", "Ÿ", "⁄",
+                      "€", "‹", "›", "ﬁ", "ﬂ"]
 code_characters = ["!@!a1!", "!@!a2!", "!@!a3!", "!@!a4!", "!@!a5!", "!@!a6!", "!@!a7!", "!@!c1!", "!@!e1!", "!@!e2!",
                    "!@!e3!", "!@!e4!", "!@!i1!", "!@!i2!", "!@!i3!", "!@!i4!", "!@!o1!", "!@!n1!", "!@!o2!", "!@!o3!",
                    "!@!o4!", "!@!o5!", "!@!o6!", "!@!o7!", "!@!u1!", "!@!u2!", "!@!u3!", "!@!u4!", "!@!y1!", "!@!b1!",
@@ -117,35 +117,35 @@ code_characters = ["!@!a1!", "!@!a2!", "!@!a3!", "!@!a4!", "!@!a5!", "!@!a6!", "
                    "!@!E2!", "!@!E3!", "!@!E4!", "!@!I1!", "!@!I2!", "!@!I3!", "!@!I4!", "!@!O1!", "!@!N1!", "!@!O2!",
                    "!@!O3!", "!@!O4!", "!@!O5!", "!@!O6!", "!@!O7!", "!@!U1!", "!@!U2!", "!@!U3!", "!@!U4!", "!@!Y1!",
                    "!@!B1!", "!@!Y2!"]
-char_dict_special_to_code = {"√†": "!@!a1!", "√°": "!@!a2!", "√¢": "!@!a3!", "√£": "!@!a4!", "√§": "!@!a5!", "√•": "!@!a6!",
-                             "√¶": "!@!a7!", "√ß": "!@!c1!", "√®": "!@!e1!", "√©": "!@!e1!", "√™": "!@!e3!", "√´": "!@!e4!",
-                             "√¨": "!@!i1!", "√≠": "!@!i2!", "√Æ": "!@!i3!", "√Ø": "!@!i4!", "√∞": "!@!o1!", "√±": "!@!n1!",
-                             "√≤": "!@!o2!", "√≥": "!@!o3!", "√¥": "!@!o4!", "√µ": "!@!o5!", "√∂": "!@!o6!", "√∏": "!@!o7!",
-                             "√π": "!@!u1!", "√∫": "!@!u2!", "√ª": "!@!u3!", "√º": "!@!u4!", "√Ω": "!@!y1!", "√æ": "!@!b1!",
-                             "√ø": "!@!y2!", "√Ä": "!@!A1!", "√Å": "!@!A2!", "√Ç": "!@!A3!", "√É": "!@!A4!", "√Ñ": "!@!A5!",
-                             "√Ö": "!@!A6!", "√Ü": "!@!A7!", "√á": "!@!C1!", "√à": "!@!E1!", "√â": "!@!E2!", "√ä": "!@!E3!",
-                             "√ã": "!@!E4!", "√å": "!@!I1!", "√ç": "!@!I2!", "√é": "!@!I3!", "√è": "!@!I4!", "√ê": "!@!O1!",
-                             "√ë": "!@!N1!", "√í": "!@!O2!", "√ì": "!@!O3!", "√î": "!@!O4!", "√ï": "!@!O5!", "√ñ": "!@!O6!",
-                             "√ò": "!@!O7!", "√ô": "!@!U1!", "√ö": "!@!U2!", "√õ": "!@!U3!", "√ú": "!@!U4!", "√ù": "!@!Y1!",
-                             "√û": "!@!B1!", "√ü": "!@!Y2!"}
-char_dict_code_to_special = {"!@!a1!": "√†", "!@!a2!": "√°", "!@!a3!": "√¢", "!@!a4!": "√£", "!@!a5!": "√§", "!@!a6!": "√•",
-                             "!@!a7!": "√¶", "!@!c1!": "√ß", "!@!e1!": "√®", "!@!e2!": "√©", "!@!e3!": "√™", "!@!e4!": "√´",
-                             "!@!i1!": "√¨", "!@!i2!": "√≠", "!@!i3!": "√Æ", "!@!i4!": "√Ø", "!@!o1!": "√∞", "!@!n1!": "√±",
-                             "!@!o2!": "√≤", "!@!o3!": "√≥", "!@!o4!": "√¥", "!@!o5!": "√µ", "!@!o6!": "√∂", "!@!o7!": "√∏",
-                             "!@!u1!": "√π", "!@!u2!": "√∫", "!@!u3!": "√ª", "!@!u4!": "√º", "!@!y1!": "√Ω", "!@!b1!": "√æ",
-                             "!@!y2!": "√ø", "!@!A1!": "√Ä", "!@!A2!": "√Å", "!@!A3!": "√Ç", "!@!A4!": "√É", "!@!A5!": "√Ñ",
-                             "!@!A6!": "√Ö", "!@!A7!": "√Ü", "!@!C1!": "√á", "!@!E1!": "√à", "!@!E2!": "√â", "!@!E3!": "√ä",
-                             "!@!E4!": "√ã", "!@!I1!": "√å", "!@!I2!": "√ç", "!@!I3!": "√é", "!@!I4!": "√è", "!@!O1!": "√ê",
-                             "!@!N1!": "√ë", "!@!O2!": "√í", "!@!O3!": "√ì", "!@!O4!": "√î", "!@!O5!": "√ï", "!@!O6!": "√ñ",
-                             "!@!O7!": "√ò", "!@!U1!": "√ô", "!@!U2!": "√ö", "!@!U3!": "√õ", "!@!U4!": "√ú", "!@!Y1!": "√ù",
-                             "!@!B1!": "√û", "!@!Y2!": "√ü"}
-char_dict_special_to_reg = {"√†": "a", "√°": "a", "√¢": "a", "√£": "a", "√§": "a", "√•": "a", "√¶": "a", "√ß": "c", "√®": "e",
-                            "√©": "e", "√™": "e", "√´": "e", "√¨": "i", "√≠": "i", "√Æ": "i", "√Ø": "i", "√∞": "o", "√±": "n",
-                            "√≤": "o", "√≥": "o", "√¥": "o", "√µ": "o", "√∂": "o", "√∏": "o", "√π": "u", "√∫": "u", "√ª": "u",
-                            "√º": "u", "√Ω": "y", "√æ": "b", "√ø": "y", "√Ä": "A", "√Å": "A", "√Ç": "A", "√É": "A", "√Ñ": "A",
-                            "√Ö": "A", "√Ü": "A", "√á": "C", "√à": "E", "√â": "E", "√ä": "E", "√ã": "E", "√å": "I", "√ç": "I",
-                            "√é": "I", "√è": "I", "√ê": "O", "√ë": "N", "√í": "O", "√ì": "O", "√î": "O", "√ï": "O", "√ñ": "O",
-                            "√ò": "O", "√ô": "U", "√ö": "U", "√õ": "U", "√ú": "U", "√ù": "Y", "√û": "B", "√ü": "Y"}
+char_dict_special_to_code = {"‡": "!@!a1!", "·": "!@!a2!", "‚": "!@!a3!", "„": "!@!a4!", "‰": "!@!a5!", "Â": "!@!a6!",
+                             "Ê": "!@!a7!", "Á": "!@!c1!", "Ë": "!@!e1!", "È": "!@!e1!", "Í": "!@!e3!", "Î": "!@!e4!",
+                             "Ï": "!@!i1!", "Ì": "!@!i2!", "Ó": "!@!i3!", "Ô": "!@!i4!", "": "!@!o1!", "Ò": "!@!n1!",
+                             "Ú": "!@!o2!", "Û": "!@!o3!", "Ù": "!@!o4!", "ı": "!@!o5!", "ˆ": "!@!o6!", "¯": "!@!o7!",
+                             "˘": "!@!u1!", "˙": "!@!u2!", "˚": "!@!u3!", "¸": "!@!u4!", "˝": "!@!y1!", "˛": "!@!b1!",
+                             "ˇ": "!@!y2!", "¿": "!@!A1!", "¡": "!@!A2!", "¬": "!@!A3!", "√": "!@!A4!", "ƒ": "!@!A5!",
+                             "≈": "!@!A6!", "∆": "!@!A7!", "«": "!@!C1!", "»": "!@!E1!", "…": "!@!E2!", " ": "!@!E3!",
+                             "À": "!@!E4!", "Ã": "!@!I1!", "Õ": "!@!I2!", "Œ": "!@!I3!", "œ": "!@!I4!", "–": "!@!O1!",
+                             "—": "!@!N1!", "“": "!@!O2!", "”": "!@!O3!", "‘": "!@!O4!", "’": "!@!O5!", "÷": "!@!O6!",
+                             "ÿ": "!@!O7!", "Ÿ": "!@!U1!", "⁄": "!@!U2!", "€": "!@!U3!", "‹": "!@!U4!", "›": "!@!Y1!",
+                             "ﬁ": "!@!B1!", "ﬂ": "!@!Y2!"}
+char_dict_code_to_special = {"!@!a1!": "‡", "!@!a2!": "·", "!@!a3!": "‚", "!@!a4!": "„", "!@!a5!": "‰", "!@!a6!": "Â",
+                             "!@!a7!": "Ê", "!@!c1!": "Á", "!@!e1!": "Ë", "!@!e2!": "È", "!@!e3!": "Í", "!@!e4!": "Î",
+                             "!@!i1!": "Ï", "!@!i2!": "Ì", "!@!i3!": "Ó", "!@!i4!": "Ô", "!@!o1!": "", "!@!n1!": "Ò",
+                             "!@!o2!": "Ú", "!@!o3!": "Û", "!@!o4!": "Ù", "!@!o5!": "ı", "!@!o6!": "ˆ", "!@!o7!": "¯",
+                             "!@!u1!": "˘", "!@!u2!": "˙", "!@!u3!": "˚", "!@!u4!": "¸", "!@!y1!": "˝", "!@!b1!": "˛",
+                             "!@!y2!": "ˇ", "!@!A1!": "¿", "!@!A2!": "¡", "!@!A3!": "¬", "!@!A4!": "√", "!@!A5!": "ƒ",
+                             "!@!A6!": "≈", "!@!A7!": "∆", "!@!C1!": "«", "!@!E1!": "»", "!@!E2!": "…", "!@!E3!": " ",
+                             "!@!E4!": "À", "!@!I1!": "Ã", "!@!I2!": "Õ", "!@!I3!": "Œ", "!@!I4!": "œ", "!@!O1!": "–",
+                             "!@!N1!": "—", "!@!O2!": "“", "!@!O3!": "”", "!@!O4!": "‘", "!@!O5!": "’", "!@!O6!": "÷",
+                             "!@!O7!": "ÿ", "!@!U1!": "Ÿ", "!@!U2!": "⁄", "!@!U3!": "€", "!@!U4!": "‹", "!@!Y1!": "›",
+                             "!@!B1!": "ﬁ", "!@!Y2!": "ﬂ"}
+char_dict_special_to_reg = {"‡": "a", "·": "a", "‚": "a", "„": "a", "‰": "a", "Â": "a", "Ê": "a", "Á": "c", "Ë": "e",
+                            "È": "e", "Í": "e", "Î": "e", "Ï": "i", "Ì": "i", "Ó": "i", "Ô": "i", "": "o", "Ò": "n",
+                            "Ú": "o", "Û": "o", "Ù": "o", "ı": "o", "ˆ": "o", "¯": "o", "˘": "u", "˙": "u", "˚": "u",
+                            "¸": "u", "˝": "y", "˛": "b", "ˇ": "y", "¿": "A", "¡": "A", "¬": "A", "√": "A", "ƒ": "A",
+                            "≈": "A", "∆": "A", "«": "C", "»": "E", "…": "E", " ": "E", "À": "E", "Ã": "I", "Õ": "I",
+                            "Œ": "I", "œ": "I", "–": "O", "—": "N", "“": "O", "”": "O", "‘": "O", "’": "O", "÷": "O",
+                            "ÿ": "O", "Ÿ": "U", "⁄": "U", "€": "U", "‹": "U", "›": "Y", "ﬁ": "B", "ﬂ": "Y"}
 
 """
 This function converts the passed data based on the other parameters, and returns the converted data
@@ -1058,11 +1058,13 @@ class StorageWidget(BoxLayout):
             isSpecialCharDisabled = True
         elif not storage:
             storageChoice = "b"
-            _ = GIS("https://epa.maps.arcgis.com/home/content.html", client_id="szzEfRyeyk2TygQ5", verify_cert=False)  # Online
-            screen_label = self.main_screen.ids.screen_label
-            setup_screen_label(screen_label)
-            screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}Storage location set to online (SharePoint).{bcolors.ENDC}"
-            isSpecialCharDisabled = False
+
+            login_widget = LoginWidget()
+            login_widget.login_popup = Popup(
+                title="Enter your username and password", content=login_widget,
+                size_hint=(None, None), size=(327, 290), auto_dismiss=True)
+            login_widget.main_screen = self.main_screen
+            login_widget.login_popup.open()
 
 
 """ This class represents the displayed when you select "Choose Camera Source" from the Setup menu, and is text with 3 buttons """
@@ -1171,6 +1173,41 @@ class AskSpecialCharConversionWidget(BoxLayout):
                                                     f"(Online Mode only){bcolors.ENDC}"
         else:
             screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}QR Codes with special characters will be skipped. (Online Mode only){bcolors.ENDC}"
+
+
+""" This class represents the information shown when the online button is pressed and a username/password is requested, has text, an input box, and 2 buttons """
+
+
+class LoginWidget(BoxLayout):
+    login_popup = None
+    main_screen = None
+
+    """ Calls the sign in function with the text the user entered """
+
+    def sign_in(self, username, password):
+        screen_label = self.main_screen.ids.screen_label
+        setup_screen_label(screen_label)
+
+        if username != "" and username is not None and password != "" and password is not None:
+            global isSpecialCharDisabled
+            try:
+                # gis = GIS("https://epa.maps.arcgis.com/home/content.html", client_id="szzEfRyeyk2TygQ5", verify_cert=False)  # Online
+                gis = GIS("https://epa.maps.arcgis.com/home/content.html", username=username, password=password)  # Online
+
+                # query = "owner: karimi.muhammad@epa.gov"
+                query = "owner: mkarimi_EPA"
+                search_results = gis.content.search(query=query, max_items=15)
+                print(search_results)
+
+                screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}Storage location set to online (ArcGIS).{bcolors.ENDC}"
+                isSpecialCharDisabled = False
+            except Exception as e:
+                # e = sys.exc_info()[0]  # used for error checking
+                screen_label.text = screen_label.text + f"\n{bcolors.FAIL}Error: {e}{bcolors.ENDC}"
+            except:
+                screen_label.text = screen_label.text + f"\n{bcolors.FAIL}An error has occurred.{bcolors.ENDC}"
+        else:
+            screen_label.text = screen_label.text + f"\n{bcolors.WARNING}Username and password can't be empty.{bcolors.ENDC}"
 
 
 """ This class represents the Exit alert box that pops up when you click the 'Exit' button, confirming that you want to exit """

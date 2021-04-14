@@ -8,7 +8,7 @@
         size_hint_y: 1
         height: self.parent.height
         text_size: (self.parent.width, None)
-        text: f"\n\n[size=50][u][color=#009999]QR TOOLBOX[/color][/size][/u]\n\n\n\n\n\n[size=30]QR Toolbox v1.3\n\nUSEPA Homeland Security Research Program\n\nSystem ID: {root.sys_id}[/size]\n"
+        text: f"\n\n[size=50][u][color=#009999]QR TOOLBOX[/color][/size][/u]\n\n\n\n\n\n[size=30]QR Toolbox v1.4\n\nUSEPA Homeland Security Research Program\n\nSystem ID: {root.sys_id}[/size]\n"
         font_size: 18
         halign: 'center'
         valign: 'middle'
@@ -189,6 +189,36 @@
             size: 350, 100
             on_release: root.set_special_char_bool(False)
             on_release: root.special_char_popup.dismiss()
+
+<LoginWidget>:
+    orientation: 'vertical'
+    padding: (0, 5)
+    TextInput:
+        id: username
+        use_bubble: True
+        use_handles: True
+        hint_text: "Enter username"
+        size: 300, 30
+    TextInput:
+        id: password
+        use_bubble: True
+        use_handles: True
+        hint_text: "Enter password"
+        password: True
+        size: 300, 30
+    BoxLayout:
+        orientation: 'horizontal'
+        Button:
+            text: "OK"
+            size_hint: None, None
+            size: 150, 65
+            on_release: root.sign_in(username.text, password.text)
+            on_release: root.login_popup.dismiss()
+        Button:
+            text: "Cancel"
+            size_hint: None, None
+            size: 150, 65
+            on_release: root.login_popup.dismiss()
 
 <ExitWidget>:
     orientation: 'vertical'

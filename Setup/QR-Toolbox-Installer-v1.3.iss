@@ -6,8 +6,8 @@
 ; (To generate a new GUID, click Tools | Generate GUID inside the IDE.)
 AppId={{B5515227-FBDB-4D37-84BE-771B6B3FBFC4}
 AppName=QR-Toolbox
-AppVersion=1.3
-;AppVerName=QR-Toolbox 1.3
+AppVersion=1.4
+;AppVerName=QR-Toolbox 1.4
 AppPublisher=EPA ORD
 DefaultDirName={autopf}\QR-Toolbox
 DisableProgramGroupPage=yes
@@ -15,7 +15,7 @@ InfoBeforeFile=C:\Users\mkarimi\PycharmProjects\QR_Tool\dist\QR-Toolbox\Document
 ; Remove the following line to run in administrative install mode (install for all users.)
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
-OutputBaseFilename=QR-Toolbox-Installer-v1.3
+OutputBaseFilename=QR-Toolbox-Installer-v1.4
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
