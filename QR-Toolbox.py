@@ -7,12 +7,12 @@ Author(s): Code integration, minor enhancements, & platform development - Timoth
     qrcode - Lincoln Loop info@lincolnloop.com; pyzbar - Lawrence Hudson quicklizard@googlemail.com;
     OpenCV code - Adrian Rosebrock https://www.pyimagesearch.com/author/adrian/;
 Contact: Timothy Boe boe.timothy@epa.gov
-Requirements: Python 3.7+, pyzbar, imutils, opencv-python, qrcode[pil], Pillow, Office365-REST-Python-Client, Kivy, kivy-deps.angle,
+Requirements: Python 3.7+, pyzbar, imutils, opencv-python, qrcode[pil], Pillow, Kivy, kivy-deps.angle,
 kivy-deps.glew, kivy-deps.gstreamer, kivy-deps.sdl2, Kivy-Garden, arcgis
 
 Specific versions:
 {"pyzbar": "0.1.8", "imutils": "0.5.3", "qrcode": "6.1", "Pillow": "7.0.0", "opencv-python": "4.2.0.32",
-"Office365-REST-Python-Client": "2.2.1", "Kivy": "1.11.1", "kivy-deps.angle": "0.2.0", "kivy-deps.glew": "0.2.0",
+"Kivy": "1.11.1", "kivy-deps.angle": "0.2.0", "kivy-deps.glew": "0.2.0",
 "kivy-deps.gstreamer": "0.2.0", "kivy-deps.sdl2": "0.2.0", "Kivy-Garden": "0.1.4", "arcgis": ""}
 """
 
@@ -31,10 +31,26 @@ from tkinter import *
 from tkinter import filedialog
 
 from arcgis.gis import GIS
-# from arcgis import geometry
-# from arcgis import features
-# from arcgis.features import FeatureLayer
+from arcgis import features
+from arcgis.geometry import Point
 
+# Import csv packages
+import cv2
+import imutils
+import numpy as np
+import qrcode
+from PIL import Image
+from PIL import ImageDraw
+from PIL import ImageFont
+import math
+from imutils.video import VideoStream
+from pyzbar import pyzbar
+from pyzbar.pyzbar import ZBarSymbol
+
+import threading
+from kivy.app import App
+
+from Setup.settings import settings
 
 # colors
 
@@ -50,58 +66,30 @@ class bcolors:
     UNDERLINE = ''
 
 
-# Import csv packages
-import cv2
-import imutils
-import numpy as np
-import qrcode
-from PIL import Image
-from PIL import ImageDraw
-from PIL import ImageFont
-from imutils.video import VideoStream
-from office365.runtime.auth.authentication_context import AuthenticationContext
-from office365.sharepoint.client_context import ClientContext
-from office365.sharepoint.files.file import File
-from office365.sharepoint.files.file_creation_information import FileCreationInformation
-from pyzbar import pyzbar
-from pyzbar.pyzbar import ZBarSymbol
-
-import threading
-from kivy.app import App
-
-from Setup.settings import settings
-
-# Sharepoint related variables
-listTitle = settings['listTitle']
-qrfolder = settings['qrfolder']
-bkcsvfolder = settings['bkcsvfolder']
-mainDirectory = settings['mainDirectory']
-remoteQRBatchFile = "System_Data/names-remote.csv"
+# ArcGIS/IO related variables
+url = settings['url']
+gis_query = settings['query']
+latitude = settings['latitude']
+longitude = settings['longitude']
 localQRBatchFile = settings['localQRBatchFile']
-relative_url = settings['relative_url']
+
+# System variables
 qr_storage_file = "System_Data/qr-data.txt"  # file that contains saved session information
 backup_file = "System_Data/backup.txt"  # file that contains data that couldn't be uploaded, to later be uploaded
 archive_folder = "Archive"
-
-context_auth = AuthenticationContext(url=settings['url'])
-context_auth.acquire_token_for_app(client_id=settings['client_id'], client_secret=settings['client_secret'])
-ctx = ClientContext(settings['url'], context_auth)
 
 # load variables
 # set store folder default, assign system ID, and wait time
 storagePath = ""  # the path to the local storage directory if chosen
 checkStorage = False  # whether system should check if there is any backed up data or previous session data
 user_chose_storage = False
-not_done = True
 system_id = os.environ['COMPUTERNAME']
 t_value = timedelta(seconds=10)  # time between scans for the same qr code
 cameraSource = "Integrated"  # the camera source, defaults to integrated (so source 0)
 storageChoice = ""  # users choice of local ('a') or online ('b') mode
-special_char_bool = True
 vs = None  # global video stream variable, to ensure only 1 instance of it exists at a time
 clear_screen = False  # if True, clear screen, else don't clear it (true only in 4 cases)
 not_yet = False  # prevents the screen from being cleared immediately at the start (only used at the start)
-isSpecialCharDisabled = False  # if true, user can't click on Special Char Conversion btn, if false they can click it
 
 # Lists and Dictionaries used for special character handling and conversion
 trouble_characters = ['\t', '\n', '\r']
@@ -139,13 +127,7 @@ char_dict_code_to_special = {"!@!a1!": "à", "!@!a2!": "á", "!@!a3!": "â", "!@!a4
                              "!@!N1!": "Ñ", "!@!O2!": "Ò", "!@!O3!": "Ó", "!@!O4!": "Ô", "!@!O5!": "Õ", "!@!O6!": "Ö",
                              "!@!O7!": "Ø", "!@!U1!": "Ù", "!@!U2!": "Ú", "!@!U3!": "Û", "!@!U4!": "Ü", "!@!Y1!": "Ý",
                              "!@!B1!": "Þ", "!@!Y2!": "ß"}
-char_dict_special_to_reg = {"à": "a", "á": "a", "â": "a", "ã": "a", "ä": "a", "å": "a", "æ": "a", "ç": "c", "è": "e",
-                            "é": "e", "ê": "e", "ë": "e", "ì": "i", "í": "i", "î": "i", "ï": "i", "ð": "o", "ñ": "n",
-                            "ò": "o", "ó": "o", "ô": "o", "õ": "o", "ö": "o", "ø": "o", "ù": "u", "ú": "u", "û": "u",
-                            "ü": "u", "ý": "y", "þ": "b", "ÿ": "y", "À": "A", "Á": "A", "Â": "A", "Ã": "A", "Ä": "A",
-                            "Å": "A", "Æ": "A", "Ç": "C", "È": "E", "É": "E", "Ê": "E", "Ë": "E", "Ì": "I", "Í": "I",
-                            "Î": "I", "Ï": "I", "Ð": "O", "Ñ": "N", "Ò": "O", "Ó": "O", "Ô": "O", "Õ": "O", "Ö": "O",
-                            "Ø": "O", "Ù": "U", "Ú": "U", "Û": "U", "Ü": "U", "Ý": "Y", "Þ": "B", "ß": "Y"}
+
 
 """
 This function converts the passed data based on the other parameters, and returns the converted data
@@ -198,17 +180,17 @@ This function handles HTTP requests, and also handles errors that occur during t
 """
 
 
-def connect(main_screen, context, connection_type, content=None, file_name=None, location=None, duplicate=False):
+def connect(main_screen, connection_type, sys_id, date_str, time_str, barcode, status, time_elapsed=None, duplicate=False):
     screen_label = main_screen.ids.screen_label
     setup_screen_label(screen_label)
     i = 0
     while i < 3:
         try:
             return_val = True
-            if connection_type == 'upload':  # if a file needs to be uploaded
-                upload_file(ctx, content, file_name, location)
-            elif connection_type == 'execute_query':  # if list item needs to be created and added
-                context.execute_query()
+            if connection_type == 'upload':  # if a record needs to be uploaded to arcgis
+                if status == "IN": content = f"{sys_id},{date_str},{time_str},{barcode},{status},NONE"
+                if status == "OUT": content = f"{sys_id},{date_str},{time_str},{barcode},{status},{time_elapsed}"
+                main_screen.update_arcgis(sys_id, date_str, time_str, barcode, status, time_elapsed)
             else:
                 screen_label.text = screen_label.text + f"\n{bcolors.WARNING}Invalid connection type.{bcolors.ENDC}"
                 return_val = False
@@ -224,26 +206,12 @@ def connect(main_screen, context, connection_type, content=None, file_name=None,
             elif i == 1:
                 screen_label.text = screen_label.text + f"\n{bcolors.FAIL}Reconnect failed. Trying again in 30 seconds.{bcolors.ENDC}"
                 time.sleep(30)
-            elif i > 1 and not duplicate and connection_type != 'qr_batch':  # if failed thrice, write to backup.txt
+            elif i > 1 and not duplicate:  # if failed thrice, write to backup.txt
                 screen_label.text = screen_label.text + f"\n{bcolors.FAIL}Reconnect failed again.{bcolors.ENDC}{bcolors.OKBLUE} Data will be stored locally and " \
                                                         f"uploaded at the next upload point, or if triggered from the menu.{bcolors.ENDC}"
-                if os.path.exists(backup_file) and connection_type == 'upload':
+                if connection_type == 'upload':
                     with open(backup_file, "a") as backup:
-                        if ".jpg" in file_name:
-                            backup.write(f"QRCode\n@@@@@\n{file_name}\n@@@@@\n{location}\n----------\n")
-                            with open(f"System_Data/{file_name}", "wb") as output: output.write(content)
-                        else:
-                            backup.write(f"{content}\n@@@@@\n{file_name}\n@@@@@\n{location}\n----------\n")
-                elif connection_type == 'upload':
-                    with open(backup_file, "w") as backup:
-                        if ".jpg" in file_name:
-                            backup.write(f"QRCode\n@@@@@\n{file_name}\n@@@@@\n{location}\n----------\n")
-                            with open(f"System_Data/{file_name}", "wb") as output: output.write(content)
-                        else:
-                            backup.write(f"{content}\n@@@@@\n{file_name}\n@@@@@\n{location}\n----------\n")
-                elif connection_type == 'execute_query':
-                    with open(backup_file, "a") as backup:
-                        backup.write(f"$$$$$\n{content}\n----------\n")
+                        backup.write(f"{content}\n")
                 return False
         i += 1
 
@@ -258,122 +226,28 @@ This function uploads the data that was stored/backed up in the backup.txt file
 """
 
 
-def upload_backup(context, main_screen_widget, from_menu=False):
+def upload_backup(main_screen_widget, from_menu=False):
     screen_label = main_screen_widget.ids.screen_label
     setup_screen_label(screen_label)
     if os.path.exists(backup_file):  # check if file exists, if not then return
         with open(backup_file, "r") as backup:
             screen_label.text = screen_label.text + "\nUploading backed up data..."
-            content = ""  # the content of the file that will be uploaded
-            file_name = ""  # the file name of the file to upload
-            location = ""  # the location to upload the file to
-            flag = 0  # this tells program whether we are looking at content, filename, or location information
+            time_elapsed = None  # assume its IN status so no elapsed time
             for line in backup:  # for each line, take the appropriate action according to what is read in
-                if line == '\n': continue
-                if line == '@@@@@\n': flag += 1; continue
-                if line == '$$$$$\n': flag = 3; continue
-                if line == '----------\n':
-                    if flag == 3:  # means it was a list item
-                        successful = create_list_item(main_screen_widget, context, content, True)
-                    else:  # means it was a file to be uploaded
-                        if ".jpg" in file_name and content == "QRCode\n":  # if file is a qr code, update content var
-                            if os.path.exists(f"System_Data/{file_name}"):  # make sure file exists still
-                                try:
-                                    with open(f"System_Data/{file_name}", "rb") as file:  # must read qr code as a binary file
-                                        content = file.read()  # content var must be in bytes format for this to work properly
-                                        with open(f"System_Data/NEWTEST.jpg", "wb") as output:
-                                            output.write(file.read())
-                                except:  # if error, print it, reset vars and continue
-                                    screen_label.text = screen_label.text + f"\n{bcolors.FAIL}An error has occurred. Make sure the file is not open, moved, or deleted.{bcolors.ENDC}"
-                                    flag = 0; content = ""; file_name = ""; location = ""
-                                    continue
-                            else:  # if not, print error reset vars and continue
-                                screen_label.text = screen_label.text + f"\n{bcolors.FAIL}File (System_Data/{file_name}) not found. If a QR Code is repeated or if you are uploading backed up data a 2nd or more times,{bcolors.ENDC}" \
-                                                    f"{bcolors.FAIL} then this is generally normal behaviour since some data is successfully uploaded and others are not.{bcolors.ENDC}"
-                                flag = 0; content = ""; file_name = ""; location = ""
-                                continue
-                        successful = connect(main_screen_widget, context, 'upload', content, file_name, location, True)
-                    if not successful:
-                        screen_label.text = screen_label.text + f"\n{bcolors.FAIL}Upload of backed up data failed.{bcolors.ENDC}{bcolors.OKBLUE} Program will " \
-                                                                f"try again at next upload, or you can trigger upload manually from the menu.{bcolors.ENDC}"
-                        return False
-                    elif successful and ".jpg" in file_name:
-                        os.remove(f"System_Data/{file_name}")  # remove the qr code .jpg file if successful upload
-                    flag = 0
-                    content = ""
-                    file_name = ""
-                    location = ""
+                if line == '\n' or line == "":
                     continue
-                if flag == 0 or flag == 3:
-                    content = content + line
-                elif flag == 1:
-                    file_name = line.rstrip('\n')
-                elif flag == 2:
-                    location = line.rstrip('\n')
+                content = (line.rstrip('\n')).split(',')  # if not empty or newline, then strip newline and split line
+                if content[5] != "NONE":  # if time_elapsed is not none then get time_elapsed
+                    time_elapsed = content[5]
+                successful = connect(main_screen_widget, 'upload', content[0], content[1], content[2], content[3], content[4], time_elapsed=time_elapsed, duplicate=True)
+                if not successful:
+                    screen_label.text = screen_label.text + f"\n{bcolors.FAIL}Upload of backed up data failed.{bcolors.ENDC}{bcolors.OKBLUE} Program will " \
+                                                            f"try again at next upload, or you can trigger upload manually from the menu.{bcolors.ENDC}"
+                    return False
             screen_label.text = screen_label.text + f"\n{bcolors.OKGREEN}Upload complete!{bcolors.ENDC}"
         os.remove(backup_file)  # file removed if upload is successful
     elif from_menu:
         screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}No backed-up data to upload.{bcolors.ENDC}"
-
-
-"""
-This function Creates a list item, used with the SharePoint site and the Office365-REST-Python-Client
-@param context the context of the site that is being communicated with/uploaded to
-@param content the content to add as a list item
-"""
-
-
-def create_list_item(main_screen, context, content, duplicate=False):
-    screen_label = main_screen.ids.screen_label
-    setup_screen_label(screen_label)
-
-    screen_label.text = screen_label.text + "\nCreating list item..."
-    list_object = context.web.lists.get_by_title(listTitle)
-    values = content.split(",")
-    sid = values[0]
-    tstr = values[1] + " " + values[2]
-    barstr = values[3]
-    status = values[4]
-
-    # Convert barstrs' special chars to regular chars for upload to SharePoint list
-    barstrReg = convert(main_screen,barstr, special_characters, char_dict_special_to_reg)
-
-    item_properties = {'__metadata': {'type': 'SP.Data.QR_x0020_TimestampsListItem'}, 'Title': barstrReg,
-                       'QR_x0020_Terminal': sid, 'Time_x0020_Stamp': tstr, 'Info': status}
-    list_object.add_item(item_properties)
-    succeed = connect(main_screen, context, 'execute_query', content, duplicate=duplicate)
-    if succeed:
-        screen_label.text = screen_label.text + f"\nList item '{barstr}' has been created."
-    else:
-        screen_label.text = screen_label.text + f"\n{bcolors.WARNING}List item '{barstr}' has NOT been created.{bcolors.ENDC}"
-    return succeed
-
-
-"""
-This function uploads the passed data to the SharePoint site in the specified sub folder with the given file name
-@param context the context of the site that is being communicated with/uploaded to (URL, authorization, etc.)
-@param file_content the content of the file to be uploaded
-@param filename the name of the file
-@param sub_folder the folder to put the file in
-
-@return returns the reference to the file that was uploaded
-"""
-
-
-def upload_file(context, file_content, filename, sub_folder):
-    library = context.web.lists.get_by_title(mainDirectory)
-
-    file_context = library.context
-    info = FileCreationInformation()
-    info.content = file_content
-    info.url = filename
-    info.overwrite = True
-
-    # upload file to sub folder as defined by 'sub_folder', this value is generally either variable qrfolder or bkcsvfolder as defined above
-    target_file = library.rootFolder.folders.get_by_url(sub_folder).files.add(info)
-    file_context.execute_query()
-
-    return target_file
 
 
 """
@@ -577,7 +451,7 @@ def store(main_screen):
     root = Tk()
     root.title('Storage Directory')
     root.withdraw()
-    store_path = filedialog.askdirectory(title='Select a Network Storage Directory')
+    store_path = filedialog.askdirectory(title='Select a Storage Directory')
     if os.path.exists(store_path):
         screen_label.text = screen_label.text + f"\n{bcolors.OKGREEN}Storage directory established: {store_path}{bcolors.ENDC}"
     else:
@@ -611,6 +485,7 @@ This class is the main class for the GUI, it is the main screen within which all
 
 class MainScreenWidget(BoxLayout):
     sys_id = os.environ["COMPUTERNAME"]
+    gis = None  # contains the access to arcgis online to upload data
 
     def __init__(self, **kwargs):
         super(MainScreenWidget, self).__init__(**kwargs)
@@ -663,7 +538,6 @@ class MainScreenWidget(BoxLayout):
 
             # open the output txt file for writing and initialize the set of barcodes found thus far
             global checkStorage
-            contentStrings = ""  # used to contain data recorded from qr codes, to save in files
             if os.path.isfile(args["output"]) and checkStorage:  # check if user wanted to restart prev session
                 if storageChoice.lower() == 'b':  # do this only if QR Toolbox is in online-mode
                     # Write previous records back to contentStrings
@@ -675,6 +549,7 @@ class MainScreenWidget(BoxLayout):
                             last_system_id = line_array[0]
                             file_date = datetime.datetime.strptime(line_array[1], "%m/%d/%Y").date()  # get date from file
                             file_time = datetime.datetime.strptime(line_array[2], "%H:%M:%S.%f").time()  # get time from file
+                            file_time_online = file_time.replace(file_time.hour + 4, file_time.minute, file_time.second, file_time.microsecond)
 
                             barcodeDataSpecial = line_array[3]  # get the QR Code from the file
                             status = line_array[4]  # get the status from the file
@@ -682,22 +557,13 @@ class MainScreenWidget(BoxLayout):
                                 duration = line_array[5][:len(line_array[5]) - 1:]  # also remove newline char
                             else:
                                 status = status[:len(status) - 1]  # else just remove the newline char from the status
-                            # Convert barcodeDataSpecial's special chars to regular chars
-                            barcodeDataReg = convert(self, barcodeDataSpecial, special_characters, char_dict_special_to_reg)
 
                             if status == "IN":  # if status is IN, use 5 params
-                                contentstr = "{},{},{},{},{}\n".format(last_system_id, file_date, file_time,
-                                                                    barcodeDataReg, status)  # for online CSV file
-                                contentstr2 = '{},{},{},{},{}\n'.format(last_system_id, file_date, file_time,
-                                                                     barcodeDataSpecial, status)  # for list item
-                            else:  # if status is OUT, use 6 params
-                                contentstr = "{},{},{},{},{},{}\n".format(last_system_id, file_date, file_time, barcodeDataReg,
-                                                                       status, duration)  # for online CSV file
-                                contentstr2 = '{},{},{},{},{},{}\n'.format(last_system_id, file_date, file_time,
-                                                                        barcodeDataSpecial, status, duration)  # for list item
+                                connect(self, "upload", last_system_id, file_date, file_time_online, barcodeDataSpecial, status)
+                            else:  # if status is OUT, add duration
+                                connect(self, "upload", last_system_id, file_date, file_time_online, barcodeDataSpecial,
+                                        status, duration)
 
-                            create_list_item(self, ctx, contentstr2)
-                            contentStrings = contentStrings + contentstr
                 if storageChoice.lower() == 'a':
                     screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}Restoring records (local mode)...{bcolors.ENDC}\n{open(args['output'], 'r', encoding='utf-8').read()}"
                 txt = open(args["output"], "a", encoding="utf-8")  # reopen txt file for appending (to continue records)
@@ -742,7 +608,9 @@ class MainScreenWidget(BoxLayout):
                 # find the barcodes in the frame and decode each of the barcodes
                 barcodes = pyzbar.decode(frame, symbols=[ZBarSymbol.QRCODE])
                 datestr = strftime("%m/%d/%Y")
-                timestr = datetime.datetime.now().strftime("%H:%M:%S.%f")
+                timestr = datetime.datetime.now()
+                timestr = timestr.replace(timestr.year, timestr.month, timestr.day, timestr.hour + 4,
+                                            timestr.minute, timestr.second, timestr.microsecond).strftime("%H:%M:%S.%f")
 
                 # loop over the detected barcodes
                 for barcode in barcodes:
@@ -798,13 +666,7 @@ class MainScreenWidget(BoxLayout):
 
                         checked_in = True
                         if storageChoice.lower() == 'b':  # if user chose online/Sharepoint
-                            # Convert barcodeData's special chars to regular chars
-                            barcodeDataNew = convert(self, barcodeData, special_characters, char_dict_special_to_reg)
-
-                            contentstr = "{},{},{},{},{}\n".format(system_id, datestr, timestr, barcodeDataNew, "IN")  # for online CSV file
-                            contentstr2 = '{},{},{},{},{}\n'.format(system_id, datestr, timestr, barcodeData, "IN")  # for list item
-                            checked_in = create_list_item(self, ctx, contentstr2)
-                            contentStrings = contentStrings + contentstr
+                            connect(self, "upload", system_id, datestr, timestr, barcodeData, "IN")
 
                         winsound.Beep(500, 400)  # makes a beeping sound on scan in
                         if checked_in:
@@ -831,15 +693,7 @@ class MainScreenWidget(BoxLayout):
 
                             checked_out = True
                             if storageChoice.lower() == 'b':  # if user chose online/Sharepoint version
-                                barcodeDataNew = convert(self, barcodeData, special_characters,
-                                                         char_dict_special_to_reg)
-                                # (above) convert qr code text special chars to reg chars
-                                contentstr = "{},{},{},{},{},{}\n".format(system_id, datestr, timestr, barcodeDataNew, "OUT", time_check)
-                                contentstr2 = "{},{},{},{},{},{}\n".format(system_id, datestr, timestr, barcodeData, "OUT",
-                                                                        time_check)
-
-                                checked_out = create_list_item(self, ctx, contentstr2)
-                                contentStrings = contentStrings + contentstr
+                                connect(self, "upload", system_id, datestr, timestr, barcodeData, "OUT", time_check)
 
                             winsound.Beep(500, 400)  # makes a beeping sound on scan
 
@@ -904,10 +758,6 @@ class MainScreenWidget(BoxLayout):
                 else:
                     screen_label.text = screen_label.text + f"\n{bcolors.WARNING}[ALERT]: Storage folder not established or is unavailable. " \
                           f"Files will only be saved to the working directory\n{bcolors.ENDC}"
-            elif storageChoice.lower() == 'b' and os.stat(args["output"]).st_size != 0:  # if online was chosen, upload data to SharePoint as well
-                success = connect(self, ctx, 'upload', contentStrings, file_name, bkcsvfolder)
-                if success:
-                    upload_backup(ctx, self)
 
             if os.path.exists(args["output"]) and os.stat(args["output"]).st_size == 0:  # delete barcodes.txt if empty
                 os.remove(args["output"])  # not removed until the end in case something goes wrong above and it's needed
@@ -941,6 +791,44 @@ class MainScreenWidget(BoxLayout):
         restart_session_popup.restart_popup.open()
         restart_session_popup.main_screen = self
 
+    def update_arcgis(self, sys_id, date_str, time_str, barcode_data, status, time_elapsed=None):
+        screen_label = self.ids.screen_label
+        search_results = self.gis.content.search(query=gis_query, max_items=15)
+        data = search_results[0]
+
+        # Add data to layer
+        feature_layers = data.layers
+        layer = feature_layers[0]
+
+        # Get the geo coordinates
+        point = Point({"x": longitude, "y": latitude, "spatialReference": {"wkid": 4326}})  # other is 3857
+
+        try:
+            if status == "IN":
+                feature = features.Feature(
+                    geometry=point,
+                    attributes={
+                        'Source': sys_id,
+                        'ScanDateTime': f"{date_str} {time_str}",
+                        'CodeText': barcode_data,
+                        'Status': 'IN'
+                    }
+                )
+            elif status == "OUT":
+                feature = features.Feature(
+                    geometry=point,
+                    attributes={
+                        'Source': sys_id,
+                        'ScanDateTime': f"{date_str} {time_str}",
+                        'CodeText': barcode_data,
+                        'Status': 'OUT',
+                        'ElapsedTime': f"{time_elapsed}"
+                    }
+                )
+            screen_label.text = screen_label.text + f"\n{layer.edit_features(adds=[feature])}"
+        except Exception as e:
+            screen_label.text = screen_label.text + f"\nError: Couldn't create the feature: {str(e)}"
+
     """ This function calls the qr_batch function and runs the qr_batch generator """
 
     def qr_batch(self):
@@ -968,13 +856,11 @@ class MainScreenWidget(BoxLayout):
     """ This function shows the setup menu as a popup widget w/4 buttons """
 
     def setup(self):
-        global isSpecialCharDisabled
         setup_popup = SetupWidget()
         setup_popup.setup_popup = Popup(title="Choose an option", content=setup_popup, size_hint=(None, None),
-                                        size=(251, 475),
+                                        size=(251, 370),
                                         auto_dismiss=True)
         setup_popup.main_screen = self
-        setup_popup.ids.specialcharbutton.disabled = isSpecialCharDisabled
         setup_popup.setup_popup.open()
 
     """ This function provides more information on the purpose and development of this software """
@@ -1050,12 +936,11 @@ class StorageWidget(BoxLayout):
     """ This function sets the storage based on the users selection (local or online) """
 
     def set_storage(self, storage):
-        global storageChoice, isSpecialCharDisabled
+        global storageChoice
         if storage:  # Local button was pressed
             global storagePath
             storageChoice = "a"
             storagePath = store(self.main_screen)
-            isSpecialCharDisabled = True
         elif not storage:
             storageChoice = "b"
 
@@ -1104,7 +989,7 @@ class SetupWidget(BoxLayout):
         if storageChoice == 'a':
             cons(self.main_screen)
         else:
-            upload_backup(ctx, self.main_screen, True)  # since it comes only from menu, send True
+            upload_backup(self.main_screen, True)  # since it comes only from menu, send True
 
     """ Creates and starts the popup for changing the storage location """
 
@@ -1126,17 +1011,6 @@ class SetupWidget(BoxLayout):
         camera_location.main_screen = self.main_screen
         camera_location.camera_popup.open()
 
-    """ Creates and starts the popup that allows the user to choose whether or not special characters will be converted (if not, they're skipped) """
-
-    def set_special_character_conversion(self):
-        special_char_widget = AskSpecialCharConversionWidget()
-        special_char_widget.special_char_popup = Popup(
-            title="Do you want to allow conversion of QR Codes with special characters? (Only affects QR "
-                  "Creator functions when using Sharepoint storage.)", content=special_char_widget,
-            size_hint=(None, None), size=(375, 300), auto_dismiss=True)
-        special_char_widget.main_screen = self.main_screen
-        special_char_widget.special_char_popup.open()
-
 
 """ This class represents the information shown when the qr_single button is pressed, has text, an input box, and 2 buttons """
 
@@ -1154,27 +1028,6 @@ class QRSingleWidget(BoxLayout):
             self.main_screen.ids.screen_label.text = self.main_screen.ids.screen_label.text + f"\n{bcolors.WARNING}QR Code text can't be empty.{bcolors.ENDC}"
 
 
-""" This class represents the information when the special char conversion button is clicked (text with 2 buttons) """
-
-
-class AskSpecialCharConversionWidget(BoxLayout):
-    special_char_popup = None
-    main_screen = None
-
-    """ This function Sets the boolean variable based on users choice, and prints the according message (when special chars come up, acts accor) """
-
-    def set_special_char_bool(self, ask_bool):
-        global special_char_bool
-        special_char_bool = ask_bool  # True if user says yes, False if user says no
-        screen_label = self.main_screen.ids.screen_label
-        setup_screen_label(screen_label)
-        if ask_bool:
-            screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}QR Codes with special characters will be converted to regular characters. " \
-                                                    f"(Online Mode only){bcolors.ENDC}"
-        else:
-            screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}QR Codes with special characters will be skipped. (Online Mode only){bcolors.ENDC}"
-
-
 """ This class represents the information shown when the online button is pressed and a username/password is requested, has text, an input box, and 2 buttons """
 
 
@@ -1189,18 +1042,16 @@ class LoginWidget(BoxLayout):
         setup_screen_label(screen_label)
 
         if username != "" and username is not None and password != "" and password is not None:
-            global isSpecialCharDisabled
+            global url, gis_query
             try:
-                # gis = GIS("https://epa.maps.arcgis.com/home/content.html", client_id="szzEfRyeyk2TygQ5", verify_cert=False)  # Online
-                gis = GIS("https://epa.maps.arcgis.com/home/content.html", username=username, password=password)  # Online
+                self.main_screen.gis = GIS(url, username=username, password=password)  # Get ArcGIS access and save it
 
-                # query = "owner: karimi.muhammad@epa.gov"
-                query = "owner: mkarimi_EPA"
-                search_results = gis.content.search(query=query, max_items=15)
+                search_results = self.main_screen.gis.content.search(query=gis_query, max_items=15)
                 print(search_results)
+                data = search_results[0]  # Get the layer we'll be using, so user can see it
 
                 screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}Storage location set to online (ArcGIS).{bcolors.ENDC}"
-                isSpecialCharDisabled = False
+                screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}Layer: {data}{bcolors.ENDC}"
             except Exception as e:
                 # e = sys.exc_info()[0]  # used for error checking
                 screen_label.text = screen_label.text + f"\n{bcolors.FAIL}Error: {e}{bcolors.ENDC}"

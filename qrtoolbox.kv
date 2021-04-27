@@ -103,13 +103,6 @@
             size: 225, 100
             on_release: root.change_storage_location()
             on_release: root.setup_popup.dismiss()
-        Button:
-            id: specialcharbutton
-            text: "Special Character Conversion"
-            size_hint: None, None
-            size: 225, 100
-            on_release: root.set_special_character_conversion()
-            on_release: root.setup_popup.dismiss()
 
 <StorageWidget>:
     orientation: 'vertical'
@@ -122,7 +115,7 @@
             on_release: root.set_storage(True)
             on_release: root.storage_popup.dismiss()
         Button:
-            text: "Online (Sharepoint)"
+            text: "Online (ArcGIS)"
             on_release: root.set_storage(False)
             on_release: root.storage_popup.dismiss()
 
@@ -171,24 +164,6 @@
             size_hint: None, None
             size: 150, 75
             on_release: root.qr_single_popup.dismiss()
-
-<AskSpecialCharConversionWidget>:
-    orientation: 'vertical'
-    BoxLayout:
-        orientation: 'vertical'
-        Button:
-            id: special_char
-            text: "Yes"
-            size_hint: None, None
-            size: 350, 100
-            on_release: root.set_special_char_bool(True)
-            on_release: root.special_char_popup.dismiss()
-        Button:
-            text: "No (those QR Codes will be skipped)"
-            size_hint: None, None
-            size: 350, 100
-            on_release: root.set_special_char_bool(False)
-            on_release: root.special_char_popup.dismiss()
 
 <LoginWidget>:
     orientation: 'vertical'

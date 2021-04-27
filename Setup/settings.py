@@ -1,11 +1,7 @@
 settings = {
-    'url': '',
-    'client_id': '',
-    'client_secret': '',
-    'listTitle': 'QR Timestamps',
-    'qrfolder': 'QRCodes',
-    'bkcsvfolder': 'HXWTEST',
-    'mainDirectory': 'EOC Documents',
-    'localQRBatchFile': 'names.csv',
-    'relative_url': '/sites/Emergency%20Response/EOCIncident/EOC%20Documents/QRCodes/names.csv'
+    'url': 'https://epa.maps.arcgis.com/home/content.html',
+    'query': 'owner: ',  # query to get right layer
+    'latitude': 0,  # must use decimal degrees
+    'longitude': 0,  # must use decimal degrees
+    'localQRBatchFile': 'names.csv'
 }
