@@ -11,9 +11,9 @@ Requirements: Python 3.7+, pyzbar, imutils, opencv-python, qrcode[pil], Pillow, 
 kivy-deps.glew, kivy-deps.gstreamer, kivy-deps.sdl2, Kivy-Garden, arcgis
 
 Specific versions:
-{"pyzbar": "0.1.8", "imutils": "0.5.3", "qrcode": "6.1", "Pillow": "7.0.0", "opencv-python": "4.2.0.32",
-"Kivy": "1.11.1", "kivy-deps.angle": "0.2.0", "kivy-deps.glew": "0.2.0",
-"kivy-deps.gstreamer": "0.2.0", "kivy-deps.sdl2": "0.2.0", "Kivy-Garden": "0.1.4", "arcgis": ""}
+{"pyzbar": "0.1.8", "imutils": "0.5.4", "qrcode": "6.1", "Pillow": "8.2.0", "opencv-python": "4.5.1.48",
+"Kivy": "1.11.1", "kivy-deps.angle": "0.3.0", "kivy-deps.glew": "0.3.0",
+"kivy-deps.gstreamer": "0.3.2", "kivy-deps.sdl2": "0.4.2", "Kivy-Garden": "0.1.4", "arcgis": "1.8.5.post3"}
 """
 
 # import the necessary packages
@@ -486,6 +486,8 @@ This class is the main class for the GUI, it is the main screen within which all
 class MainScreenWidget(BoxLayout):
     sys_id = os.environ["COMPUTERNAME"]
     gis = None  # contains the access to arcgis online to upload data
+    timer = None  # used to time how long users are checked in and alert any who exceed this amount of elapsed time
+    not_acknowledged = False
 
     def __init__(self, **kwargs):
         super(MainScreenWidget, self).__init__(**kwargs)
@@ -578,6 +580,7 @@ class MainScreenWidget(BoxLayout):
             found = []
             found_time = []
             found_status = []
+            thread_started = []  # tracks if a thread for the item in the given position has been started already, bool
 
             # Check if there are any stored QR codes that were scanned in in an earlier instance of the system
             if checkStorage:
@@ -609,7 +612,13 @@ class MainScreenWidget(BoxLayout):
                 barcodes = pyzbar.decode(frame, symbols=[ZBarSymbol.QRCODE])
                 datestr = strftime("%m/%d/%Y")
                 timestr = datetime.datetime.now()
-                timestr = timestr.replace(timestr.year, timestr.month, timestr.day, timestr.hour + 4,
+                hour = timestr.hour + 4  # this is to counter the weird arcgis effect where it auto subtracts 4 hrs
+                if hour > 23:  # have to do this part for the cases where it goes over 2300 and thus isn't real time anymore
+                    if hour == 24: hour = 0
+                    if hour == 25: hour = 1
+                    if hour == 26: hour = 2
+                    if hour == 27: hour = 3
+                timestr = timestr.replace(timestr.year, timestr.month, timestr.day, hour,
                                             timestr.minute, timestr.second, timestr.microsecond).strftime("%H:%M:%S.%f")
 
                 # loop over the detected barcodes
@@ -655,6 +664,7 @@ class MainScreenWidget(BoxLayout):
                         found.append(barcodeData)
                         found_time.append(datetime_scanned)
                         found_status.append("IN")
+                        thread_started.append(False)
 
                         # Write updated found arrays to qr_data_file so that it is up to date with the latest scan ins
                         with open(qr_storage_file, "w") as qr_data_file:
@@ -710,6 +720,7 @@ class MainScreenWidget(BoxLayout):
                             del found_status[index_loc]
                             del found_time[index_loc]
                             del found[index_loc]
+                            del thread_started[index_loc]
 
                         # Write updated found arrays to qr_data_file so that it is up to date with the latest scan ins
                         with open(qr_storage_file, "w") as qr_data_file:
@@ -720,6 +731,17 @@ class MainScreenWidget(BoxLayout):
                                 qr_data_file.write("{0},{1},{2}\n".format(code, tyme, status))
                     else:
                         screen_label.text = screen_label.text + f"\n{bcolors.FAIL}[Error] Barcode data issue in video() function.{bcolors.ENDC}"
+
+                # If timer is active, check to see if any user has gone over the timer
+                if self.timer is not None:
+                    datetime_scanned = datetime.datetime.now()  # get current time
+                    for i in range(len(found)):  # total time passed since user checked in
+                        time_check = (datetime_scanned.hour * 60 + datetime_scanned.minute + datetime_scanned.second / 60) - (found_time[i].hour * 60 + found_time[i].minute + found_time[i].second / 60)
+                        if time_check > self.timer and thread_started[i] is not True:
+                            print(found[i])  # need to trigger some kind of popup, on another thread
+                            threading.Thread(target=self.timer_alert, args=[found[i]], daemon=True).start()
+                            thread_started[i] = True
+            # future: it should probably also not have the potential to trigger multiple threads/alerts/sounds overlayed
 
                 # show the output frame
                 cv2.imshow("QR Toolbox", frame)
@@ -858,7 +880,7 @@ class MainScreenWidget(BoxLayout):
     def setup(self):
         setup_popup = SetupWidget()
         setup_popup.setup_popup = Popup(title="Choose an option", content=setup_popup, size_hint=(None, None),
-                                        size=(251, 370),
+                                        size=(251, 470),
                                         auto_dismiss=True)
         setup_popup.main_screen = self
         setup_popup.setup_popup.open()
@@ -886,6 +908,23 @@ class MainScreenWidget(BoxLayout):
 
         global clear_screen
         clear_screen = True
+
+    """ This function is triggered when a user goes over their time limit, and it starts the alert popup and sound """
+
+    def timer_alert(self, user):
+        timer_alert_widget = TimerAlertWidget()
+        timer_alert_widget.timer_alert_widget_popup = Popup(title=f"ALERT: {user} has exceeded the time limit.", content=timer_alert_widget, size_hint=(None, None),
+            size=(421, 135), auto_dismiss=False)
+        timer_alert_widget.timer_alert_widget_popup.open()
+        timer_alert_widget.main_screen = self
+
+        # play the sound
+        not_acknowledged = True
+        while not_acknowledged:
+            winsound.Beep(800, 10000)
+            time.sleep(20)
+
+        return True
 
     """ This function is triggered when the user clicks the Menu 'Exit' button """
 
@@ -976,6 +1015,34 @@ class CameraWidget(BoxLayout):
         screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}Camera source set to '{camera_choice}'.{bcolors.ENDC}"
 
 
+class TimerWidget(BoxLayout):
+    timer_popup = None
+    main_screen = None
+
+    """ sets the timer variable to the user defined value """
+
+    def set_timer(self, time_to_set):
+        if time_to_set != "" and time_to_set is not None and int(time_to_set) != 0:
+            self.main_screen.timer = int(time_to_set)  # set the timer and print a message
+            self.main_screen.ids.screen_label.text = self.main_screen.ids.screen_label.text + f"\n{bcolors.WARNING}Timer set to {time_to_set} minute(s).{bcolors.ENDC}"
+        else:  # unset the timer
+            self.main_screen.timer = None
+            self.main_screen.ids.screen_label.text = self.main_screen.ids.screen_label.text + f"\n{bcolors.WARNING}Timer unset.{bcolors.ENDC}"
+
+
+""" This class represents the Timer Alert box that pops up when a user exceeds the timer, in order to alert the user """
+
+
+class TimerAlertWidget(BoxLayout):
+    timer_alert_widget_popup = None
+    main_screen = None
+
+    """ This function handles what happens after the user acknowledges that a user/item has exceeded the timer """
+
+    def alert_acknowledged(self):
+        self.main_screen.not_acknowledged = False  # set this to False so that beeping stops
+
+
 """ This class represents the information displayed when you click the Setup menu """
 
 
@@ -1010,6 +1077,15 @@ class SetupWidget(BoxLayout):
                                              size=(261, 375), auto_dismiss=True)
         camera_location.main_screen = self.main_screen
         camera_location.camera_popup.open()
+
+    """ Creates and starts the popup for setting a timer for how long users can be checked in """
+    def set_timer_popup(self):
+        timer_widget = TimerWidget()
+        timer_widget.timer_popup = Popup(
+            title=" Enter the time (in minutes) for the timer.", content=timer_widget,
+            size_hint=(None, None), size=(327, 210), auto_dismiss=True)
+        timer_widget.main_screen = self.main_screen
+        timer_widget.timer_popup.open()
 
 
 """ This class represents the information shown when the qr_single button is pressed, has text, an input box, and 2 buttons """
