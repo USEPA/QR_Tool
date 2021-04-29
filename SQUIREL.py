@@ -633,6 +633,19 @@ class MainScreenWidget(BoxLayout):
 
 class RowWidget(StackLayout):  # the row widget class, and the current number of cols for each row
     col_count = 2
+    main_screen = None
+
+    def touch_down(self):
+        self.main_screen.ids.main_scroll.do_scroll_x = False
+        self.main_screen.ids.main_scroll.do_scroll_y = False
+
+    def touch_up(self):
+        self.main_screen.ids.main_scroll.do_scroll_x = True
+        self.main_screen.ids.main_scroll.do_scroll_y = True
+
+    def touch_move(self):
+        self.main_screen.ids.main_scroll.do_scroll_x = False
+        self.main_screen.ids.main_scroll.do_scroll_y = False
 
 
 class ColWidget(TextInput):
