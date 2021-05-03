@@ -35,7 +35,7 @@
                             size: 700, 50
                             background_color: (25, 255, 0, 1)
                         ScrollView:
-                            do_scroll-x: False
+                            do_scroll_x: False
                             do_scroll_y: True
                             bar_width: 5
                             size_hint: None, None
@@ -173,7 +173,7 @@
                     do_scroll_x: True
                     do_scroll_y: True
                     bar_width: 10
-                    scroll_type: ['bars', 'content']
+                    scroll_type: ['bars']
                     size_hint: None, None
                     size: 995, 190
                     StackLayout:
@@ -261,9 +261,6 @@
         use_bubble: True
         use_handles: True
         write_tab: False
-        on_touch_down: root.touch_down()
-        on_touch_up: root.touch_up()
-        on_touch_move: root.touch_move()
 
 <ColWidget>:  # colwidget that is instantiated and added/removed, is added to rowwidget above
     id: newcol
@@ -273,9 +270,6 @@
     use_bubble: True
     use_handles: True
     write_tab: False
-    on_touch_down: root.touch_down()
-    on_touch_up: root.touch_up()
-    on_touch_move: root.touch_move()
 
 <AddRemoveColWidget>:  # widget that has adding and removing column btns
     id: addremovecols
