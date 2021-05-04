@@ -59,7 +59,7 @@ exe = EXE(pyz,
           strip=False,
           upx=True,
           console=False )
-coll = COLLECT(exe, 'C:/Users/mkarimi/PycharmProjects/QR_Tool/QR-Toolbox.py', 'C:/Users/mkarimi/PycharmProjects/QR_Tool/QR-Toolbox.spec', 'C:/Users/mkarimi/PycharmProjects/QR_Tool/qrtoolbox.kv', 'C:/Users/mkarimi/PycharmProjects/QR_Tool/names.csv', Tree('C:/Users/mkarimi/PycharmProjects/QR_Tool/System_Data'), Tree('C:/Users/mkarimi/PycharmProjects/QR_Tool/Setup'), Tree('C:/Users/mkarimi/PycharmProjects/QR_Tool/Documentation'), Tree('C:/Users/mkarimi/PycharmProjects/QR_Tool/Archive'),
+coll = COLLECT(exe, Tree('C:/Users/mkarimi/PycharmProjects/QR_Tool'),
                a.binaries,
                a.zipfiles,
                a.datas,
