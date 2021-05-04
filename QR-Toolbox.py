@@ -12,7 +12,7 @@ kivy-deps.glew, kivy-deps.gstreamer, kivy-deps.sdl2, Kivy-Garden, arcgis
 
 Specific versions:
 {"pyzbar": "0.1.8", "imutils": "0.5.4", "qrcode": "6.1", "Pillow": "8.2.0", "opencv-python": "4.5.1.48",
-"Kivy": "1.11.1", "kivy-deps.angle": "0.3.0", "kivy-deps.glew": "0.3.0",
+"Kivy": "2.0.0", "kivy-deps.angle": "0.3.0", "kivy-deps.glew": "0.3.0",
 "kivy-deps.gstreamer": "0.3.2", "kivy-deps.sdl2": "0.4.2", "Kivy-Garden": "0.1.4", "arcgis": "1.8.5.post3"}
 """
 
