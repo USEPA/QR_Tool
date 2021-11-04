@@ -434,7 +434,7 @@ os.environ['KIVY_GL_BACKEND'] = 'angle_sdl2'  # not sure if its vital or not
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.popup import Popup
 from kivy.core.window import Window
-from libs.garden.recyclelabel import RecycleLabel
+from Library.garden.recyclelabel import RecycleLabel
 
 """
 This function allows the user to select a storage directory. If user escapes, a storage directory is not created
