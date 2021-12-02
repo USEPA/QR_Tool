@@ -207,8 +207,8 @@ def connect(main_screen, connection_type, sys_id, date_str, time_str, barcode, s
                 screen_label.text = screen_label.text + f"\n{bcolors.FAIL}Reconnect failed. Trying again in 30 seconds.{bcolors.ENDC}"
                 time.sleep(30)
             elif i > 1 and not duplicate:  # if failed thrice, write to backup.txt
-                screen_label.text = screen_label.text + f"\n{bcolors.FAIL}Reconnect failed again.{bcolors.ENDC}{bcolors.OKBLUE} Data will be stored locally and " \
-                                                        f"uploaded at the next upload point, or if triggered from the menu.{bcolors.ENDC}"
+                screen_label.text = screen_label.text + f"\n{bcolors.FAIL}Reconnect failed again.{bcolors.ENDC}{bcolors.OKBLUE} Data will be stored locally and {bcolors.ENDC}" \
+                                                        f"{bcolors.OKBLUE}uploaded at the next upload point, or if triggered from the menu.{bcolors.ENDC}"
                 if connection_type == 'upload':
                     with open(backup_file, "a") as backup:  # write the data to the backup.txt file
                         backup.write(f"{content}\n")
@@ -241,8 +241,8 @@ def upload_backup(main_screen_widget, from_menu=False):
                     time_elapsed = content[5]
                 successful = connect(main_screen_widget, 'upload', content[0], content[1], content[2], content[3], content[4], time_elapsed=time_elapsed, duplicate=True)  # submit data for upload
                 if not successful:  # if upload failed print info to user
-                    screen_label.text = screen_label.text + f"\n{bcolors.FAIL}Upload of backed up data failed.{bcolors.ENDC}{bcolors.OKBLUE} Program will " \
-                                                            f"try again at next upload, or you can trigger upload manually from the menu.{bcolors.ENDC}"
+                    screen_label.text = screen_label.text + f"\n{bcolors.FAIL}Upload of backed up data failed.{bcolors.ENDC}{bcolors.OKBLUE} Program will {bcolors.ENDC}" \
+                                                            f"{bcolors.OKBLUE}try again at next upload, or you can trigger upload manually from the menu.{bcolors.ENDC}"
                     return False
             screen_label.text = screen_label.text + f"\n{bcolors.OKGREEN}Upload complete!{bcolors.ENDC}"
         os.remove(backup_file)  # file removed if upload is successful
@@ -417,15 +417,15 @@ def cons(main_screen_widget):
                         with open(fname, 'rb') as infile:
                             shutil.copyfileobj(infile, outfile)  # copy data from each file to the consolidated file
                             screen_label.text = screen_label.text + f"\n{fname} has been imported."
-                screen_label.text = screen_label.text + f"\n\n{bcolors.OKGREEN}Consolidated file created in the specified storage directory under " \
-                                                        f"the filename " + cons_filename + f"{bcolors.ENDC}\n"
+                screen_label.text = screen_label.text + f"\n\n{bcolors.OKGREEN}Consolidated file created in the specified storage directory under {bcolors.OKBLUE}" \
+                                                        f"{bcolors.OKGREEN}the filename " + cons_filename + f"{bcolors.ENDC}\n"
             except:
-                screen_label.text = screen_label.text + f"\n{bcolors.WARNING}[WARNING] Either the system was unable to write the consolidated file " \
-                                                        f"to the specified storage directory or the file " + cons_filename + " is currently in use " \
-                                                                                                                            f"or unavailable. The consolidated record may be incomplete.{bcolors.ENDC}\n"
+                screen_label.text = screen_label.text + f"\n{bcolors.WARNING}[WARNING] Either the system was unable to write the consolidated file {bcolors.ENDC}" \
+                                                        f"{bcolors.WARNING}to the specified storage directory or the file {bcolors.ENDC}" + cons_filename + f"{bcolors.WARNING} is currently in use {bcolors.ENDC}" \
+                                                        f"{bcolors.WARNING}or unavailable. The consolidated record may be incomplete.{bcolors.ENDC}\n"
     else:  # if no storage location chosen yet
-        screen_label.text = screen_label.text + f"\n{bcolors.WARNING}A storage location has not been established. Specify a storage folder using the " \
-              f"'Choose Storage Location' option before continuing\n{bcolors.ENDC}"
+        screen_label.text = screen_label.text + f"\n{bcolors.WARNING}A storage location has not been established. Specify a storage folder using the {bcolors.ENDC}" \
+                                                f"{bcolors.WARNING}'Choose Storage Location' option before continuing\n{bcolors.ENDC}"
 
 
 # GUI PART OF PROGRAM STARTS HERE
@@ -554,14 +554,14 @@ class MainScreenWidget(BoxLayout):
                             last_system_id = line_array[0]
                             file_date = datetime.datetime.strptime(line_array[1], "%m/%d/%Y").date()  # get date from file
                             file_time = datetime.datetime.strptime(line_array[2], "%H:%M:%S.%f").time()  # get time from file
-                            hour = file_time.hour + 4  # this is to counter the weird arcgis effect where it auto subtracts 4 hrs
-                            if hour > 23:  # have to do this part for the cases where it goes over 2300 and thus isn't real time anymore
-                                if hour == 24: hour = 0
-                                if hour == 25: hour = 1
-                                if hour == 26: hour = 2
-                                if hour == 27: hour = 3
-                                file_date.replace(file_date.year, file_date.month, file_date.day + 1)  # need to increment day by one, otherwise when time is set back 4hrs by arcgis, it'll decrement the day as well so the date would end up one day off (one day early)
-                            file_time_online = file_time.replace(hour, file_time.minute, file_time.second, file_time.microsecond)
+                            # hour = file_time.hour + 4  # this is to counter the weird arcgis effect where it auto subtracts 4 hrs
+                            # if hour > 23:  # have to do this part for the cases where it goes over 2300 and thus isn't real time anymore
+                            #     if hour == 24: hour = 0
+                            #     if hour == 25: hour = 1
+                            #     if hour == 26: hour = 2
+                            #     if hour == 27: hour = 3
+                            #     file_date.replace(file_date.year, file_date.month, file_date.day + 1)  # need to increment day by one, otherwise when time is set back 4hrs by arcgis, it'll decrement the day as well so the date would end up one day off (one day early)
+                            file_time_online = file_time
 
                             barcodeDataSpecial = line_array[3]  # get the QR Code from the file
                             status = line_array[4]  # get the status from the file
@@ -590,8 +590,8 @@ class MainScreenWidget(BoxLayout):
             else:  # if no previous records and user wanted to restart/restore them then print that none exist
                 txt = open(args["output"], "w", encoding="utf-8")  # else open new file/overwrite previous
                 if checkStorage:
-                    screen_label.text = screen_label.text + f"\n{bcolors.WARNING}No previous records found. CSV file will not include " \
-                                                            f"past records.{bcolors.ENDC}"
+                    screen_label.text = screen_label.text + f"\n{bcolors.WARNING}No previous records found. CSV file will not include {bcolors.ENDC}" \
+                                                            f"{bcolors.WARNING}past records.{bcolors.ENDC}"
 
             # time track variables. These are used to keep track of QR codes as they enter the screen
             found = []
@@ -610,6 +610,7 @@ class MainScreenWidget(BoxLayout):
                             found.append(line_array[0])  # append file data to the found arrays
                             found_time.append(datetime.datetime.strptime(line_array[1], "%Y-%m-%d %H:%M:%S.%f"))
                             found_status.append(line_array[2][:len(line_array[2]) - 1:])
+                            thread_started.append(False)
                         screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}Previous session restarted.{bcolors.ENDC}"
                 elif not os.path.exists(qr_storage_file) or os.stat(qr_storage_file).st_size == 0:
                     screen_label.text = screen_label.text + f"\n{bcolors.WARNING}No previous session found [qr-data.txt not found or is empty].{bcolors.ENDC}"
@@ -628,16 +629,15 @@ class MainScreenWidget(BoxLayout):
                 # find the barcodes in the frame and decode each of the barcodes
                 barcodes = pyzbar.decode(frame, symbols=[ZBarSymbol.QRCODE])
                 timestr = datetime.datetime.now()
-                hour = timestr.hour + 4  # this is to counter the weird arcgis effect where it auto subtracts 4 hrs
-                if hour > 23:  # have to do this part for the cases where it goes over 2300 and thus isn't real time anymore
-                    if hour == 24: hour = 0
-                    if hour == 25: hour = 1
-                    if hour == 26: hour = 2
-                    if hour == 27: hour = 3
-                    timestr = timestr.replace(timestr.year, timestr.month, timestr.day + 1, hour, timestr.minute, timestr.second, timestr.microsecond)  # need to increment day by one, otherwise when time is set back 4hrs by arcgis, it'll decrement the day as well so the date would end up one day off (one day early)
+                # hour = timestr.hour + 4  # this is to counter the weird arcgis effect where it auto subtracts 4 hrs
+                # if hour > 23:  # have to do this part for the cases where it goes over 2300 and thus isn't real time anymore
+                #     if hour == 24: hour = 0
+                #     if hour == 25: hour = 1
+                #     if hour == 26: hour = 2
+                #     if hour == 27: hour = 3
+                #     timestr = timestr.replace(timestr.year, timestr.month, timestr.day + 1, hour, timestr.minute, timestr.second, timestr.microsecond)  # need to increment day by one, otherwise when time is set back 4hrs by arcgis, it'll decrement the day as well so the date would end up one day off (one day early)
                 datestr = timestr.strftime("%m/%d/%Y")
-                timestr = timestr.replace(timestr.year, timestr.month, timestr.day, hour,
-                                            timestr.minute, timestr.second, timestr.microsecond).strftime("%H:%M:%S.%f")
+                timestr = timestr.strftime("%H:%M:%S.%f")
 
                 # loop over the detected barcodes
                 for barcode in barcodes:
@@ -801,8 +801,8 @@ class MainScreenWidget(BoxLayout):
                     with open(os.path.join(storagePath, file_name), "w", encoding="ANSI") as csv2:
                         csv2.write(data)
                 else:
-                    screen_label.text = screen_label.text + f"\n{bcolors.WARNING}[ALERT]: Storage folder not established or is unavailable. " \
-                          f"Files will only be saved to the root/working directory\n{bcolors.ENDC}"
+                    screen_label.text = screen_label.text + f"\n{bcolors.WARNING}[ALERT]: Storage folder not established or is unavailable. {bcolors.ENDC}" \
+                          f"{bcolors.WARNING}Files will only be saved to the root/working directory\n{bcolors.ENDC}"
 
             if os.path.exists(args["output"]) and os.stat(args["output"]).st_size == 0:  # delete barcodes.txt if empty
                 os.remove(args["output"])  # not removed until the end in case something goes wrong above and it's needed
@@ -1016,12 +1016,12 @@ class StorageWidget(BoxLayout):
             storageChoice = "b"
 
             login_widget = LoginWidget()  # user must login for online storage
-            login_widget.login_popup = Popup(
-                title="Enter your username and password", content=login_widget,
-                size_hint=(None, None), size=(327, 290), auto_dismiss=False)
+            # login_widget.login_popup = Popup(
+            #     title="Enter your username and password", content=login_widget,
+            #     size_hint=(None, None), size=(327, 290), auto_dismiss=False)
             login_widget.main_screen = self.main_screen
-            login_widget.login_popup.open()
-
+            # login_widget.login_popup.open()
+            login_widget.sign_in()
 
 """ This class represents the displayed when you select "Choose Camera Source" from the Setup menu, and is text with 3 buttons """
 
@@ -1146,32 +1146,28 @@ class LoginWidget(BoxLayout):
 
     """ Calls the sign in function with the text the user entered """
 
-    def sign_in(self, username, password):
+    def sign_in(self):
         global user_chose_storage
         screen_label = self.main_screen.ids.screen_label
         setup_screen_label(screen_label)
 
-        if username != "" and username is not None and password != "" and password is not None:
-            global url, gis_query
-            try:
-                self.main_screen.gis = GIS(url, username=username, password=password)  # Get ArcGIS access and save it
+        global url, gis_query
+        try:
+            self.main_screen.gis = GIS(url, client_id='vpeanPqMcHdq7G6z')  # Get ArcGIS access and save it
 
-                search_results = self.main_screen.gis.content.search(query=gis_query, max_items=15)  # check that query works and there's a layer to get
-                print(search_results)
-                # data = search_results[0]  # Get the layer we'll be using, so user can see it
+            search_results = self.main_screen.gis.content.search(query=gis_query, max_items=15)  # check that query works and there's a layer to get
+            # print(search_results)
+            data = search_results[0]  # Get the layer we'll be using, so user can see it
 
-                screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}Storage location set to online (ArcGIS).{bcolors.ENDC}"  # if successful
-                # screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}Layer: {data}{bcolors.ENDC}"  # provides more info on the exact layer chosen
-                user_chose_storage = True
-            except Exception as e:  # if error in trying to access ArcGIS or run the query
-                # e = sys.exc_info()[0]  # used for error checking
-                screen_label.text = screen_label.text + f"\n{bcolors.FAIL}Error: {e}{bcolors.ENDC}"
-                user_chose_storage = False
-            except:  # in case the above except clause doesn't catch everything
-                screen_label.text = screen_label.text + f"\n{bcolors.FAIL}An error has occurred.{bcolors.ENDC}"
-                user_chose_storage = False
-        else:  # if nothing entered
-            screen_label.text = screen_label.text + f"\n{bcolors.WARNING}Username and password can't be empty.{bcolors.ENDC}"
+            screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}Storage location set to online (ArcGIS).{bcolors.ENDC}"  # if successful
+            screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}Layer: {data.title}{bcolors.ENDC}"  # provides more info on the exact layer chosen
+            user_chose_storage = True
+        except Exception as e:  # if error in trying to access ArcGIS or run the query
+            # e = sys.exc_info()[0]  # used for error checking
+            screen_label.text = screen_label.text + f"\n{bcolors.FAIL}Error: {e}{bcolors.ENDC}"
+            user_chose_storage = False
+        except:  # in case the above except clause doesn't catch everything
+            screen_label.text = screen_label.text + f"\n{bcolors.FAIL}An error has occurred.{bcolors.ENDC}"
             user_chose_storage = False
 
     """ This function is called if the user clicks cancel, so user knows no storage is set currently """
