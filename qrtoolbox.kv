@@ -69,13 +69,13 @@
         orientation: 'horizontal'
         Button:
             id: test
-            text: "New session (all previous data will be deleted)"
+            text: "Start new session (all previous data will be deleted)"
             size_hint: None, None
             size: 350, 100
             on_release: root.set_check_storage(False)
             on_release: root.restart_popup.dismiss()
         Button:
-            text: "Restart previous session"
+            text: "Restart offline session (if one exists)"
             size_hint: None, None
             size: 350, 100
             on_release: root.set_check_storage(True)

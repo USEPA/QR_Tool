@@ -26,7 +26,6 @@ from pyzbar import pyzbar
 from pyzbar.pyzbar import ZBarSymbol
 
 import threading
-from kivy.app import App
 
 from Setup.settings import settings
 
@@ -309,7 +308,7 @@ folder.
 
 
 def qr_single(text):
-    if text == "":  # if no text is entered into the text box
+    if text is None or text == "":  # if no text is entered into the text box
         print("Skipped because no text was entered.")
         return
 
@@ -439,6 +438,99 @@ def about():
           "Research Program")
 
 
+def set_camera(camera_choice):
+    global cameraSource
+    cameraSource = camera_choice  # set camera source based on user choice
+    print("Camera source set to '%s'." % camera_choice)
+
+
+""" 
+This class represents the Exit alert box that pops up when you click the 'Exit' button, confirming that you want 
+to exit 
+"""
+
+
+def confirm_exit():
+    print("Are you sure you want to quit?\n(unsaved data, such as from an open QR Reader, will be lost)")
+    option = input("(Y/N): ")
+    if option.lower() == 'y' or option.lower() == 'yes':
+        sys.exit()
+    return True
+
+
+""" This function checks if storage path is set, calls it if not, otherwise/and then calls the qr_batch function """
+
+
+def setup_qr_single():
+    global storagePath
+    if storagePath == "":
+        storagePath = store()  # set storage path if it hasn't been set already
+
+    if storagePath != "":  # then ask user for the text for the new qr code
+        print("Enter text to generate a single QR Code and click OK. The resulting image will be saved in the "
+              "tool's origin folder, and selected storage location.")
+        text = input("QR Text: ")
+        qr_single(text)
+
+
+""" 
+    This function creates a popup widget to prompt the user for text for the QR code, can be multi-line 
+    It also first checks if storage path is set, and if not then it triggers the user to select that
+"""
+
+
+def setup_qr_batch():
+    global storagePath
+    if storagePath == "":
+        storagePath = store()
+    if storagePath != "":
+        qr_batch()
+
+""" 
+This class represents the information shown when the online button is pressed and a username/password is requested, 
+has text, an input box, and 2 buttons 
+"""
+
+
+def sign_in(main_screen):
+    global user_chose_storage
+
+    global url, gis_query
+    try:
+        main_screen.gis = GIS(url, client_id='vpeanPqMcHdq7G6z')  # Get ArcGIS access and save it
+
+        # check that query works and there's a layer to get
+        search_results = main_screen.gis.content.search(query=gis_query,
+                                                        max_items=15)
+        # print(search_results)
+        data = search_results[0]  # Get the layer we'll be using, so user can see it
+
+        print("Storage location set to online (ArcGIS).\nLayer: %s" % data.title)
+        # provides more info on the exact layer chosen
+        user_chose_storage = True
+    except Exception as e:  # if error in trying to access ArcGIS or run the query
+        # e = sys.exc_info()[0]  # used for error checking
+        print("Error: %s" % e)
+        user_chose_storage = False
+    except:  # in case the above except clause doesn't catch everything
+        print("An error has occurred.")
+        user_chose_storage = False
+
+
+""" 
+This function Checks to see if there is any previous sessions and session data, and if there is it will pull that 
+back in @param check is to see if we should checkStorage or not
+"""
+
+
+def set_check_storage(main_screen, check):
+    if check:  # if user wants to check for previous session/session data
+        global checkStorage
+        checkStorage = True
+        print("Previous session will be restarted, if one exists.")
+
+    threading.Thread(target=main_screen.video, daemon=True).start()  # starts video method on its own thread
+
 """
 This class is the main class for the GUI, it is the main screen within which all other screens/widgets/buttons are 
 located
@@ -448,7 +540,7 @@ located
 class MainScreen:
     sys_id = os.environ["COMPUTERNAME"]  # this may be a repeat
     gis = None  # contains the access to arcgis online to upload data
-    timer = None  # used to time how long users are checked in and alert any who exceed this amount of elapsed time
+    # timer = None  # used to time how long users are checked in and alert any who exceed this amount of elapsed time
 
     """
     This function starts a VideoStream, and captures any QR Codes it sees (in a certain distance)
@@ -548,7 +640,7 @@ class MainScreen:
             found = []
             found_time = []
             found_status = []
-            thread_started = []  # tracks if a thread for the item in the given position has been started already, bool
+            # thread_started = [] # tracks if a thread for the item in the given position has been started already, bool
 
             # Check if there are any stored QR codes that were scanned-in in an earlier instance of the system
             if checkStorage:
@@ -562,7 +654,7 @@ class MainScreen:
                             found.append(line_array[0])  # append file data to the found arrays
                             found_time.append(datetime.datetime.strptime(line_array[1], "%Y-%m-%d %H:%M:%S.%f"))
                             found_status.append(line_array[2][:len(line_array[2]) - 1:])
-                            thread_started.append(False)
+                            # thread_started.append(False)
                         print("Previous session restarted.")
                 elif not os.path.exists(qr_storage_file) or os.stat(qr_storage_file).st_size == 0:
                     print("No previous session found [qr-data.txt not found or is empty].")
@@ -631,7 +723,7 @@ class MainScreen:
                         found.append(barcode_data)
                         found_time.append(datetime_scanned)
                         found_status.append("IN")
-                        thread_started.append(False)
+                        # thread_started.append(False)
                         # added so that it corresponds to the actual data in the found arrays
 
                         # Write updated found arrays to qr_data_file so that it is up to date with the latest scan ins
@@ -696,7 +788,7 @@ class MainScreen:
                             del found_status[index_loc]
                             del found_time[index_loc]
                             del found[index_loc]
-                            del thread_started[index_loc]
+                            # del thread_started[index_loc]
 
                         # Write updated found arrays to qr_data_file so that it is up to date with the latest scan ins
                         with open(qr_storage_file, "w") as qr_data_file:  # that file is used when restarting sessions
@@ -709,21 +801,21 @@ class MainScreen:
                         print("[Error] Barcode data issue in video() function.")
 
                 # If timer is active, check to see if any user has gone over the timer
-                if self.timer is not None:
-                    datetime_scanned = datetime.datetime.now()  # get current time
-                    for i in range(len(found)):  # below: total time passed since user checked in
-                        time_check = \
-                            (datetime_scanned.hour * 60 + datetime_scanned.minute + datetime_scanned.second / 60) - \
-                            (found_time[i].hour * 60 + found_time[i].minute + found_time[i].second / 60)
-                        if time_check > self.timer and thread_started[i] is not True:
-                            # if they're beyond the timer limit
-                            print(found[i])
-                            threading.Thread(target=self.timer_alert, args=[found[i]], daemon=True).start()
-                            # alert user
-                            thread_started[i] = True  # mark this code/item/user as having an alert already run for
-                            # them, so that it doesn't happen again
-                # future: it should probably also not have the potential to trigger multiple threads/alerts/sounds
-                # overlayed
+                # if self.timer is not None:
+                #     datetime_scanned = datetime.datetime.now()  # get current time
+                #     for i in range(len(found)):  # below: total time passed since user checked in
+                #         time_check = \
+                #             (datetime_scanned.hour * 60 + datetime_scanned.minute + datetime_scanned.second / 60) - \
+                #             (found_time[i].hour * 60 + found_time[i].minute + found_time[i].second / 60)
+                #         if time_check > self.timer and thread_started[i] is not True:
+                #             # if they're beyond the timer limit
+                #             print(found[i])
+                #             threading.Thread(target=self.timer_alert, args=[found[i]], daemon=True).start()
+                #             # alert user
+                #             thread_started[i] = True  # mark this code/item/user as having an alert already run for
+                #             # them, so that it doesn't happen again
+                # # future: it should probably also not have the potential to trigger multiple threads/alerts/sounds
+                # # overlayed
 
                 # show the output frame
                 cv2.imshow("QR Toolbox", frame)
@@ -783,8 +875,6 @@ class MainScreen:
     """
 
     def qr_reader(self):
-        restart_session = RestartSession()
-        restart_session.main_screen = self
 
         global vs
         if vs is not None:
@@ -792,13 +882,14 @@ class MainScreen:
             print("[ALERT] A video stream already exists.")
             return
 
-        print("Do you want to:\n1) start a new session\n2) restart the previous one\n"
+        print("Do you want to:\n1) start a new session (all previous data will be deleted)\n"
+              "2) restart the previous offline session (if one exists)\n"
               "Note: CSV files are not created nor uploaded until after the QR Reader is closed.")
         answer = input("Choice: ")
         if answer == '1':
-            restart_session.set_check_storage(False)
+            set_check_storage(self, False)
         elif answer == '2':
-            restart_session.set_check_storage(True)
+            set_check_storage(self, True)
         else:
             print("Selection entered was not of an available option")
 
@@ -846,41 +937,14 @@ class MainScreen:
             print("Error: Couldn't create the feature: %s" % e)
             return False
 
-    """ This function checks if storage path is set, calls it if not, otherwise/and then calls the qr_batch function """
-
-    @staticmethod
-    def qr_batch():
-        global storagePath
-        if storagePath == "":
-            storagePath = store()
-        if storagePath != "":
-            qr_batch()
-
-    """ 
-        This function creates a popup widget to prompt the user for text for the QR code, can be multi-line 
-        It also first checks if storage path is set, and if not then it triggers the user to select that
-    """
-
-    def qr_single(self):
-        global storagePath
-        if storagePath == "":
-            storagePath = store()  # set storage path if it hasn't been set already
-
-        if storagePath != "":  # then ask user for the text for the new qr code
-            qr_maker = QRSingleMake()
-            qr_maker.main_screen = self
-            print("Enter text to generate a single QR Code and click OK. The resulting image will be saved in the "
-                  "tool's origin folder, and selected storage location.")
-            text = input("QR Text: ")
-            qr_maker.setup_qr_single(text)
-
     """ This function shows the setup menu as a popup widget w/4 buttons """
 
     def setup(self):
         setup = SetupElement()
         setup.main_screen = self
         print("Choose an option:\n"
-              "1) Upload/Consolidate\n2) Change storage location\n3) Change camera source\n4) Set timer")
+              "1) Upload/Consolidate\n2) Change storage location\n3) Change camera source")
+        # "\n4) Set timer")
         option = input("Choice: ")
         if option == '1':
             setup.upload_consolidate()
@@ -888,55 +952,43 @@ class MainScreen:
             setup.change_storage_location()
         elif option == '3':
             setup.change_camera_source()
-        elif option == '4':
-            setup.set_timer_popup()
+        # elif option == '4':
+        #     setup.set_timer_popup()
         else:
             print("Selection entered was not of an available option")
 
-    """ This function is triggered when a user goes over the time limit, and it triggers an alert popup and sound """
-
-    def timer_alert(self, user):
-        timer_alert = TimerAlert()
-        timer_alert.main_screen = self
-        print("ALERT: %s has exceeded the time limit." % user)
-
-        timer_alert.not_acknowledged = True
-        # this is set to True, so system knows user hasn't acknowledged the alert yet
-        return True
+    # """ This function is triggered when a user goes over the time limit, and it triggers an alert popup and sound """
+    #
+    # def timer_alert(self, user):
+    #     timer_alert = TimerAlert()
+    #     timer_alert.main_screen = self
+    #     print("ALERT: %s has exceeded the time limit." % user)
+    #
+    #     timer_alert.not_acknowledged = True
+    #     # this is set to True, so system knows user hasn't acknowledged the alert yet
+    #     return True
 
     """ This function is triggered when the user clicks the Menu 'Exit' button """
 
-    @staticmethod
-    def exit():
-        exit_option = ExitOption()
-        print("Are you sure you want to quit?\n(unsaved data, such as from an open QR Reader, will be lost)")
-        option = input("(Y/N): ")
-        if option.lower() == 'y' or option.lower() == 'yes':
-            exit_option.confirm_exit()
-        return True
-
-
-""" 
-This class represents/is the widget that displays when you click the qr-reader function, 
-asking if you want to restart a session or not 
-"""
-
-
-class RestartSession:
-    main_screen = None  # a reference to main screen so software can print to screen
-
-    """ 
-    This function Checks to see if there is any previous sessions and session data, and if there is it will pull that 
-    back in @param check is to see if we should checkStorage or not
-    """
-
-    def set_check_storage(self, check):
-        if check:  # if user wants to check for previous session/session data
-            global checkStorage
-            checkStorage = True
-            print("Previous session will be restarted, if one exists.")
-
-        threading.Thread(target=self.main_screen.video, daemon=True).start()  # starts video method on its own thread
+    def menu(self):
+        while True:
+            print("Please select which option you would like:\n1) QR Reader\n2) QR Single\n3) QR Batch\n4) Setup"
+                  "\n5) About\n6) Exit")
+            choice = input("Choice: ")
+            if choice == '1':
+                self.qr_reader()
+            elif choice == '2':
+                setup_qr_single()
+            elif choice == '3':
+                setup_qr_batch()
+            elif choice == '4':
+                self.setup()
+            elif choice == '5':
+                about()
+            elif choice == '6':
+                confirm_exit()
+            else:
+                print("Please enter one of the available selections")
 
 
 """ 
@@ -946,8 +998,6 @@ or online)
 
 
 class Storage:
-    text = "Do you want data stored on ArcGIS (online) or locally? \n" \
-           "Note: Files are also saved in the QR-Toolbox Archive folder regardless."
     main_screen = None
 
     """ This function sets the storage based on the users selection (local or online) """
@@ -961,63 +1011,7 @@ class Storage:
         elif not storage:  # online btn was pressed
             storageChoice = "b"
 
-            login = LoginForm()  # user must login for online storage
-            login.main_screen = self.main_screen
-            login.sign_in()
-
-
-""" 
-This class represents the displayed when you select "Choose Camera Source" from the Setup menu, 
-and is text with 3 buttons 
-"""
-
-
-class CameraWidget:
-    text = "Which camera do you want to use?"
-    main_screen = None
-
-    """
-    This function asks the user what camera will be used to read QR Codes
-    Only 3 options
-        1. A - integrated/built-in webcam (the default)
-        2. B - USB or connected webcam
-        3. C - PiCamera (from Raspberry Pi) (DISABLED FOR NOW)
-    """
-
-    @staticmethod
-    def set_camera(camera_choice):
-        global cameraSource
-        cameraSource = camera_choice  # set camera source based on user choice
-        print("Camera source set to '%s'." % camera_choice)
-
-
-class Timer:
-    main_screen = None
-
-    """ Sets the timer variable to the user defined value """
-
-    def set_timer(self, time_to_set):  # a time of 0min also counts as unsetting the timer
-        if time_to_set != "" and time_to_set is not None and int(time_to_set) != 0:
-            self.main_screen.timer = int(time_to_set)  # set the timer and print a message
-            print("Timer set to %s minute(s)." % time_to_set)
-        else:  # unset the timer
-            self.main_screen.timer = None
-            print("Timer unset.")
-
-
-""" This class represents the Timer Alert box that pops up when a user exceeds the timer, in order to alert the user """
-
-
-class TimerAlert:
-    main_screen = None
-    not_acknowledged = False
-    # used to check when main user has acknowledged that a given user has been checked in for too long
-
-    """ This function handles what happens after the user acknowledges that a user/item has exceeded the timer """
-
-    def alert_acknowledged(self):
-        self.not_acknowledged = False
-        # set this to False so that beeping stops (altho if any have alrdy been triggered this won't stop them)
+            sign_in(self.main_screen)
 
 
 """ This class represents the information displayed when you click the Setup menu """
@@ -1054,114 +1048,36 @@ class SetupElement:
 
     """  Creates and starts the popup for changing the camera source """
 
-    def change_camera_source(self):
-        camera_location = CameraWidget()
+    @staticmethod
+    def change_camera_source():
         print("Which camera do you want to use?\n1) Integrated Webcam\n2) Separate Webcam\n3) PiCamera")
-        camera_location.main_screen = self.main_screen
         choice = input("Choice: ")
         if choice == '1':
-            camera_location.set_camera("Integrated")
+            set_camera("Integrated")
         elif choice == '2':
-            camera_location.set_camera("Separate")
+            set_camera("Separate")
         elif choice == '3':
-            camera_location.set_camera("PiCamera")
+            set_camera("PiCamera")
         else:
             print("Selection entered was not of an available option")
 
     """ Creates and starts the popup for setting a timer for how long users can be checked in """
-
-    def set_timer_popup(self):
-        timer = Timer()
-        timer.main_screen = self.main_screen
-        print("Enter the time (in minutes) for the timer.")
-        choice = input("Time: ")
-        if choice.isnumeric():
-            timer.set_timer(choice)
-        else:
-            print("Value entered was not in the proper format")
-
-
-""" 
-This class represents the information shown when the qr_single button is pressed, has text, an input box, 
-and 2 buttons 
-"""
-
-
-class QRSingleMake:
-    main_screen = None
-
-    """ Calls the qr_single function with the text the user entered, or warning if no text """
-
-    @staticmethod
-    def setup_qr_single(text):
-        if text != "" and text is not None:
-            qr_single(text)
-        else:
-            print("QR Code text can't be empty.")
-
-
-""" 
-This class represents the information shown when the online button is pressed and a username/password is requested, 
-has text, an input box, and 2 buttons 
-"""
-
-
-class LoginForm:
-    main_screen = None
-
-    """ Calls the sign in function with the text the user entered """
-
-    def sign_in(self):
-        global user_chose_storage
-
-        global url, gis_query
-        try:
-            self.main_screen.gis = GIS(url, client_id='vpeanPqMcHdq7G6z')  # Get ArcGIS access and save it
-
-            # check that query works and there's a layer to get
-            search_results = self.main_screen.gis.content.search(query=gis_query,
-                                                                 max_items=15)
-            # print(search_results)
-            data = search_results[0]  # Get the layer we'll be using, so user can see it
-
-            print("Storage location set to online (ArcGIS).\nLayer: %s" % data.title)
-            # provides more info on the exact layer chosen
-            user_chose_storage = True
-        except Exception as e:  # if error in trying to access ArcGIS or run the query
-            # e = sys.exc_info()[0]  # used for error checking
-            print("Error: %s" % e)
-            user_chose_storage = False
-        except:  # in case the above except clause doesn't catch everything
-            print("An error has occurred.")
-            user_chose_storage = False
-
-    """ This function is called if the user clicks cancel, so user knows no storage is set currently """
-
-    @staticmethod
-    def storage_not_chosen():
-        global user_chose_storage
-        user_chose_storage = False  # no storage has been chosen
-        print("Online storage not set.")
-
-
-""" 
-This class represents the Exit alert box that pops up when you click the 'Exit' button, confirming that you want 
-to exit 
-"""
-
-
-class ExitOption:
-    """ This function closes the program if the user clicked 'Yes' when asked """
-
-    @staticmethod
-    def confirm_exit():
-        App.get_running_app().stop()
+    #
+    # def set_timer_popup(self):
+    #     timer = Timer()
+    #     timer.main_screen = self.main_screen
+    #     print("Enter the time (in minutes) for the timer.")
+    #     choice = input("Time: ")
+    #     if choice.isnumeric():
+    #         timer.set_timer(choice)
+    #     else:
+    #         print("Value entered was not in the proper format")
 
 
 """ This class represents the app itself, and everything starts from and runs from this """
 
 
-class QRToolboxApp(App):
+class QRToolboxApp:
     main_screen = None
 
     """ 
@@ -1169,13 +1085,12 @@ class QRToolboxApp(App):
     Main Widget for the app 
     """
 
-    def build(self):
+    def __init__(self):
         self.main_screen = MainScreen()
-        return self.main_screen
 
     """ This function runs the storage selection popup at the start of the App, and sets some global vars """
 
-    def on_start(self):
+    def start(self):
         storage_location = Storage()
         storage_location.main_screen = self.main_screen
         print("Select a storage location\nNote: Files are also saved in the QR-Toolbox Archive folder regardless."
@@ -1187,7 +1102,45 @@ class QRToolboxApp(App):
             storage_location.set_storage(True)
         else:
             print("Selection entered was not of an available option")
+        self.main_screen.menu()
+
+
+""" 
+This class represents the displayed when you select "Choose Camera Source" from the Setup menu, 
+and is text with 3 buttons 
+"""
+
+#
+# class Timer:
+#     main_screen = None
+#
+#     """ Sets the timer variable to the user defined value """
+#
+#     def set_timer(self, time_to_set):  # a time of 0min also counts as unsetting the timer
+#         if time_to_set != "" and time_to_set is not None and int(time_to_set) != 0:
+#             self.main_screen.timer = int(time_to_set)  # set the timer and print a message
+#             print("Timer set to %s minute(s)." % time_to_set)
+#         else:  # unset the timer
+#             self.main_screen.timer = None
+#             print("Timer unset.")
+#
+#
+# """
+# This class represents the Timer Alert box that pops up when a user exceeds the timer, in order to alert the user
+# """
+#
+#
+# class TimerAlert:
+#     main_screen = None
+#     not_acknowledged = False
+#     # used to check when main user has acknowledged that a given user has been checked in for too long
+#
+#     """ This function handles what happens after the user acknowledges that a user/item has exceeded the timer """
+#
+#     def alert_acknowledged(self):
+#         self.not_acknowledged = False
+#         # set this to False so that beeping stops (altho if any have alrdy been triggered this won't stop them)
 
 
 if __name__ == '__main__':
-    QRToolboxApp().run()  # runs and starts the whole program
+    QRToolboxApp().start()  # runs and starts the whole program
