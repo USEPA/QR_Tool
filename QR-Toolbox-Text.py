@@ -1,10 +1,12 @@
 import argparse
 import csv
+import sys
 import datetime
 import os
 import os.path
 import shutil
 import time
+import socket
 from datetime import timedelta
 from tkinter import *
 from tkinter import filedialog
@@ -51,11 +53,12 @@ archive_folder = "Archive"
 storagePath = ""  # the path to the local storage directory if chosen
 checkStorage = False  # whether system should check if there is any backed up data or previous session data
 user_chose_storage = False  # tracks whether user chose a storage method or not
-system_id = os.environ['COMPUTERNAME']  # this is used when checking qr codes in or out
+system_id = socket.gethostname()  # this is used when checking qr codes in or out
 t_value = timedelta(seconds=10)  # time between scans for the same qr code
 cameraSource = "Integrated"  # the camera source, defaults to integrated (so source 0)
 storageChoice = ""  # users choice of local ('a') or online ('b') mode
 vs = None  # global video stream variable, to ensure only 1 instance of it exists at a time
+video_on = False
 
 # Lists and Dictionaries used for special character handling and conversion
 trouble_characters = ['\t', '\n', '\r']  # characters that cause issues
@@ -436,6 +439,7 @@ def about():
           "\nMuhammad Karimi karimi.muhammad@epa.gov, and Jordan Deagan jordan.deagan@epa.gov"
           "\nContact: Timothy Boe: boe.timothy@epa.gov; or Paul Lemieux: lemieux.paul@epa.gov; USEPA Homeland Security "
           "Research Program")
+    time.sleep(5.0)
 
 
 def set_camera(camera_choice):
@@ -524,11 +528,12 @@ back in @param check is to see if we should checkStorage or not
 
 
 def set_check_storage(main_screen, check):
+    global video_on
     if check:  # if user wants to check for previous session/session data
         global checkStorage
         checkStorage = True
         print("Previous session will be restarted, if one exists.")
-
+    video_on=True
     threading.Thread(target=main_screen.video, daemon=True).start()  # starts video method on its own thread
 
 """
@@ -538,7 +543,7 @@ located
 
 
 class MainScreen:
-    sys_id = os.environ["COMPUTERNAME"]  # this may be a repeat
+    sys_id = socket.gethostname()  # this may be a repeat
     gis = None  # contains the access to arcgis online to upload data
     # timer = None  # used to time how long users are checked in and alert any who exceed this amount of elapsed time
 
@@ -551,7 +556,7 @@ class MainScreen:
     """
 
     def video(self):
-        global user_chose_storage, vs
+        global user_chose_storage, vs, video_on
 
         if user_chose_storage:
             print("[ALERT] Starting video stream...")
@@ -572,7 +577,7 @@ class MainScreen:
                 if cameraSource == 'Integrated':  # start correct camera based on user choice at beginning
                     vs = VideoStream(src=0).start()  # for integrated/built in webcam
                 elif cameraSource == 'Separate':
-                    vs = VideoStream(src=1).start()  # for separate webcam (usually USB connected)
+                    vs = VideoStream(src=1,).start()  # for separate webcam (usually USB connected)
                 elif cameraSource == 'PiCamera':
                     vs = VideoStream(usePiCamera=True).start()  # for mobile solution like Raspberry Pi Camera
                 else:
@@ -865,8 +870,10 @@ class MainScreen:
                 vs = None
 
             cv2.destroyAllWindows()  # close all cv windows
+            video_on = False
         else:  # if user did not choose storage
             print("Storage location not chosen, please choose a storage location")
+            video_on = False
 
     """
     This function prepares the program and then runs the video() function to read QR Codes
@@ -971,7 +978,10 @@ class MainScreen:
     """ This function is triggered when the user clicks the Menu 'Exit' button """
 
     def menu(self):
+        global video_on
         while True:
+            if video_on:
+                continue
             print("Please select which option you would like:\n1) QR Reader\n2) QR Single\n3) QR Batch\n4) Setup"
                   "\n5) About\n6) Exit")
             choice = input("Choice: ")
