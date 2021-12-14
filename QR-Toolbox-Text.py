@@ -19,10 +19,8 @@ from arcgis.geometry import Point
 import cv2
 import imutils
 import numpy as np
-import qrcode
 from PIL import Image
 from PIL import ImageDraw
-from PIL import ImageFont
 from imutils.video import VideoStream
 from pyzbar import pyzbar
 from pyzbar.pyzbar import ZBarSymbol
@@ -224,142 +222,142 @@ def upload_backup(main_screen, from_menu=False):
     elif from_menu:
         print("No backed-up data to upload.")
 
-
-"""
-This function creates QR codes in batches from a CSV file (defined in the global variables)
-    -The function always checks and performs the QR code creation in its root folder first, and the generated codes
-    are then stored in the Archive folder.
-    -A storage directory must have been chosen, the codes are then also stored in that location
-    -No difference between online and local mode for this
-
-@param main_screen_widget a reference to the main screen so that info can be printed to it
-"""
-
-
-def qr_batch():
-    print("\nThe batch QR code function is used to quickly create multiple QR codes by referencing a .csv file."
-          "\n-There is no difference between online and local mode for this function, it only works as described below."
-          "\n-The CSV file must be stored in the root folder of the program (where it was installed), and named "
-          "'names.csv'.\n    * The file name can be changed, but this change must also be reflected in the "
-          "Setup/settings.py file for the \n       variable 'localQRBatchFile'.\n    * The Tool will then automatically"
-          " create QR codes for each line in the csv, and save each QR Code image to the\n       Tools root folder "
-          "(this folder is usually called 'QR-Toolbox', and should be found in\n       "
-          "C:/Users/<user>/AppData/Local/Programs), where <user> refers to your user name on your computer.\n    * \n-"
-          "'names.csv' may consist of two columns 'first' & 'second'. The 'first' and 'second' columns could be\n    "
-          "populated with participant's first and last names, or other information, and will be joined together with a "
-          "space in\n    between.\n")
-
-    # this code creates a batch of QR codes from a csv file stored in the local directory
-    # QR code image size and input filename can be modified below
-
-    success = True
-    # This one creates the batch of QR codes in the same folder as this file
-    with open(localQRBatchFile) as csvfile:
-        reader = csv.reader(csvfile)  # reader for the csv file
-
-        for row in reader:
-            labeldata = row[0] if len(row) == 1 else row[0] + " " + row[1] if row[1] != '' else row[
-                0]  # combine the data in the first 2 cols depending on which is empty and which isn't
-
-            # convert special char to code character
-            code_label_data = convert(labeldata, special_characters, char_dict_special_to_code)
-
-            qr = qrcode.QRCode(  # this and below are to create the QR code
-                version=1,
-                error_correction=qrcode.constants.ERROR_CORRECT_L,
-                box_size=10,
-                border=4)
-
-            qr.add_data(code_label_data)
-            qr.make(fit=True)
-            print("Creating QR code: " + labeldata)
-
-            # make QR image
-            img = qr.make_image()
-            qr_file = labeldata + ".jpg"
-            qr_file = convert(qr_file, bad_file_name_list, None,
-                              True)  # remove special chars that can't be in filename
-            img.save(archive_folder + "/" + qr_file)
-
-            # open QR image and add qr data as name
-            img = Image.open(archive_folder + "/" + qr_file)
-            draw = ImageDraw.Draw(img)
-            font = ImageFont.truetype("arial", 24)
-            color = 0
-            draw.text((37, 10), labeldata, font=font, fill=color)
-            img.save(archive_folder + "/" + qr_file)
-            try:
-                img.save(storagePath + "/" + qr_file)
-            except:
-                success = False  # if any failures occur, set this to success so user knows a failure occurred
-                print("\nQR Code %s not created.\n" % labeldata)
-
-    if success:
-        print("\nSuccess!\n")
-    else:
-        print("Some or no files were saved in %s, only in Archive folder." % storagePath)
-
-
-"""
-This function creates a single QR code based on the text inserted by the user, which is then stored in the Archive 
-folder.
-    - The QR code is also stored in the location entered by the user, regardless of the mode they are in
-
-@param main_screen_widget reference to main screen to print info
-@param text the text from the TextInput field
-"""
-
-
-def qr_single(text):
-    if text is None or text == "":  # if no text is entered into the text box
-        print("Skipped because no text was entered.")
-        return
-
-    text_copy = text  # this line is probably not needed
-    print("Creating QR code: " + text)
-
-    # convert special char to code character
-    text_copy = convert(text_copy, special_characters, char_dict_special_to_code)
-
-    # this code creates a single QR code based on information entered into the command line.
-    # The resulting QR code is stored in the current (the programs') directory
-    # QR code image size and input filename can be modified below
-    qr = qrcode.QRCode(
-        version=1,
-        error_correction=qrcode.constants.ERROR_CORRECT_L,
-        box_size=10,
-        border=4)
-
-    qr.add_data(text_copy)
-    qr.make(fit=True)
-
-    # draw label
-    img = qr.make_image()
-    file_name = text + ".jpg"
-    file_name = convert(file_name, bad_file_name_list, None,
-                        True)  # convert chars that can't be in a file name
-    img.save(archive_folder + "/" + file_name)
-
-    # Open QR image and add QR data as name
-    img = Image.open(archive_folder + "/" + file_name)
-    draw = ImageDraw.Draw(img)
-    font = ImageFont.truetype("arial", 24)
-    color = 0
-    draw.text((37, 10), text, font=font, fill=color)
-    img.save(archive_folder + "/" + file_name)
-
-    succeed = True
-    # Store QR code locally
-    try:  # try to save, if it fails then let user know
-        img.save(storagePath + "/" + file_name)
-    except:
-        succeed = False
-        print("\nQR Code %s not created.\n" % text)
-
-    if succeed:
-        print("Success!")
-    else:
-        print("File not saved in %s, only in Archive folder." % storagePath)
+#
+# """
+# This function creates QR codes in batches from a CSV file (defined in the global variables)
+#     -The function always checks and performs the QR code creation in its root folder first, and the generated codes
+#     are then stored in the Archive folder.
+#     -A storage directory must have been chosen, the codes are then also stored in that location
+#     -No difference between online and local mode for this
+#
+# @param main_screen_widget a reference to the main screen so that info can be printed to it
+# """
+#
+#
+# def qr_batch():
+#     print("\nThe batch QR code function is used to quickly create multiple QR codes by referencing a .csv file."
+#         "\n-There is no difference between online and local mode for this function, it only works as described below."
+#           "\n-The CSV file must be stored in the root folder of the program (where it was installed), and named "
+#           "'names.csv'.\n    * The file name can be changed, but this change must also be reflected in the "
+#         "Setup/settings.py file for the \n       variable 'localQRBatchFile'.\n    * The Tool will then automatically"
+#           " create QR codes for each line in the csv, and save each QR Code image to the\n       Tools root folder "
+#           "(this folder is usually called 'QR-Toolbox', and should be found in\n       "
+#          "C:/Users/<user>/AppData/Local/Programs), where <user> refers to your user name on your computer.\n    * \n-"
+#           "'names.csv' may consist of two columns 'first' & 'second'. The 'first' and 'second' columns could be\n    "
+#         "populated with participant's first and last names, or other information, and will be joined together with a "
+#           "space in\n    between.\n")
+#
+#     # this code creates a batch of QR codes from a csv file stored in the local directory
+#     # QR code image size and input filename can be modified below
+#
+#     success = True
+#     # This one creates the batch of QR codes in the same folder as this file
+#     with open(localQRBatchFile) as csvfile:
+#         reader = csv.reader(csvfile)  # reader for the csv file
+#
+#         for row in reader:
+#             labeldata = row[0] if len(row) == 1 else row[0] + " " + row[1] if row[1] != '' else row[
+#                 0]  # combine the data in the first 2 cols depending on which is empty and which isn't
+#
+#             # convert special char to code character
+#             code_label_data = convert(labeldata, special_characters, char_dict_special_to_code)
+#
+#             qr = qrcode.QRCode(  # this and below are to create the QR code
+#                 version=1,
+#                 error_correction=qrcode.constants.ERROR_CORRECT_L,
+#                 box_size=10,
+#                 border=4)
+#
+#             qr.add_data(code_label_data)
+#             qr.make(fit=True)
+#             print("Creating QR code: " + labeldata)
+#
+#             # make QR image
+#             img = qr.make_image()
+#             qr_file = labeldata + ".jpg"
+#             qr_file = convert(qr_file, bad_file_name_list, None,
+#                               True)  # remove special chars that can't be in filename
+#             img.save(archive_folder + "/" + qr_file)
+#
+#             # open QR image and add qr data as name
+#             img = Image.open(archive_folder + "/" + qr_file)
+#             draw = ImageDraw.Draw(img)
+#             font = ImageFont.truetype("arial.ttf", 24)
+#             color = 0
+#             draw.text((37, 10), labeldata, font=font, fill=color)
+#             img.save(archive_folder + "/" + qr_file)
+#             try:
+#                 img.save(storagePath + "/" + qr_file)
+#             except:
+#                 success = False  # if any failures occur, set this to success so user knows a failure occurred
+#                 print("\nQR Code %s not created.\n" % labeldata)
+#
+#     if success:
+#         print("\nSuccess!\n")
+#     else:
+#         print("Some or no files were saved in %s, only in Archive folder." % storagePath)
+#
+#
+# """
+# This function creates a single QR code based on the text inserted by the user, which is then stored in the Archive
+# folder.
+#     - The QR code is also stored in the location entered by the user, regardless of the mode they are in
+#
+# @param main_screen_widget reference to main screen to print info
+# @param text the text from the TextInput field
+# """
+#
+#
+# def qr_single(text):
+#     if text is None or text == "":  # if no text is entered into the text box
+#         print("Skipped because no text was entered.")
+#         return
+#
+#     text_copy = text  # this line is probably not needed
+#     print("Creating QR code: " + text)
+#
+#     # convert special char to code character
+#     text_copy = convert(text_copy, special_characters, char_dict_special_to_code)
+#
+#     # this code creates a single QR code based on information entered into the command line.
+#     # The resulting QR code is stored in the current (the programs') directory
+#     # QR code image size and input filename can be modified below
+#     qr = qrcode.QRCode(
+#         version=1,
+#         error_correction=qrcode.constants.ERROR_CORRECT_L,
+#         box_size=10,
+#         border=4)
+#
+#     qr.add_data(text_copy)
+#     qr.make(fit=True)
+#
+#     # draw label
+#     img = qr.make_image()
+#     file_name = text + ".jpg"
+#     file_name = convert(file_name, bad_file_name_list, None,
+#                         True)  # convert chars that can't be in a file name
+#     img.save(archive_folder + "/" + file_name)
+#
+#     # Open QR image and add QR data as name
+#     img = Image.open(archive_folder + "/" + file_name)
+#     draw = ImageDraw.Draw(img)
+#     font = ImageFont.truetype("arial.ttf", 24)
+#     color = 0
+#     draw.text((37, 10), text, font=font, fill=color)
+#     img.save(archive_folder + "/" + file_name)
+#
+#     succeed = True
+#     # Store QR code locally
+#     try:  # try to save, if it fails then let user know
+#         img.save(storagePath + "/" + file_name)
+#     except:
+#         succeed = False
+#         print("\nQR Code %s not created.\n" % text)
+#
+#     if succeed:
+#         print("Success!")
+#     else:
+#         print("File not saved in %s, only in Archive folder." % storagePath)
 
 
 """
@@ -461,34 +459,34 @@ def confirm_exit():
         sys.exit()
     return True
 
-
-""" This function checks if storage path is set, calls it if not, otherwise/and then calls the qr_batch function """
-
-
-def setup_qr_single():
-    global storagePath
-    if storagePath == "":
-        storagePath = store()  # set storage path if it hasn't been set already
-
-    if storagePath != "":  # then ask user for the text for the new qr code
-        print("Enter text to generate a single QR Code and click OK. The resulting image will be saved in the "
-              "tool's origin folder, and selected storage location.")
-        text = input("QR Text: ")
-        qr_single(text)
-
-
-""" 
-    This function creates a popup widget to prompt the user for text for the QR code, can be multi-line 
-    It also first checks if storage path is set, and if not then it triggers the user to select that
-"""
-
-
-def setup_qr_batch():
-    global storagePath
-    if storagePath == "":
-        storagePath = store()
-    if storagePath != "":
-        qr_batch()
+#
+# """ This function checks if storage path is set, calls it if not, otherwise/and then calls the qr_batch function """
+#
+#
+# def setup_qr_single():
+#     global storagePath
+#     if storagePath == "":
+#         storagePath = store()  # set storage path if it hasn't been set already
+#
+#     if storagePath != "":  # then ask user for the text for the new qr code
+#         print("Enter text to generate a single QR Code and click OK. The resulting image will be saved in the "
+#               "tool's origin folder, and selected storage location.")
+#         text = input("QR Text: ")
+#         qr_single(text)
+#
+#
+# """
+#     This function creates a popup widget to prompt the user for text for the QR code, can be multi-line
+#     It also first checks if storage path is set, and if not then it triggers the user to select that
+# """
+#
+#
+# def setup_qr_batch():
+#     global storagePath
+#     if storagePath == "":
+#         storagePath = store()
+#     if storagePath != "":
+#         qr_batch()
 
 """ 
 This class represents the information shown when the online button is pressed and a username/password is requested, 
@@ -533,7 +531,7 @@ def set_check_storage(main_screen, check):
         global checkStorage
         checkStorage = True
         print("Previous session will be restarted, if one exists.")
-    video_on=True
+    video_on = True
     threading.Thread(target=main_screen.video, daemon=True).start()  # starts video method on its own thread
 
 """
@@ -824,10 +822,10 @@ class MainScreen:
 
                 # show the output frame
                 cv2.imshow("QR Toolbox", frame)
-                cv2.waitKey(1)
+                key = cv2.waitKey(1)
 
                 # if the user closes the window, close the window (lol)
-                if cv2.getWindowProperty('QR Toolbox', 0) == -1:
+                if key == 27:
                     break
 
             # close the output CSV file and do a bit of cleanup
@@ -982,20 +980,15 @@ class MainScreen:
         while True:
             if video_on:
                 continue
-            print("Please select which option you would like:\n1) QR Reader\n2) QR Single\n3) QR Batch\n4) Setup"
-                  "\n5) About\n6) Exit")
+            print("Please select which option you would like:\n1) QR Reader\n2) Setup\n3) About\n4) Exit")
             choice = input("Choice: ")
             if choice == '1':
                 self.qr_reader()
             elif choice == '2':
-                setup_qr_single()
-            elif choice == '3':
-                setup_qr_batch()
-            elif choice == '4':
                 self.setup()
-            elif choice == '5':
+            elif choice == '3':
                 about()
-            elif choice == '6':
+            elif choice == '4':
                 confirm_exit()
             else:
                 print("Please enter one of the available selections")
