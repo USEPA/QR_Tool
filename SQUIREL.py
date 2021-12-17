@@ -273,13 +273,22 @@ class MainScreenWidget(BoxLayout):
                     if self.ids.gencsv.active:  # if generate csv was selected, generate the csv file
                         self.generate_csv(csv_file_name, qr_code_text)
 
+                    layout = self.file_settings_widget.ids.pdflayout.text
                     # Make the QR Code
-                    qr = qrcode.QRCode(
-                        version=1,
-                        error_correction=qrcode.constants.ERROR_CORRECT_L,
-                        box_size=10,
-                        border=4
-                    )
+                    if layout == "Avery 10x3":
+                        qr = qrcode.QRCode(
+                            version=1,
+                            error_correction=qrcode.constants.ERROR_CORRECT_L,
+                            box_size=15,
+                            border=2
+                        )
+                    else:
+                        qr = qrcode.QRCode(
+                            version=1,
+                            error_correction=qrcode.constants.ERROR_CORRECT_L,
+                            box_size=10,
+                            border=4
+                        )
 
                     qr.add_data(qr_code_text)  # add code text, then make
                     qr.make(fit=True)
@@ -296,9 +305,8 @@ class MainScreenWidget(BoxLayout):
                         file_name = f"Temp/{file_name}"
 
                     img.save(file_name)  # save qr code as a jpg file
-
                     # If Landscape Text is selected, append to code_labels_array
-                    if self.file_settings_widget.ids.pdflayout.text == "Landscape Text":
+                    if layout == "Landscape Text" or layout == "Avery 10x3" or layout == "Avery 3x2":
                         self.code_labels_array.append(qr_code_text)  # add code label to array for later use
                         img = Image.open(file_name)
                         img.save(file_name)
@@ -341,13 +349,21 @@ class MainScreenWidget(BoxLayout):
                             "WARNING: One (or more) of your CSV file IDs is longer than 161 characters. The QR Code(s) will function correctly, but the filename(s) will be shortened.",
                             168)
                         shorten_file_name = True
-
-                    qr = qrcode.QRCode(
-                        version=1,
-                        error_correction=qrcode.constants.ERROR_CORRECT_L,
-                        box_size=10,
-                        border=4
-                    )
+                    layout = self.file_settings_widget.ids.pdflayout.text
+                    if layout == "Avery 10x3":
+                        qr = qrcode.QRCode(
+                            version=1,
+                            error_correction=qrcode.constants.ERROR_CORRECT_L,
+                            box_size=15,
+                            border=2
+                        )
+                    else:
+                        qr = qrcode.QRCode(
+                            version=1,
+                            error_correction=qrcode.constants.ERROR_CORRECT_L,
+                            box_size=10,
+                            border=4
+                        )
 
                     qr.add_data(qr_code_text)  # add data and make qr code
                     qr.make(fit=True)
@@ -366,7 +382,7 @@ class MainScreenWidget(BoxLayout):
                     img.save(file_name)  # save qr code as a jpg file
 
                     # If Landscape Text is selected, append to code_labels_array
-                    if self.file_settings_widget.ids.pdflayout.text == "Landscape Text":
+                    if layout == "Landscape Text" or layout == "Avery 10x3" or layout == "Avery 3x2":
                         self.code_labels_array.append(qr_code_text)  # add code label to array for later useimg = Image.open(file_name)
                         img = Image.open(file_name)
                         img.save(file_name)
@@ -386,57 +402,75 @@ class MainScreenWidget(BoxLayout):
         self.create_pdf()
 
     def create_pdf(self):
-        pdf = FPDF(orientation='P')  # start PDF, set to portrait, add page
+        pdf = FPDF(orientation='P', format='Letter')  # start PDF, set to portrait, add page
         pdf.add_page()
-        x, y = (5.0, 5.0)
-        pdf.set_xy(x, y)  # set x and y coordinates for printing
+        x, y = (5.0, 12.0)
+          # set x and y coordinates for printing
 
         # Set up variables based on layout chosen by user
         layout = self.file_settings_widget.ids.pdflayout.text
 
         # Default values for option: "Default (5x4)"
         w = 50; h = 50  # set width and height
-        x_change = 50  # set x distance between this code and next
-        y_change = 50  # set y distance between this code and next
+        x_change = 51  # set x distance between this code and next
+        y_change = 52  # set y distance between this code and next
         max_in_row = 3  # set the max # codes in row - 1
         max_in_pg = 20  # set the max # codes in pg
 
         if layout == "4x1":
             w = 60; h = 60  # set same vars as above but for diff layout
-            x_change = 60; y_change = 60
+            x_change = 60; y_change = 65
             max_in_row = 0; max_in_pg = 4
         elif layout == "4x2":
-            w = 70; h = 70
-            x_change = 65; y_change = 65
+            w = 60; h = 60
+            x_change = 60; y_change = 65
             max_in_row = 1; max_in_pg = 8
         elif layout == "4x3":
-            w = 70; h = 70
-            x_change = 65; y_change = 65
+            w = 60; h = 60
+            x_change = 60; y_change = 65
             max_in_row = 2; max_in_pg = 12
+            x = 17
         elif layout == "4x4":
             w = 50; h = 55
-            x_change = 50; y_change = 55
+            x_change = 51; y_change = 65
             max_in_row = 3; max_in_pg = 16
         elif layout == "3x2":
-            w = 90; h = 90
-            x_change = 90; y_change = 90
+            w = 85; h = 85
+            x_change = 100; y_change = 85
             max_in_row = 1; max_in_pg = 6
+            x = 15
         elif layout == "3x3":
-            w = 70; h = 70
-            x_change = 70; y_change = 70
+            w = 68; h = 68
+            x_change = 68; y_change = 80
             max_in_row = 2; max_in_pg = 9
+            y = 20
         elif layout == "2x2":
             w = 100; h = 100
-            x_change = 100; y_change = 100
+            x_change = 105; y_change = 130
             max_in_row = 1; max_in_pg = 4
-        elif layout == "1x2 and 5/8":
-            w = 35; h = 92.20
-            x_change = 33; y_change = 88
-            max_in_row = 5; max_in_pg = 18
+            y = 20
+        # elif layout == "1x2 and 5/8":
+        #     w = 35; h = 92.20
+        #     x_change = 33; y_change = 88
+        #     max_in_row = 5; max_in_pg = 18
         elif layout == "Landscape Text":
             w = 35; h = 35
             x_change = 33; y_change = 88
             max_in_row = 5; max_in_pg = 18
+        elif layout == "Avery 10x3":
+            w = 25; h = 25
+            x_change = 70; y_change = 25.5
+            max_in_row = 2; max_in_pg = 30
+            x, y = (6.0, 12.0)
+            # pdf.set_auto_page_break(auto=True,margin=0)
+        elif layout == "Avery 3x2":
+            w = 65; h = 65
+            x_change = 105; y_change = 85
+            max_in_row = 1; max_in_pg = 6
+            x, y = (24.0, 12.0)
+
+        pdf.set_auto_page_break(auto=True, margin=0)
+        pdf.set_xy(x, y)
 
         """ Printing of codes usually results in first page being mostly blank, so this method is a 
         work around to that issue, by printing a first page and then reprinting that first page correctly, 
@@ -478,6 +512,8 @@ class MainScreenWidget(BoxLayout):
         row_num = 0  # used to track # of rows for the Landscape Text layout
         num_in_row = 0  # used to measure how many will fit in a row
         num_in_page = 0  # used to measure how many will fit in a pg
+        side = x
+        top = y
         i = 0  # index used to keep track of array_of_codes position for labels
         for code in self.array_of_codes:  # print qr codes to pdf file
             pdf.image(code, w=w, h=h)  # print code to pdf
@@ -499,11 +535,37 @@ class MainScreenWidget(BoxLayout):
                 pdf.text((h + 3) + y_change * row_num, -1 * (w - 15) - (33 * num_in_row) + 20, txt=text_to_print5)
                 pdf.rotate(0)  # undo rotation
 
+            if layout == "Avery 10x3":
+                pdf.set_font('Courier', '', 12)  # set font family, style, and size
+                text_to_print1 = self.code_labels_array[i][:14]
+                text_to_print2 = self.code_labels_array[i][14:28]  # split up texts so label fits and doesn't get cut off
+                text_to_print3 = self.code_labels_array[i][28:42]
+                text_to_print4 = self.code_labels_array[i][42:56]
+                text_to_print5 = self.code_labels_array[i][56:70]
+                pdf.text(x + w, y + 5, txt=text_to_print1)
+                pdf.text(x + w, y + 9, txt=text_to_print2)
+                pdf.text(x + w, y + 13, txt=text_to_print3)
+                pdf.text(x + w, y + 17, txt=text_to_print4)
+                pdf.text(x + w, y + 21, txt=text_to_print5)
+
+            if layout == "Avery 3x2":
+                pdf.set_font('Courier', '', 12)
+                text_to_print1 = self.code_labels_array[i][:30]
+                text_to_print2 = self.code_labels_array[i][30:60]  # split up texts so label fits and doesn't get cut off
+                text_to_print3 = self.code_labels_array[i][60:90]
+                text_to_print4 = self.code_labels_array[i][90:120]
+                text_to_print5 = self.code_labels_array[i][120:150]
+                pdf.text(x - 6, y + h, txt=text_to_print1)
+                pdf.text(x - 6, y + h + 4, txt=text_to_print2)
+                pdf.text(x - 6, y + h + 8, txt=text_to_print3)
+                pdf.text(x - 6, y + h + 12, txt=text_to_print4)
+                pdf.text(x - 6, y + h + 16, txt=text_to_print5)
+
             num_in_page += 1
             x += x_change  # update vars so next code printed correctly
-            if num_in_row == max_in_row: x = 5.0; y += y_change; num_in_row = -1; row_num += 1  # when maxnum codes are printed in a row, move to next row
+            if num_in_row == max_in_row: x = side; y += y_change; num_in_row = -1; row_num += 1  # when maxnum codes are printed in a row, move to next row
             if num_in_page == max_in_pg:  # when max codes in page are printed in pg, move to nxt pg
-                y = 5.0; num_in_page = 0; row_num = 0
+                y = top; num_in_page = 0; row_num = 0
                 if i + 1 < len(self.array_of_codes): pdf.add_page()  # but only if there are more codes to print
             pdf.set_xy(x, y)
             num_in_row += 1
@@ -520,6 +582,7 @@ class MainScreenWidget(BoxLayout):
                 try: os.remove(code)
                 except: continue
         self.array_of_codes = []  # empty the array_of_codes array for the next create
+        self.code_labels_array = []
 
         t = datetime.now()
         file_name = f"SQUIRELOutput-{t.year}-{t.month}-{t.day}-{t.hour}_{t.minute}_{t.second}.pdf"
