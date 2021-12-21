@@ -7,6 +7,7 @@ import os.path
 import shutil
 import time
 import socket
+import select
 from datetime import timedelta
 from tkinter import *
 from tkinter import filedialog
@@ -31,8 +32,8 @@ from Setup.settings import settings
 
 """
     Known issues:
-        Reconnect classes to main selection
-        fix Timer
+        Add newline to better space interface
+        redo documentation
 """
 
 url = settings['url']
@@ -51,6 +52,7 @@ archive_folder = "Archive"
 storagePath = ""  # the path to the local storage directory if chosen
 checkStorage = False  # whether system should check if there is any backed up data or previous session data
 user_chose_storage = False  # tracks whether user chose a storage method or not
+display_video = False  # whether the video feed should be displayed or not
 system_id = socket.gethostname()  # this is used when checking qr codes in or out
 t_value = timedelta(seconds=10)  # time between scans for the same qr code
 cameraSource = "Integrated"  # the camera source, defaults to integrated (so source 0)
@@ -439,6 +441,11 @@ def about():
           "Research Program")
     time.sleep(5.0)
 
+""" 
+This class represents the displayed when you select "Choose Camera Source" from the Setup menu, 
+and is text with 3 buttons 
+"""
+
 
 def set_camera(camera_choice):
     global cameraSource
@@ -554,11 +561,14 @@ class MainScreen:
     """
 
     def video(self):
-        global user_chose_storage, vs, video_on
+        global user_chose_storage, vs, video_on, display_video
 
         if user_chose_storage:
+
             print("[ALERT] Starting video stream...")
-            print("To exit, close the webcam window.")
+            print("To exit, press Esc.")
+            if not display_video:
+                print("[Alert] Not displaying camera feed, this can be changed in settings")
 
             # construct the argument parser and parse the arguments
             ap = argparse.ArgumentParser()
@@ -821,12 +831,23 @@ class MainScreen:
                 # # overlayed
 
                 # show the output frame
-                cv2.imshow("QR Toolbox", frame)
-                key = cv2.waitKey(1)
+                if display_video:
+                    cv2.imshow("QR Toolbox", frame)
+                    key = cv2.waitKey(1)
+                    if key == 27:
+                        break
+                else:
+                    key = select.select([sys.stdin], [], [], 1)[0]
+                    if key:
+                        value = sys.stdin.readline().rstrip()
 
+                        if value == 'q':
+                            break
+                    # if keyboard.read_key() == "p":
+                    #     print("You pressed p")
+                    #     break
                 # if the user closes the window, close the window (lol)
-                if key == 27:
-                    break
+
 
             # close the output CSV file and do a bit of cleanup
             print("[ALERT] Cleaning up... \n")
@@ -948,7 +969,7 @@ class MainScreen:
         setup = SetupElement()
         setup.main_screen = self
         print("Choose an option:\n"
-              "1) Upload/Consolidate\n2) Change storage location\n3) Change camera source")
+              "1) Upload/Consolidate\n2) Change storage location\n3) Change camera source\n4) Change camera display")
         # "\n4) Set timer")
         option = input("Choice: ")
         if option == '1':
@@ -957,7 +978,8 @@ class MainScreen:
             setup.change_storage_location()
         elif option == '3':
             setup.change_camera_source()
-        # elif option == '4':
+        elif option == '4':
+            setup.change_display_feed()
         #     setup.set_timer_popup()
         else:
             print("Selection entered was not of an available option")
@@ -980,7 +1002,7 @@ class MainScreen:
         while True:
             if video_on:
                 continue
-            print("Please select which option you would like:\n1) QR Reader\n2) Setup\n3) About\n4) Exit")
+            print("Please select which option you would like:\n1) QR Reader\n2) Settings\n3) About\n4) Exit")
             choice = input("Choice: ")
             if choice == '1':
                 self.qr_reader()
@@ -1064,7 +1086,20 @@ class SetupElement:
         else:
             print("Selection entered was not of an available option")
 
-    """ Creates and starts the popup for setting a timer for how long users can be checked in """
+    """ Method to turn on and off the camera feed display """
+
+    @staticmethod
+    def change_display_feed():
+        global display_video
+        print("Do you want to display the camera feed?")
+        choice = input("(Y/N): ")
+        if choice.lower() == 'y' or choice.lower() == 'yes':
+            display_video = True
+        elif choice.lower() == 'n' or choice.lower() == 'no':
+            display_video = False
+        else:
+            print("Selection entered was not of an available option")
+    # """Creates and starts the popup for setting a timer for how long users can be checked in"""
     #
     # def set_timer_popup(self):
     #     timer = Timer()
@@ -1107,11 +1142,6 @@ class QRToolboxApp:
             print("Selection entered was not of an available option")
         self.main_screen.menu()
 
-
-""" 
-This class represents the displayed when you select "Choose Camera Source" from the Setup menu, 
-and is text with 3 buttons 
-"""
 
 #
 # class Timer:
