@@ -8,6 +8,7 @@ import shutil
 import time
 import socket
 import select
+import urllib3
 from datetime import timedelta
 from tkinter import *
 from tkinter import filedialog
@@ -421,7 +422,6 @@ def store():
     except:
         store_path = os.getcwd()
         print("Unable to open window, Storage directory established: %s" % store_path)
-        user_chose_storage = True
     return store_path
 
 
@@ -430,7 +430,7 @@ def store():
 
 def about():
     # displays the about screen
-    print("QR Toolbox v1.5\n"
+    print("\n\nQR Toolbox v1.5\n"
           "About: The QR Toolbox is a suite a tools for creating and reading QR codes. \n"
           "The toolbox is lightweight, open source, and written in Python and Kivy.\n"
           "This toolbox may be used to track resources, serve as a check-in capability for personnel, \n"
@@ -442,7 +442,7 @@ def about():
           "\n Code integration, minor enhancements, & platform development - Timothy Boe boe.timothy@epa.gov, "
           "\nMuhammad Karimi karimi.muhammad@epa.gov, and Jordan Deagan jordan.deagan@epa.gov"
           "\nContact: Timothy Boe: boe.timothy@epa.gov; or Paul Lemieux: lemieux.paul@epa.gov; USEPA Homeland Security "
-          "Research Program")
+          "Research Program\n")
     time.sleep(5.0)
 
 """ 
@@ -464,7 +464,7 @@ to exit
 
 
 def confirm_exit():
-    print("Are you sure you want to quit?\n(unsaved data, such as from an open QR Reader, will be lost)")
+    print("\nAre you sure you want to quit?\n(unsaved data, such as from an open QR Reader, will be lost)")
     option = input("(Y/N): ")
     if option.lower() == 'y' or option.lower() == 'yes':
         sys.exit()
@@ -570,7 +570,7 @@ class MainScreen:
         if user_chose_storage:
 
             print("[ALERT] Starting video stream...")
-            print("To exit, press Esc.")
+            print("To exit, enter \'q\'")
             if not display_video:
                 print("[Alert] Not displaying camera feed, this can be changed in settings")
 
@@ -838,20 +838,15 @@ class MainScreen:
                 if display_video:
                     cv2.imshow("QR Toolbox", frame)
                     key = cv2.waitKey(1)
-                    if key == 27:
+                    if key == 113 or key == 81:
                         break
                 else:
                     key = select.select([sys.stdin], [], [], 1)[0]
                     if key:
                         value = sys.stdin.readline().rstrip()
-
                         if value == 'q':
                             break
-                    # if keyboard.read_key() == "p":
-                    #     print("You pressed p")
-                    #     break
                 # if the user closes the window, close the window (lol)
-
 
             # close the output CSV file and do a bit of cleanup
             print("[ALERT] Cleaning up... \n")
@@ -912,7 +907,7 @@ class MainScreen:
             print("[ALERT] A video stream already exists.")
             return
 
-        print("Do you want to:\n1) start a new session (all previous data will be deleted)\n"
+        print("\nDo you want to:\n1) start a new session (all previous data will be deleted)\n"
               "2) restart the previous offline session (if one exists)\n"
               "Note: CSV files are not created nor uploaded until after the QR Reader is closed.")
         answer = input("Choice: ")
@@ -972,7 +967,7 @@ class MainScreen:
     def setup(self):
         setup = SetupElement()
         setup.main_screen = self
-        print("Choose an option:\n"
+        print("\nChoose an option:\n"
               "1) Upload/Consolidate\n2) Change storage location\n3) Change camera source\n4) Change camera display")
         # "\n4) Set timer")
         option = input("Choice: ")
@@ -1006,7 +1001,7 @@ class MainScreen:
         while True:
             if video_on:
                 continue
-            print("Please select which option you would like:\n1) QR Reader\n2) Settings\n3) About\n4) Exit")
+            print("\nPlease select which option you would like:\n1) QR Reader\n2) Settings\n3) About\n4) Exit")
             choice = input("Choice: ")
             if choice == '1':
                 self.qr_reader()
@@ -1065,7 +1060,7 @@ class SetupElement:
     def change_storage_location(self):
         storage_location = Storage()
         storage_location.main_screen = self.main_screen
-        print("Select a storage location\nNote: Files are also saved in the QR-Toolbox Archive folder regardless."
+        print("\nSelect a storage location\nNote: Files are also saved in the QR-Toolbox Archive folder regardless."
               "\n1) ArcGIS (online)\n2) Local ")
         choice = input("Choice: ")
         if choice == '1':
@@ -1079,7 +1074,7 @@ class SetupElement:
 
     @staticmethod
     def change_camera_source():
-        print("Which camera do you want to use?\n1) Integrated Webcam\n2) Separate Webcam\n3) PiCamera")
+        print("\nWhich camera do you want to use?\n1) Integrated Webcam\n2) Separate Webcam\n3) PiCamera")
         choice = input("Choice: ")
         if choice == '1':
             set_camera("Integrated")
@@ -1095,7 +1090,7 @@ class SetupElement:
     @staticmethod
     def change_display_feed():
         global display_video
-        print("Do you want to display the camera feed?")
+        print("\nDo you want to display the camera feed?")
         choice = input("(Y/N): ")
         if choice.lower() == 'y' or choice.lower() == 'yes':
             display_video = True
@@ -1103,6 +1098,7 @@ class SetupElement:
             display_video = False
         else:
             print("Selection entered was not of an available option")
+
     # """Creates and starts the popup for setting a timer for how long users can be checked in"""
     #
     # def set_timer_popup(self):
@@ -1135,6 +1131,7 @@ class QRToolboxApp:
     def start(self):
         storage_location = Storage()
         storage_location.main_screen = self.main_screen
+        urllib3.disable_warnings()
         print("Select a storage location\nNote: Files are also saved in the QR-Toolbox Archive folder regardless."
               "\n1) ArcGIS (online)\n2) Local ")
         choice = input("Choice: ")

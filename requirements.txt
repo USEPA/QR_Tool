@@ -1,0 +1,10 @@
+Kivy
+argparse
+urllib3
+opencv-python
+imutils
+numpy
+future
+arcgis
+Pillow
+pyzbar
