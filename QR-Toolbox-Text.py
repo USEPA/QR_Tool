@@ -407,17 +407,20 @@ This function allows the user to select a storage directory. If user escapes, a 
 
 def store():
     global user_chose_storage
-
-    root = Tk()
-    root.title('Storage Directory')
-    root.withdraw()
-    store_path = filedialog.askdirectory(title='Select a Storage Directory')  # ask user to choose a directory
-    if os.path.exists(store_path):  # if they chose one
-        print("Storage directory established: %s" % store_path)
-        user_chose_storage = True
-    else:
-        print("Storage directory NOT established")
-        user_chose_storage = False
+    try:
+        root = Tk()
+        root.title('Storage Directory')
+        root.withdraw()
+        store_path = filedialog.askdirectory(title='Select a Storage Directory')  # ask user to choose a directory
+        if os.path.exists(store_path):  # if they chose one
+            print("Storage directory established: %s" % store_path)
+            user_chose_storage = True
+        else:
+            print("Storage directory NOT established")
+            user_chose_storage = False
+    except:
+        store_path = os.getcwd()
+        print("Unable to open window, Storage directory established: %s" % store_path)
     return store_path
 
 
@@ -860,7 +863,7 @@ class MainScreen:
             # This part is necessary to show special characters properly on any of the local CSVs
             if os.path.exists(args["output"]) and os.stat(args["output"]).st_size != 0:
                 barcodes_txt = open(args["output"], 'r', encoding="utf-8")
-                new_csv = open(archive_folder + "/" + file_name, 'w', encoding="ANSI")
+                new_csv = open(archive_folder + "/" + file_name, 'w', encoding="utf-8")
 
                 data = barcodes_txt.read()
                 new_csv.write(data)
@@ -874,7 +877,7 @@ class MainScreen:
             if storageChoice == 'a' and os.stat(args["output"]).st_size != 0:
                 # if local was chosen, also store barcodes file at the location given
                 if os.path.exists(storagePath):  # check if file path exists
-                    with open(os.path.join(storagePath, file_name), "w", encoding="ANSI") as csv2:
+                    with open(os.path.join(storagePath, file_name), "w", encoding="utf-8") as csv2:
                         csv2.write(data)
                 else:
                     print("[ALERT]: Storage folder not established or is unavailable. Files will only be saved to the "
