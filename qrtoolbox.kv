@@ -69,16 +69,22 @@
         orientation: 'horizontal'
         Button:
             id: test
-            text: "New session (all previous data will be deleted)"
+            text: "New session\n(previous data will be deleted)"
             size_hint: None, None
-            size: 350, 100
-            on_release: root.set_check_storage(False)
+            size: 235, 100
+            on_release: root.set_check_storage(False, False)
             on_release: root.restart_popup.dismiss()
         Button:
-            text: "Continue offline session (if one exists)"
+            text: "Continue Local session\n(if one exists)"
             size_hint: None, None
-            size: 350, 100
-            on_release: root.set_check_storage(True)
+            size: 225, 100
+            on_release: root.set_check_storage(True, True)
+            on_release: root.restart_popup.dismiss()
+        Button:
+            text: "Continue Online session\n(if one exists)"
+            size_hint: None, None
+            size: 225, 100
+            on_release: root.set_check_storage(True, False)
             on_release: root.restart_popup.dismiss()
 
 <SetupWidget>:

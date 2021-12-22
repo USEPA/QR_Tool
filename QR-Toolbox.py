@@ -82,6 +82,7 @@ archive_folder = "Archive"
 # set store folder default, assign system ID, and wait time
 storagePath = ""  # the path to the local storage directory if chosen
 checkStorage = False  # whether system should check if there is any backed up data or previous session data
+uploadBackup = False
 user_chose_storage = False  # tracks whether user chose a storage method or not
 system_id = os.environ['COMPUTERNAME']  # this is used when checking qr codes in or out
 t_value = timedelta(seconds=10)  # time between scans for the same qr code
@@ -504,7 +505,7 @@ class MainScreenWidget(BoxLayout):
     """
 
     def video(self):
-        global user_chose_storage, vs
+        global user_chose_storage, vs, uploadBackup, checkStorage
 
         screen_label = self.ids.screen_label
         setup_screen_label(screen_label)
@@ -542,9 +543,8 @@ class MainScreenWidget(BoxLayout):
             time.sleep(5.0)  # give camera time
 
             # open the output txt file for writing and initialize the set of barcodes found thus far
-            global checkStorage
             if os.path.isfile(args["output"]) and checkStorage:  # check if user wanted to restart prev session
-                if storageChoice.lower() == 'b':  # do this only if QR Toolbox is in online-mode
+                if storageChoice.lower() == 'b' and uploadBackup:  # do this only if QR Toolbox is in online-mode
                     # Write previous records back to contentStrings
                     with open(args["output"], "r", encoding='utf-8') as txt:
                         screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}Restoring records (online mode)...{bcolors.ENDC}"
@@ -576,6 +576,8 @@ class MainScreenWidget(BoxLayout):
                                 success = connect(self, "upload", last_system_id, file_date, file_time_online, barcodeDataSpecial,
                                         status, duration)
                             if not success: break  # if upload failed, break loop and let user know it failed
+                elif storageChoice.lower() == 'b' and not uploadBackup:
+                    screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}Restoring records (online mode)...{bcolors.ENDC}\n{open(args['output'], 'r', encoding='utf-8').read()}"
                 if storageChoice.lower() == 'a':  # if in local mode, just open barcodes.txt for appending to restorerecords
                     screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}Restoring records (local mode)...{bcolors.ENDC}\n{open(args['output'], 'r', encoding='utf-8').read()}"
                 try:
@@ -781,7 +783,7 @@ class MainScreenWidget(BoxLayout):
             if os.path.exists(qr_storage_file) and os.stat(qr_storage_file).st_size == 0:
                 os.remove(qr_storage_file)  # if the file is empty, delete it
             checkStorage = False  # Reset the global variable that tells code to check the qr_storage_file
-
+            uploadBackup = False
             # This part is necessary to show special characters properly on any of the local CSVs
             if os.path.exists(args["output"]) and os.stat(args["output"]).st_size != 0:
                 barcodesTxt = open(args["output"], 'r', encoding="utf-8")
@@ -825,7 +827,7 @@ class MainScreenWidget(BoxLayout):
     def qr_reader(self):
         restart_session_popup = RestartSessionWidget()
         restart_session_popup.restart_popup = Popup(title="Do you want to start a new session or restart the previous one?\nNote: CSV files are not created nor uploaded until after the QR Reader is closed.",
-                      content=restart_session_popup, size_hint=(None, None), size=(725, 183), auto_dismiss=True)
+                      content=restart_session_popup, size_hint=(None, None), size=(715, 183), auto_dismiss=True)
 
         global vs
         if vs is not None:  # if vs already exists let user know (this code will likely never be run due to disabled btn)
@@ -984,14 +986,17 @@ class RestartSessionWidget(BoxLayout):
             @param check is to see if we should checkStorage or not
     """
 
-    def set_check_storage(self, check):
+    def set_check_storage(self, check, upload):
         screen_label = self.main_screen.ids.screen_label
         setup_screen_label(screen_label)
         if check:  # if user wants to check for previous session/session data
             global checkStorage
             checkStorage = True
             screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}Previous session will be restarted, if one exists.{bcolors.ENDC}"
-
+        if upload:
+            global uploadBackup
+            uploadBackup = True
+            screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}Local records will be uploaded to the online session.{bcolors.ENDC}"
         self.main_screen.ids.qrreader.disabled = True  # disables QR Reader btn so user can't start multiple streams
         threading.Thread(target=self.main_screen.video, daemon=True).start()  # starts video method on its own thread
 
