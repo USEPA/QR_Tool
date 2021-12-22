@@ -422,6 +422,7 @@ def store():
     except:
         store_path = os.getcwd()
         print("Unable to open window, Storage directory established: %s" % store_path)
+        user_chose_storage = True
     return store_path
 
 

@@ -1,4 +1,4 @@
 #!/bin/bash
 source env/bin/activate
-pip install -r requirements.txt
+alias python="python3"
 python QR-Toolbox-Text.py
