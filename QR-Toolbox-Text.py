@@ -52,6 +52,7 @@ archive_folder = "Archive"
 # set store folder default, assign system ID, and wait time
 storagePath = ""  # the path to the local storage directory if chosen
 checkStorage = False  # whether system should check if there is any backed up data or previous session data
+uploadBackup = False
 user_chose_storage = False  # tracks whether user chose a storage method or not
 display_video = False  # whether the video feed should be displayed or not
 system_id = socket.gethostname()  # this is used when checking qr codes in or out
@@ -566,7 +567,7 @@ class MainScreen:
     """
 
     def video(self):
-        global user_chose_storage, vs, video_on, display_video
+        global user_chose_storage, vs, video_on, display_video, uploadBackup, checkStorage
 
         if user_chose_storage:
 
@@ -604,9 +605,9 @@ class MainScreen:
             time.sleep(5.0)  # give camera time
 
             # open the output txt file for writing and initialize the set of barcodes found thus far
-            global checkStorage
+
             if os.path.isfile(args["output"]) and checkStorage:  # check if user wanted to restart prev session
-                if storageChoice.lower() == 'b':  # do this only if QR Toolbox is in online-mode
+                if storageChoice.lower() == 'b' and uploadBackup:  # do this only if QR Toolbox is in online-mode
                     # Write previous records back to contentStrings
                     with open(args["output"], "r", encoding='utf-8') as txt:
                         print("Restoring records (online mode)...")
@@ -635,6 +636,9 @@ class MainScreen:
                                                   barcode_data_special, status, duration)
                             if not success:
                                 break  # if upload failed, break loop and let user know it failed
+                elif storageChoice.lower() == 'b' and not uploadBackup:
+                    print("Restoring records (online mode)...")
+                    print(open(args['output'], 'r', encoding='utf-8').read())
                 if storageChoice.lower() == 'a':
                     # if in local mode, just open barcodes.txt for appending to restorerecords
                     print("Restoring records (local mode)...")
@@ -856,6 +860,7 @@ class MainScreen:
             if os.path.exists(qr_storage_file) and os.stat(qr_storage_file).st_size == 0:
                 os.remove(qr_storage_file)  # if the file is empty, delete it
             checkStorage = False  # Reset the global variable that tells code to check the qr_storage_file
+            uploadBackup = False
             data = ""
             # This part is necessary to show special characters properly on any of the local CSVs
             if os.path.exists(args["output"]) and os.stat(args["output"]).st_size != 0:
@@ -902,19 +907,25 @@ class MainScreen:
 
     def qr_reader(self):
 
-        global vs
+        global vs, uploadBackup
         if vs is not None:
             # if vs already exists let user know (this code will likely never be run due to disabled btn)
             print("[ALERT] A video stream already exists.")
             return
 
         print("\nDo you want to:\n1) start a new session (all previous data will be deleted)\n"
-              "2) restart the previous offline session (if one exists)\n"
+              "2) restart the previous LOCAL session (if one exists)\n"
+              "3) restart the previous ONLINE session (if one exists)\n"
               "Note: CSV files are not created nor uploaded until after the QR Reader is closed.")
         answer = input("Choice: ")
         if answer == '1':
+            uploadBackup = False
             set_check_storage(self, False)
         elif answer == '2':
+            uploadBackup = True
+            set_check_storage(self, True)
+        elif answer == '3':
+            uploadBackup = False
             set_check_storage(self, True)
         else:
             print("Selection entered was not of an available option")
