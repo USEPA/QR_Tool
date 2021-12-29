@@ -1,30 +1,33 @@
 # -*- coding: windows-1252 -*-
 """
-Name: QR Toolbox v1.4
+Name: QR Toolbox v1.5
 Description: The QR Toolbox is a suite a tools for creating and reading QR codes. See the About screen for more
 information
-Author(s): Code integration, minor enhancements, & platform development - Timothy Boe boe.timothy@epa.gov; Muhammad Karimi karimi.muhammad@epa.gov
+Author(s): Code integration, minor enhancements, & platform development - Timothy Boe boe.timothy@epa.gov;
+    Muhammad Karimi karimi.muhammad@epa.gov; Jordan Deagan deagan.jordan@epa.gov
     qrcode - Lincoln Loop info@lincolnloop.com; pyzbar - Lawrence Hudson quicklizard@googlemail.com;
     OpenCV code - Adrian Rosebrock https://www.pyimagesearch.com/author/adrian/;
+    Sound effects obtained from https://www.zapsplat.com
 Contact: Timothy Boe boe.timothy@epa.gov
 Requirements: Python 3.7+, pyzbar, imutils, opencv-python, qrcode[pil], Pillow, Kivy, kivy-deps.angle,
-kivy-deps.glew, kivy-deps.gstreamer, kivy-deps.sdl2, Kivy-Garden, arcgis
+kivy-deps.glew, kivy-deps.gstreamer, kivy-deps.sdl2, Kivy-Garden, arcgis, playsound
 
 Specific versions:
 {"pyzbar": "0.1.8", "imutils": "0.5.4", "qrcode": "6.1", "Pillow": "8.2.0", "opencv-python": "4.5.1.48",
-"Kivy": "2.0.0", "kivy-deps.angle": "0.3.0", "kivy-deps.glew": "0.3.0",
-"kivy-deps.gstreamer": "0.3.2", "kivy-deps.sdl2": "0.4.2", "Kivy-Garden": "0.1.4", "arcgis": "1.8.5.post3"}
+"Kivy": "2.0.0", "kivy-deps.angle": "0.3.0", "kivy-deps.glew": "0.3.0", "kivy-deps.gstreamer": "0.3.2",
+"kivy-deps.sdl2": "0.4.2", "Kivy-Garden": "0.1.4", "arcgis": "1.8.5.post3", "playsound": "1.2.2}
 """
 
 # import the necessary packages
 import argparse
 import csv
+import sys
 import datetime
 import os
 import os.path
 import shutil
 import time
-import winsound
+from playsound import playsound
 from datetime import timedelta
 from time import strftime
 from tkinter import *
@@ -77,6 +80,9 @@ localQRBatchFile = settings['localQRBatchFile']
 qr_storage_file = "System_Data/qr-data.txt"  # file that contains saved session information
 backup_file = "System_Data/backup.txt"  # file that contains data that couldn't be uploaded, to later be uploaded
 archive_folder = "Archive"
+fail_ding = "Library/sounds/failed.mp3"
+pass_ding = "Library/sounds/passed.mp3"
+timer_alarm = "Library/sounds/alarm.mp3"
 
 # load variables
 # set store folder default, assign system ID, and wait time
@@ -700,10 +706,10 @@ class MainScreenWidget(BoxLayout):
 
                         if success:
                             screen_label.text = screen_label.text + f"\n{barcodeData} checking IN at {str(datetime_scanned)} at location: {system_id}"
-                            winsound.Beep(500, 400)  # makes a beeping sound on scan in
+                            playsound(pass_ding)  # makes a beeping sound on scan in
                         elif not success:
                             screen_label.text = screen_label.text + f"\n{bcolors.WARNING}{barcodeData} NOT checked IN{bcolors.ENDC}"
-                            winsound.Beep(300, 400)  # makes a slightly deeper beeping sound on failed scan in
+                            playsound(fail_ding)  # makes a slightly deeper beeping sound on failed scan in
 
                     # if barcode information is found...
                     elif barcodeData in found:
@@ -731,10 +737,10 @@ class MainScreenWidget(BoxLayout):
                             if success:
                                 screen_label.text = screen_label.text + f"\n{barcodeData} checking OUT at {str(datetime_scanned)} at location: " \
                                                                         f"{system_id} for duration of {str(time_check)}"
-                                winsound.Beep(500, 400)  # makes a beeping sound on scan
+                                playsound(pass_ding)  # makes a beeping sound on scan
                             elif not success:
                                 screen_label.text = screen_label.text + f"\n{bcolors.WARNING}{barcodeData} NOT checked OUT{bcolors.ENDC}"
-                                winsound.Beep(300, 400)  # makes a slightly deeper beeping sound on failed scan out
+                                playsound(fail_ding)  # makes a slightly deeper beeping sound on failed scan out
                         # if found and check-in time is less than the specified wait time then wait
                         elif time_check < t_value and status_check == "OUT":
                             pass
@@ -925,15 +931,16 @@ class MainScreenWidget(BoxLayout):
 
     def about(self):
         # displays the about screen
-        text = "[u]QR Toolbox v1.4[/u]\n"
+        text = "[u]QR Toolbox v1.5[/u]\n"
         text = text + "About: The QR Toolbox is a suite a tools for creating and reading QR codes. The toolbox is " \
                       "lightweight, open source, and written in Python and Kivy. This toolbox may be used to track resources," \
                       " serve as a check-in capability for personnel, or customized to meet other operational needs. \n"
-        text = text + "Version: 1.4 \n\n"
+        text = text + "Version: 1.5 \n\n"
         text = text + "Credits: The QR Toolbox consists of a number of python packages, namely: \n qrcode - " \
                       "Lincoln Loop info@lincolnloop.com; \n pyzbar - Lawrence Hudson quicklizard@googlemail.com; \n OpenCV code - " \
-                      "Adrian Rosebrock https://www.pyimagesearch.com/author/adrian/; \n Code integration, minor enhancements, & " \
-                      "platform development - Timothy Boe boe.timothy@epa.gov and Muhammad Karimi karimi.muhammad@epa.gov \n"
+                      "Adrian Rosebrock https://www.pyimagesearch.com/author/adrian/; \n Sound effects obtained from " \
+                      "https://www.zapsplat.com; \n Code integration, minor enhancements, & platform development - " \
+                      "Timothy Boe boe.timothy@epa.gov, Muhammad Karimi karimi.muhammad@epa.gov, \nand Jordan Deagan deagan.jordan@epa.gov\n"
         text = text + "Contact: Timothy Boe: boe.timothy@epa.gov; or Paul Lemieux: lemieux.paul@epa.gov; USEPA Homeland Security " \
                       "Research Program \n"
         screen_label = self.ids.screen_label
@@ -957,7 +964,7 @@ class MainScreenWidget(BoxLayout):
         # play the sound
         timer_alert_widget.not_acknowledged = True  # this is set to True, so system knows user hasn't acknowledged the alert yet
         while timer_alert_widget.not_acknowledged:
-            winsound.Beep(800, 10000)  # a sound is then played at 800hertz frequency for 10sec
+            playsound(timer_alarm)  # a sound is then played at 800hertz frequency for 10sec
             time.sleep(20)  # it pauses for 20sec and then plays again continuously until user acknowledges
         # the sound can be cut off by other alerts, and potentially by other sounds, and any executions by thread will continue on even after user acked the alert, if those executions occurred before the user acked. Only way to stop those is to close the program
         return True
