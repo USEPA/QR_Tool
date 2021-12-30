@@ -9,6 +9,8 @@ import time
 import socket
 import select
 import urllib3
+from playsound import playsound
+from gpiozero import LED
 from datetime import timedelta
 from tkinter import *
 from tkinter import filedialog
@@ -47,6 +49,10 @@ localQRBatchFile = settings['localQRBatchFile']
 qr_storage_file = "System_Data/qr-data.txt"  # file that contains saved session information
 backup_file = "System_Data/backup.txt"  # file that contains data that couldn't be uploaded, to later be uploaded
 archive_folder = "Archive"
+pass_sound = "Library/sounds/passed.mp3"
+fail_sound = "Library/sounds/failed.mp3"
+alert_sound = "Library/sounds/alarm.mp3"
+wait_sound = "Library/sounds/waiting.mp3"
 
 # load variables
 # set store folder default, assign system ID, and wait time
@@ -61,6 +67,11 @@ cameraSource = "Integrated"  # the camera source, defaults to integrated (so sou
 storageChoice = ""  # users choice of local ('a') or online ('b') mode
 vs = None  # global video stream variable, to ensure only 1 instance of it exists at a time
 video_on = False
+play_sound = False
+play_light = False
+red: LED = None
+yellow: LED = None
+green: LED = None
 
 # Lists and Dictionaries used for special character handling and conversion
 trouble_characters = ['\t', '\n', '\r']  # characters that cause issues
@@ -175,13 +186,24 @@ def connect(main_screen, connection_type, sys_id, date_str, time_str, barcode, s
                 print("Connection successful.")
             return return_val  # so that calling method can use the results accordingly
         except:
+            global yellow
             e = sys.exc_info()[0]  # used for error checking
             print(e)
             if i == 0:  # if first try failed
                 print("Connection lost. Trying again in 10 seconds.")
+                if play_sound:
+                    playsound(wait_sound)
+                if play_light:
+                    threading.Thread(target=blink, args=(yellow, 2, 2), daemon=True).start()
+                    # blink yellow
                 time.sleep(10)
             elif i == 1:  # if second try failed
                 print("Reconnect failed. Trying again in 30 seconds.")
+                if play_sound:
+                    playsound(wait_sound)
+                if play_light:
+                    threading.Thread(target=blink, args=(yellow, 2, 3), daemon=True).start()
+                    # blink yellow
                 time.sleep(30)
             elif i > 1 and not duplicate:  # if failed thrice, write to backup.txt
                 print("Reconnect failed again. Data will be stored locally and uploaded at the next upload point, "
@@ -207,7 +229,7 @@ def upload_backup(main_screen, from_menu=False):
     if os.path.exists(backup_file):  # check if file exists, if not then return
         with open(backup_file, "r") as backup:
             print("Uploading backed up data...")
-            time_elapsed = None  # assume its IN status so no elapsed time
+            time_elapsed = None  # assume it's IN status so no elapsed time
             for line in backup:  # for each line, take the appropriate action according to what is read in
                 if line == '\n' or line == "":
                     continue
@@ -225,6 +247,7 @@ def upload_backup(main_screen, from_menu=False):
         os.remove(backup_file)  # file removed if upload is successful
     elif from_menu:
         print("No backed-up data to upload.")
+
 
 #
 # """
@@ -447,6 +470,7 @@ def about():
           "Research Program\n")
     time.sleep(5.0)
 
+
 """ 
 This class represents the displayed when you select "Choose Camera Source" from the Setup menu, 
 and is text with 3 buttons 
@@ -471,6 +495,7 @@ def confirm_exit():
     if option.lower() == 'y' or option.lower() == 'yes':
         sys.exit()
     return True
+
 
 #
 # """ This function checks if storage path is set, calls it if not, otherwise/and then calls the qr_batch function """
@@ -547,6 +572,54 @@ def set_check_storage(main_screen, check):
     video_on = True
     threading.Thread(target=main_screen.video, daemon=True).start()  # starts video method on its own thread
 
+
+def blink(led, length, count):
+    global yellow
+    yellow.off()
+    for i in range(count):
+        time.sleep(1)
+        led.on()
+        time.sleep(length)
+        led.off()
+    yellow.on()
+
+
+def set_media():
+    global play_sound, play_light, red, yellow, green
+    print("Which media devices are connected to the Pi?\n1) Audio speaker\n2) Light display\n3) Both\n4) Neither")
+    choice = input("Choice: ")
+    if choice == '1':
+        play_sound = True
+        play_light = False
+    elif choice == '2':
+        play_sound = False
+        play_light = True
+    elif choice == '3':
+        play_sound = True
+        play_light = True
+    elif choice == '4':
+        play_sound = False
+        play_light = False
+    else:
+        print("Selection entered was not of an available option")
+    if play_light:
+        red = LED(22)
+        yellow = LED(27)
+        green = LED(17)
+
+
+""" This function is triggered when a user goes over the time limit, and it triggers an alert popup and sound """
+
+
+def timer_alert(user):
+    global play_sound
+    print("ALERT: %s has exceeded the time limit." % user)
+    if play_sound:
+        playsound(alert_sound)
+
+    return True
+
+
 """
 This class is the main class for the GUI, it is the main screen within which all other screens/widgets/buttons are 
 located
@@ -556,7 +629,7 @@ located
 class MainScreen:
     sys_id = socket.gethostname()  # this may be a repeat
     gis = None  # contains the access to arcgis online to upload data
-    # timer = None  # used to time how long users are checked in and alert any who exceed this amount of elapsed time
+    timer = None  # used to time how long users are checked in and alert any who exceed this amount of elapsed time
 
     """
     This function starts a VideoStream, and captures any QR Codes it sees (in a certain distance)
@@ -591,7 +664,7 @@ class MainScreen:
                 if cameraSource == 'Integrated':  # start correct camera based on user choice at beginning
                     vs = VideoStream(src=0).start()  # for integrated/built in webcam
                 elif cameraSource == 'Separate':
-                    vs = VideoStream(src=1,).start()  # for separate webcam (usually USB connected)
+                    vs = VideoStream(src=1, ).start()  # for separate webcam (usually USB connected)
                 elif cameraSource == 'PiCamera':
                     vs = VideoStream(usePiCamera=True).start()  # for mobile solution like Raspberry Pi Camera
                 else:
@@ -662,7 +735,7 @@ class MainScreen:
             found = []
             found_time = []
             found_status = []
-            # thread_started = [] # tracks if a thread for the item in the given position has been started already, bool
+            thread_started = []  # tracks if a thread for the item in the given position has been started already, bool
 
             # Check if there are any stored QR codes that were scanned-in in an earlier instance of the system
             if checkStorage:
@@ -676,11 +749,11 @@ class MainScreen:
                             found.append(line_array[0])  # append file data to the found arrays
                             found_time.append(datetime.datetime.strptime(line_array[1], "%Y-%m-%d %H:%M:%S.%f"))
                             found_status.append(line_array[2][:len(line_array[2]) - 1:])
-                            # thread_started.append(False)
+                            thread_started.append(False)
                         print("Previous session restarted.")
                 elif not os.path.exists(qr_storage_file) or os.stat(qr_storage_file).st_size == 0:
                     print("No previous session found [qr-data.txt not found or is empty].")
-
+            global red, green
             # loop over the frames from the video stream
             while True:
                 # grab the frame from the threaded video stream and resize it to have a maximum width of 400 pixels
@@ -700,6 +773,7 @@ class MainScreen:
 
                 # loop over the detected barcodes
                 for barcode in barcodes:
+
                     # extract the bounding box location of the barcode and draw the bounding box surrounding the
                     # barcode on the image
                     (x, y, w, h) = barcode.rect
@@ -745,7 +819,7 @@ class MainScreen:
                         found.append(barcode_data)
                         found_time.append(datetime_scanned)
                         found_status.append("IN")
-                        # thread_started.append(False)
+                        thread_started.append(False)
                         # added so that it corresponds to the actual data in the found arrays
 
                         # Write updated found arrays to qr_data_file so that it is up to date with the latest scan ins
@@ -762,10 +836,18 @@ class MainScreen:
 
                         if success:
                             print("%s checking IN at %s at location: %s" % (barcode_data, datetime_scanned, system_id))
-                            # winsound.Beep(500, 400)  # makes a beeping sound on scan in
+                            if play_sound:
+                                playsound(pass_sound)  # makes a beeping sound on scan in
+                            if play_light:
+                                threading.Thread(target=blink, args=(green, 3, 1), daemon=True).start()
+                                # blink green
                         elif not success:
                             print("%s NOT checked IN" % barcode_data)
-                            # winsound.Beep(300, 400)  # makes a slightly deeper beeping sound on failed scan in
+                            if play_sound:
+                                playsound(fail_sound)  # makes a slightly deeper beeping sound on failed scan in
+                            if play_light:
+                                threading.Thread(target=blink, args=(red, 3, 1), daemon=True).start()
+                                # blink red
 
                     # if barcode information is found...
                     elif barcode_data in found:
@@ -795,10 +877,18 @@ class MainScreen:
                             if success:
                                 print("%s checking OUT at %s at location: %s for duration of %s" %
                                       (barcode_data, datetime_scanned, system_id, time_check))
-                                # winsound.Beep(500, 400)  # makes a beeping sound on scan
+                                if play_sound:
+                                    playsound(pass_sound)  # makes a beeping sound on scan
+                                if play_light:
+                                    threading.Thread(target=blink, args=(green, 3, 1), daemon=True).start()
+                                    # blink green
                             elif not success:
                                 print("%s NOT checked OUT" % barcode_data)
-                                # winsound.Beep(300, 400)  # makes a slightly deeper beeping sound on failed scan out
+                                if play_sound:
+                                    playsound(fail_sound)  # makes a slightly deeper beeping sound on failed scan out
+                                if play_light:
+                                    threading.Thread(target=blink, args=(red, 3, 1), daemon=True).start()
+                                    # blink red
                         # if found and check-in time is less than the specified wait time then wait
                         elif time_check < t_value and status_check == "OUT":
                             pass
@@ -810,7 +900,7 @@ class MainScreen:
                             del found_status[index_loc]
                             del found_time[index_loc]
                             del found[index_loc]
-                            # del thread_started[index_loc]
+                            del thread_started[index_loc]
 
                         # Write updated found arrays to qr_data_file so that it is up to date with the latest scan ins
                         with open(qr_storage_file, "w") as qr_data_file:  # that file is used when restarting sessions
@@ -823,21 +913,21 @@ class MainScreen:
                         print("[Error] Barcode data issue in video() function.")
 
                 # If timer is active, check to see if any user has gone over the timer
-                # if self.timer is not None:
-                #     datetime_scanned = datetime.datetime.now()  # get current time
-                #     for i in range(len(found)):  # below: total time passed since user checked in
-                #         time_check = \
-                #             (datetime_scanned.hour * 60 + datetime_scanned.minute + datetime_scanned.second / 60) - \
-                #             (found_time[i].hour * 60 + found_time[i].minute + found_time[i].second / 60)
-                #         if time_check > self.timer and thread_started[i] is not True:
-                #             # if they're beyond the timer limit
-                #             print(found[i])
-                #             threading.Thread(target=self.timer_alert, args=[found[i]], daemon=True).start()
-                #             # alert user
-                #             thread_started[i] = True  # mark this code/item/user as having an alert already run for
-                #             # them, so that it doesn't happen again
-                # # future: it should probably also not have the potential to trigger multiple threads/alerts/sounds
-                # # overlayed
+                if self.timer is not None:
+                    datetime_scanned = datetime.datetime.now()  # get current time
+                    for i in range(len(found)):  # below: total time passed since user checked in
+                        time_check = \
+                            (datetime_scanned.hour * 60 + datetime_scanned.minute + datetime_scanned.second / 60) - \
+                            (found_time[i].hour * 60 + found_time[i].minute + found_time[i].second / 60)
+                        if time_check > self.timer and thread_started[i] is not True:
+                            # if they're beyond the timer limit
+                            # print(found[i])
+                            timer_alert(found[i])
+                            # alert user
+                            thread_started[i] = True  # mark this code/item/user as having an alert already run for
+                            # them, so that it doesn't happen again
+                # future: it should probably also not have the potential to trigger multiple threads/alerts/sounds
+                # overlayed
 
                 # show the output frame
                 if display_video:
@@ -980,7 +1070,8 @@ class MainScreen:
         setup = SetupElement()
         setup.main_screen = self
         print("\nChoose an option:\n"
-              "1) Upload/Consolidate\n2) Change storage location\n3) Change camera source\n4) Change camera display")
+              "1) Upload/Consolidate\n2) Change storage location\n3) Change camera source\n4) Change camera display\n"
+              "5) Change attached media\n6) Set Timer")
         # "\n4) Set timer")
         option = input("Choice: ")
         if option == '1':
@@ -991,20 +1082,12 @@ class MainScreen:
             setup.change_camera_source()
         elif option == '4':
             setup.change_display_feed()
-        #     setup.set_timer_popup()
+        elif option == '5':
+            set_media()
+        elif option == '6':
+            setup.set_timer_popup()
         else:
             print("Selection entered was not of an available option")
-
-    # """ This function is triggered when a user goes over the time limit, and it triggers an alert popup and sound """
-    #
-    # def timer_alert(self, user):
-    #     timer_alert = TimerAlert()
-    #     timer_alert.main_screen = self
-    #     print("ALERT: %s has exceeded the time limit." % user)
-    #
-    #     timer_alert.not_acknowledged = True
-    #     # this is set to True, so system knows user hasn't acknowledged the alert yet
-    #     return True
 
     """ This function is triggered when the user clicks the Menu 'Exit' button """
 
@@ -1111,17 +1194,31 @@ class SetupElement:
         else:
             print("Selection entered was not of an available option")
 
-    # """Creates and starts the popup for setting a timer for how long users can be checked in"""
-    #
-    # def set_timer_popup(self):
-    #     timer = Timer()
-    #     timer.main_screen = self.main_screen
-    #     print("Enter the time (in minutes) for the timer.")
-    #     choice = input("Time: ")
-    #     if choice.isnumeric():
-    #         timer.set_timer(choice)
-    #     else:
-    #         print("Value entered was not in the proper format")
+    """Creates and starts the popup for setting a timer for how long users can be checked in"""
+
+    def set_timer_popup(self):
+        timer = Timer()
+        timer.main_screen = self.main_screen
+        print("Enter the time (in minutes) for the timer.")
+        choice = input("Time: ")
+        if choice.isnumeric():
+            timer.set_timer(choice)
+        else:
+            print("Value entered was not in the proper format")
+
+
+class Timer:
+    main_screen = None
+
+    """ Sets the timer variable to the user defined value """
+
+    def set_timer(self, time_to_set):  # a time of 0min also counts as unsetting the timer
+        if time_to_set != "" and time_to_set is not None and int(time_to_set) != 0:
+            self.main_screen.timer = int(time_to_set)  # set the timer and print a message
+            print("Timer set to %s minute(s)." % time_to_set)
+        else:  # unset the timer
+            self.main_screen.timer = None
+            print("Timer unset.")
 
 
 """ This class represents the app itself, and everything starts from and runs from this """
@@ -1153,39 +1250,8 @@ class QRToolboxApp:
             storage_location.set_storage(True)
         else:
             print("Selection entered was not of an available option")
+        set_media()
         self.main_screen.menu()
-
-
-#
-# class Timer:
-#     main_screen = None
-#
-#     """ Sets the timer variable to the user defined value """
-#
-#     def set_timer(self, time_to_set):  # a time of 0min also counts as unsetting the timer
-#         if time_to_set != "" and time_to_set is not None and int(time_to_set) != 0:
-#             self.main_screen.timer = int(time_to_set)  # set the timer and print a message
-#             print("Timer set to %s minute(s)." % time_to_set)
-#         else:  # unset the timer
-#             self.main_screen.timer = None
-#             print("Timer unset.")
-#
-#
-# """
-# This class represents the Timer Alert box that pops up when a user exceeds the timer, in order to alert the user
-# """
-#
-#
-# class TimerAlert:
-#     main_screen = None
-#     not_acknowledged = False
-#     # used to check when main user has acknowledged that a given user has been checked in for too long
-#
-#     """ This function handles what happens after the user acknowledges that a user/item has exceeded the timer """
-#
-#     def alert_acknowledged(self):
-#         self.not_acknowledged = False
-#         # set this to False so that beeping stops (altho if any have alrdy been triggered this won't stop them)
 
 
 if __name__ == '__main__':

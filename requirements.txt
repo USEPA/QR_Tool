@@ -8,3 +8,5 @@ future
 arcgis
 Pillow
 pyzbar
+gpiozero
+playsound == 1.2.2
