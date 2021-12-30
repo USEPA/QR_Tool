@@ -9,4 +9,6 @@ arcgis
 Pillow
 pyzbar
 gpiozero
+vext
+vext.gi
 playsound == 1.2.2
