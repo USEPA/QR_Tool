@@ -9,7 +9,7 @@ import time
 import socket
 import select
 import urllib3
-from playsound import playsound
+from omxplayer.player import OMXPlayer
 from gpiozero import LED
 from datetime import timedelta
 from tkinter import *
@@ -606,6 +606,12 @@ def set_media():
         red = LED(22)
         yellow = LED(27)
         green = LED(17)
+
+
+def playsound(path):
+    player = OMXPlayer(path, args="-o local")
+    time.sleep(5)
+    player.quit()
 
 
 """ This function is triggered when a user goes over the time limit, and it triggers an alert popup and sound """
