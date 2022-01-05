@@ -1,1 +1,1 @@
-SQUIREL-Installer-v1.exe filter=lfs diff=lfs merge=lfs -text
+SQUIREL-Installer-v2.exe filter=lfs diff=lfs merge=lfs -text
