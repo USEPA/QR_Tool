@@ -9,7 +9,7 @@ import time
 import socket
 import select
 import urllib3
-from omxplayer.player import OMXPlayer
+from omxplayer.player import OMXPlayer, logger
 from gpiozero import LED
 from datetime import timedelta
 from tkinter import *
@@ -38,6 +38,8 @@ from Setup.settings import settings
         Add newline to better space interface
         redo documentation
 """
+
+logger.propagate = False
 
 url = settings['url']
 gis_query = settings['query']
