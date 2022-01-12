@@ -55,6 +55,12 @@ from kivy.app import App
 
 from Setup.settings import settings
 
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.popup import Popup
+from kivy.core.window import Window
+from Library.garden.recyclelabel import RecycleLabel
+
+
 # colors
 
 
@@ -100,7 +106,8 @@ not_yet = False  # prevents the screen from being cleared immediately at the sta
 
 # Lists and Dictionaries used for special character handling and conversion
 trouble_characters = ['\t', '\n', '\r']  # characters that cause issues
-bad_file_name_list = ['*', ':', '"', '<', '>', ',', '/', '|', '?', '\t', '\r', '\n', '\\']  # can't be used in a filename
+bad_file_name_list = ['*', ':', '"', '<', '>', ',', '/', '|', '?', '\t', '\r', '\n',
+                      '\\']  # can't be used in a filename
 special_characters = ["à", "á", "â", "ã", "ä", "å", "æ", "ç", "è", "é", "ê", "ë", "ì", "í", "î", "ï", "ð", "ñ", "ò",
                       "ó", "ô", "õ", "ö", "ø", "ù", "ú", "û", "ü", "ý", "þ", "ÿ", "À", "Á", "Â", "Ã", "Ä", "Å", "Æ",
                       "Ç", "È", "É", "Ê", "Ë", "Ì", "Í", "Î", "Ï", "Ð", "Ñ", "Ò", "Ó", "Ô", "Õ", "Ö", "Ø", "Ù", "Ú",
@@ -135,7 +142,6 @@ char_dict_code_to_special = {"!@!a1!": "à", "!@!a2!": "á", "!@!a3!": "â", "!@!a4
                              "!@!O7!": "Ø", "!@!U1!": "Ù", "!@!U2!": "Ú", "!@!U3!": "Û", "!@!U4!": "Ü", "!@!Y1!": "Ý",
                              "!@!B1!": "Þ", "!@!Y2!": "ß"}
 
-
 """
 This function converts the passed data based on the other parameters, and returns the converted data
 These conversions fall under 3 cases:
@@ -164,7 +170,8 @@ def convert(main_screen, data_to_convert, character_list, conversion_dict, is_fo
         if char in data_to_convert:
             data_to_convert = data_to_convert.replace(char, conversion_dict[
                 char]) if not is_for_file_name else data_to_convert.replace(char, "-") \
-                if not is_for_trouble else data_to_convert.replace(char, " ")  # data is converted to the appropriate character(s) depending on if the conversion is for a bad file name, or to remove trouble characters, or simply to convert special chars to code chars
+                if not is_for_trouble else data_to_convert.replace(char,
+                                                                   " ")  # data is converted to the appropriate character(s) depending on if the conversion is for a bad file name, or to remove trouble characters, or simply to convert special chars to code chars
     if old_data != data_to_convert and is_for_file_name and is_for_trouble is not True:  # if the data was converted and it was for a bad file name and not only for a trouble character, print this to user
         screen_label.text = screen_label.text + f"\n{bcolors.FAIL}Error saving file with name {old_data}, saved as {data_to_convert} instead.{bcolors.ENDC}"
     return data_to_convert
@@ -187,7 +194,8 @@ This function handles HTTP requests, and also handles errors that occur during t
 """
 
 
-def connect(main_screen, connection_type, sys_id, date_str, time_str, barcode, status, time_elapsed=None, duplicate=False):
+def connect(main_screen, connection_type, sys_id, date_str, time_str, barcode, status, time_elapsed=None,
+            duplicate=False):
     screen_label = main_screen.ids.screen_label
     setup_screen_label(screen_label)
     i = 0
@@ -243,10 +251,12 @@ def upload_backup(main_screen_widget, from_menu=False):
             for line in backup:  # for each line, take the appropriate action according to what is read in
                 if line == '\n' or line == "":
                     continue
-                content = (line.rstrip('\n')).split(',')  # if not empty or newline, then strip newline chars and split line
+                content = (line.rstrip('\n')).split(
+                    ',')  # if not empty or newline, then strip newline chars and split line
                 if content[5] != "NONE":  # if time_elapsed is not none then get time_elapsed
                     time_elapsed = content[5]
-                successful = connect(main_screen_widget, 'upload', content[0], content[1], content[2], content[3], content[4], time_elapsed=time_elapsed, duplicate=True)  # submit data for upload
+                successful = connect(main_screen_widget, 'upload', content[0], content[1], content[2], content[3],
+                                     content[4], time_elapsed=time_elapsed, duplicate=True)  # submit data for upload
                 if not successful:  # if upload failed print info to user
                     screen_label.text = screen_label.text + f"\n{bcolors.FAIL}Upload of backed up data failed.{bcolors.ENDC}{bcolors.OKBLUE} Program will {bcolors.ENDC}" \
                                                             f"{bcolors.OKBLUE}try again at next upload, or you can trigger upload manually from the menu.{bcolors.ENDC}"
@@ -272,17 +282,17 @@ def qr_batch(main_screen_widget):
     screen_label = main_screen_widget.ids.screen_label
     setup_screen_label(screen_label)
     screen_label.text = screen_label.text + "\n\nThe batch QR code function is used to quickly create multiple QR codes by referencing a .csv file." \
-          "\n-There is no difference between online and local mode for this function, it only works as described below." \
-          "\n-The CSV file must be stored in the root folder of the program (where it was installed), and named 'names.csv'." \
-          "\n    * The file name can be changed, but this change must also be reflected in the Setup/settings.py file for the " \
-          "\n       variable 'localQRBatchFile'." \
-          "\n    * The Tool will then automatically create QR codes for each line in the csv, and save each QR Code image to the" \
-          "\n       Tools root folder (this folder is usually called 'QR-Toolbox', and should be found in" \
-          "\n       C:/Users/<user>/AppData/Local/Programs), where <user> refers to your user name on your computer." \
-          "\n    * However, if you changed the install location, it may not be at that file path." \
-          "\n-'names.csv' may consist of two columns 'first' & 'second'. The 'first' and 'second' columns could be " \
-          "\n    populated with participant's first and last names, or other information, and will be joined together with a space in" \
-          "\n    between.\n"
+                                            "\n-There is no difference between online and local mode for this function, it only works as described below." \
+                                            "\n-The CSV file must be stored in the root folder of the program (where it was installed), and named 'names.csv'." \
+                                            "\n    * The file name can be changed, but this change must also be reflected in the Setup/settings.py file for the " \
+                                            "\n       variable 'localQRBatchFile'." \
+                                            "\n    * The Tool will then automatically create QR codes for each line in the csv, and save each QR Code image to the" \
+                                            "\n       Tools root folder (this folder is usually called 'QR-Toolbox', and should be found in" \
+                                            "\n       C:/Users/<user>/AppData/Local/Programs), where <user> refers to your user name on your computer." \
+                                            "\n    * However, if you changed the install location, it may not be at that file path." \
+                                            "\n-'names.csv' may consist of two columns 'first' & 'second'. The 'first' and 'second' columns could be " \
+                                            "\n    populated with participant's first and last names, or other information, and will be joined together with a space in" \
+                                            "\n    between.\n"
 
     # this code creates a batch of QR codes from a csv file stored in the local directory
     # QR code image size and input filename can be modified below
@@ -293,7 +303,8 @@ def qr_batch(main_screen_widget):
         reader = csv.reader(csvfile)  # reader for the csv file
 
         for row in reader:
-            labeldata = row[0] if len(row) == 1 else row[0] + " " + row[1] if row[1] != '' else row[0]  # combine the data in the first 2 cols depending on which is empty and which isn't
+            labeldata = row[0] if len(row) == 1 else row[0] + " " + row[1] if row[1] != '' else row[
+                0]  # combine the data in the first 2 cols depending on which is empty and which isn't
 
             # convert special char to code character
             codeLabelData = convert(main_screen_widget, labeldata, special_characters, char_dict_special_to_code)
@@ -412,7 +423,8 @@ def cons(main_screen_widget):
     time_header = str(datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S'))  # get current date and time
     cons_filename = os.path.join(storagePath, 'Consolidated_Record_' + time_header + '.csv')
     if os.path.exists(storagePath):  # if storage directory has been set
-        QRT_files = [fn for fn in os.listdir(storagePath) if fn.startswith('QRT-R-') and fn.endswith('.csv') and fn.__contains__("_")]
+        QRT_files = [fn for fn in os.listdir(storagePath) if
+                     fn.startswith('QRT-R-') and fn.endswith('.csv') and fn.__contains__("_")]
         # above: get all csv files that start with QRT-R- and end with .csv and have  a '_' in them
         if not QRT_files:  # if its empty then print this
             screen_label.text = screen_label.text + "\nNo entries to combine. Check the storage directory and try again"
@@ -429,7 +441,7 @@ def cons(main_screen_widget):
             except:
                 screen_label.text = screen_label.text + f"\n{bcolors.WARNING}[WARNING] Either the system was unable to write the consolidated file {bcolors.ENDC}" \
                                                         f"{bcolors.WARNING}to the specified storage directory or the file {bcolors.ENDC}" + cons_filename + f"{bcolors.WARNING} is currently in use {bcolors.ENDC}" \
-                                                        f"{bcolors.WARNING}or unavailable. The consolidated record may be incomplete.{bcolors.ENDC}\n"
+                                                                                                                                                            f"{bcolors.WARNING}or unavailable. The consolidated record may be incomplete.{bcolors.ENDC}\n"
     else:  # if no storage location chosen yet
         screen_label.text = screen_label.text + f"\n{bcolors.WARNING}A storage location has not been established. Specify a storage folder using the {bcolors.ENDC}" \
                                                 f"{bcolors.WARNING}'Choose Storage Location' option before continuing\n{bcolors.ENDC}"
@@ -437,11 +449,6 @@ def cons(main_screen_widget):
 
 # GUI PART OF PROGRAM STARTS HERE
 os.environ['KIVY_GL_BACKEND'] = 'angle_sdl2'  # not sure if its vital or not
-
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.popup import Popup
-from kivy.core.window import Window
-from Library.garden.recyclelabel import RecycleLabel
 
 """
 This function allows the user to select a storage directory. If user escapes, a storage directory is not created
@@ -558,8 +565,10 @@ class MainScreenWidget(BoxLayout):
                             if line == '\n': continue  # if line is newline only then skip it
                             line_array = line.split(",")
                             last_system_id = line_array[0]
-                            file_date = datetime.datetime.strptime(line_array[1], "%m/%d/%Y").date()  # get date from file
-                            file_time = datetime.datetime.strptime(line_array[2], "%H:%M:%S.%f").time()  # get time from file
+                            file_date = datetime.datetime.strptime(line_array[1],
+                                                                   "%m/%d/%Y").date()  # get date from file
+                            file_time = datetime.datetime.strptime(line_array[2],
+                                                                   "%H:%M:%S.%f").time()  # get time from file
                             # hour = file_time.hour + 4  # this is to counter the weird arcgis effect where it auto subtracts 4 hrs
                             # if hour > 23:  # have to do this part for the cases where it goes over 2300 and thus isn't real time anymore
                             #     if hour == 24: hour = 0
@@ -577,17 +586,20 @@ class MainScreenWidget(BoxLayout):
                                 status = status[:len(status) - 1]  # else just remove the newline char from the status
 
                             if status == "IN":  # if status is IN, no duration
-                                success = connect(self, "upload", last_system_id, file_date, file_time_online, barcodeDataSpecial, status)
+                                success = connect(self, "upload", last_system_id, file_date, file_time_online,
+                                                  barcodeDataSpecial, status)
                             else:  # if status is OUT, add duration of qr code being checked in
-                                success = connect(self, "upload", last_system_id, file_date, file_time_online, barcodeDataSpecial,
-                                        status, duration)
+                                success = connect(self, "upload", last_system_id, file_date, file_time_online,
+                                                  barcodeDataSpecial,
+                                                  status, duration)
                             if not success: break  # if upload failed, break loop and let user know it failed
                 elif storageChoice.lower() == 'b' and not uploadBackup:
                     screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}Restoring records (online mode)...{bcolors.ENDC}\n{open(args['output'], 'r', encoding='utf-8').read()}"
                 if storageChoice.lower() == 'a':  # if in local mode, just open barcodes.txt for appending to restorerecords
                     screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}Restoring records (local mode)...{bcolors.ENDC}\n{open(args['output'], 'r', encoding='utf-8').read()}"
                 try:
-                    txt = open(args["output"], "a", encoding="utf-8")  # reopen txt file for appending (to continue records)
+                    txt = open(args["output"], "a",
+                               encoding="utf-8")  # reopen txt file for appending (to continue records)
                     success = True
                 except:
                     success = False
@@ -673,7 +685,8 @@ class MainScreenWidget(BoxLayout):
                         continue
 
                     pil_image = Image.fromarray(frame)  # convert frame to pil image format, then to numpy array
-                    pil_image.paste(img, box=(x, y - 15), mask=img)  # not sure exactly what's going on here, but it is vital I believe
+                    pil_image.paste(img, box=(x, y - 15),
+                                    mask=img)  # not sure exactly what's going on here, but it is vital I believe
                     frame = np.array(pil_image)
 
                     # if the barcode text is currently not in our CSV file, write the timestamp + barcode to disk and update the set
@@ -684,13 +697,15 @@ class MainScreenWidget(BoxLayout):
                         time_scanned = datetime.datetime.now().strftime("%H:%M:%S.%f")  # this one prints to csv
 
                         txt.write("{},{},{},{},{}\n".format(system_id, date_scanned, time_scanned,
-                                                         barcodeData, "IN"))  # write scanned data to the text file
+                                                            barcodeData, "IN"))  # write scanned data to the text file
                         txt.flush()
 
-                        found.append(barcodeData)  # add the scanned data to the found arrays so status/times can be managed
+                        found.append(
+                            barcodeData)  # add the scanned data to the found arrays so status/times can be managed
                         found_time.append(datetime_scanned)
                         found_status.append("IN")
-                        thread_started.append(False)  # added so that it corresponds to the actual data in the found arrays
+                        thread_started.append(
+                            False)  # added so that it corresponds to the actual data in the found arrays
 
                         # Write updated found arrays to qr_data_file so that it is up to date with the latest scan ins
                         with open(qr_storage_file, "w") as qr_data_file:
@@ -726,13 +741,15 @@ class MainScreenWidget(BoxLayout):
                             found_status[index_loc] = "OUT"
                             found_time[index_loc] = datetime_scanned
                             txt.write("{},{},{},{},{},{}\n".format(system_id, date_scanned, time_scanned,
-                                                                barcodeData, "OUT", time_check))  # write to local txt file
+                                                                   barcodeData, "OUT",
+                                                                   time_check))  # write to local txt file
 
                             txt.flush()
 
                             success = True
                             if storageChoice.lower() == 'b':  # if user chose online/arcgis version
-                                success = connect(self, "upload", system_id, datestr, timestr, barcodeData, "OUT", time_check)
+                                success = connect(self, "upload", system_id, datestr, timestr, barcodeData, "OUT",
+                                                  time_check)
 
                             if success:
                                 screen_label.text = screen_label.text + f"\n{barcodeData} checking OUT at {str(datetime_scanned)} at location: " \
@@ -751,7 +768,8 @@ class MainScreenWidget(BoxLayout):
                             del found_status[index_loc]
                             del found_time[index_loc]
                             del found[index_loc]
-                            del thread_started[index_loc]  # has caused an error before, not sure why nor how to recreate
+                            del thread_started[
+                                index_loc]  # has caused an error before, not sure why nor how to recreate
 
                         # Write updated found arrays to qr_data_file so that it is up to date with the latest scan ins
                         with open(qr_storage_file, "w") as qr_data_file:  # that file is used when restarting sessions
@@ -767,12 +785,14 @@ class MainScreenWidget(BoxLayout):
                 if self.timer is not None:
                     datetime_scanned = datetime.datetime.now()  # get current time
                     for i in range(len(found)):  # below: total time passed since user checked in
-                        time_check = (datetime_scanned.hour * 60 + datetime_scanned.minute + datetime_scanned.second / 60) - (found_time[i].hour * 60 + found_time[i].minute + found_time[i].second / 60)
+                        time_check = (datetime_scanned.hour * 60 + datetime_scanned.minute + datetime_scanned.second /
+                                      60) - (found_time[i].hour * 60 + found_time[i].minute + found_time[i].second / 60)
                         if time_check > self.timer and thread_started[i] is not True:  # if they're beyond the timer limit
                             print(found[i])
-                            threading.Thread(target=self.timer_alert, args=[found[i]], daemon=True).start()  # alert user
+                            threading.Thread(target=self.timer_alert, args=[found[i]],
+                                             daemon=True).start()  # alert user
                             thread_started[i] = True  # mark this code/item/user as having an alert already run for them, so that it doesn't happen again
-            # future: it should probably also not have the potential to trigger multiple threads/alerts/sounds overlayed
+                # future: it should probably also not have the potential to trigger multiple threads/alerts/sounds overlayed
 
                 # show the output frame
                 cv2.imshow("QR Toolbox", frame)
@@ -804,16 +824,18 @@ class MainScreenWidget(BoxLayout):
                 data = f"\n{bcolors.FAIL}[ERROR] barcodes.txt not found as expected.{bcolors.ENDC}"
                 screen_label.text = screen_label.text + data
 
-            if storageChoice == 'a' and os.stat(args["output"]).st_size != 0:  # if local was chosen, also store barcodes file at the location given
+            if storageChoice == 'a' and os.stat(
+                    args["output"]).st_size != 0:  # if local was chosen, also store barcodes file at the location given
                 if os.path.exists(storagePath):  # check if file path exists
                     with open(os.path.join(storagePath, file_name), "w", encoding="ANSI") as csv2:
                         csv2.write(data)
                 else:
                     screen_label.text = screen_label.text + f"\n{bcolors.WARNING}[ALERT]: Storage folder not established or is unavailable. {bcolors.ENDC}" \
-                          f"{bcolors.WARNING}Files will only be saved to the root/working directory\n{bcolors.ENDC}"
+                                                            f"{bcolors.WARNING}Files will only be saved to the root/working directory\n{bcolors.ENDC}"
 
             if os.path.exists(args["output"]) and os.stat(args["output"]).st_size == 0:  # delete barcodes.txt if empty
-                os.remove(args["output"])  # not removed until the end in case something goes wrong above and it's needed
+                os.remove(
+                    args["output"])  # not removed until the end in case something goes wrong above and it's needed
             if vs is not None:
                 vs.stop()  # reset and close everything related to the videostream
                 vs.stream.release()
@@ -832,8 +854,9 @@ class MainScreenWidget(BoxLayout):
 
     def qr_reader(self):
         restart_session_popup = RestartSessionWidget()
-        restart_session_popup.restart_popup = Popup(title="Do you want to start a new session or restart the previous one?\nNote: CSV files are not created nor uploaded until after the QR Reader is closed.",
-                      content=restart_session_popup, size_hint=(None, None), size=(715, 183), auto_dismiss=True)
+        restart_session_popup.restart_popup = Popup(
+            title="Do you want to start a new session or restart the previous one?\nNote: CSV files are not created nor uploaded until after the QR Reader is closed.",
+            content=restart_session_popup, size_hint=(None, None), size=(715, 183), auto_dismiss=True)
 
         global vs
         if vs is not None:  # if vs already exists let user know (this code will likely never be run due to disabled btn)
@@ -956,8 +979,9 @@ class MainScreenWidget(BoxLayout):
 
     def timer_alert(self, user):
         timer_alert_widget = TimerAlertWidget()
-        timer_alert_widget.timer_alert_widget_popup = Popup(title=f"ALERT: {user} has exceeded the time limit.", content=timer_alert_widget, size_hint=(None, None),
-            size=(421, 135), auto_dismiss=False)
+        timer_alert_widget.timer_alert_widget_popup = Popup(title=f"ALERT: {user} has exceeded the time limit.",
+                                                            content=timer_alert_widget, size_hint=(None, None),
+                                                            size=(421, 135), auto_dismiss=False)
         timer_alert_widget.timer_alert_widget_popup.open()
         timer_alert_widget.main_screen = self
 
@@ -1034,6 +1058,7 @@ class StorageWidget(BoxLayout):
             login_widget.main_screen = self.main_screen
             # login_widget.login_popup.open()
             login_widget.sign_in()
+
 
 """ This class represents the displayed when you select "Choose Camera Source" from the Setup menu, and is text with 3 buttons """
 
@@ -1124,6 +1149,7 @@ class SetupWidget(BoxLayout):
         camera_location.camera_popup.open()
 
     """ Creates and starts the popup for setting a timer for how long users can be checked in """
+
     def set_timer_popup(self):
         timer_widget = TimerWidget()
         timer_widget.timer_popup = Popup(
@@ -1167,7 +1193,8 @@ class LoginWidget(BoxLayout):
         try:
             self.main_screen.gis = GIS(url, client_id='vpeanPqMcHdq7G6z')  # Get ArcGIS access and save it
 
-            search_results = self.main_screen.gis.content.search(query=gis_query, max_items=15)  # check that query works and there's a layer to get
+            search_results = self.main_screen.gis.content.search(query=gis_query,
+                                                                 max_items=15)  # check that query works and there's a layer to get
             # print(search_results)
             data = search_results[0]  # Get the layer we'll be using, so user can see it
 
