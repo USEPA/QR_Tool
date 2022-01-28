@@ -1,5 +1,6 @@
 Kivy
 argparse
+RPi.GPIO
 urllib3
 opencv-python
 imutils
