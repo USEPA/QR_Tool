@@ -197,7 +197,7 @@ def connect(main_screen, connection_type, sys_id, date_str, time_str, barcode, s
             if i == 0:  # if first try failed
                 print("Connection lost. Trying again in 10 seconds.")
                 if play_sound:
-                    playsound(wait_sound)
+                    playsound(wait_sound, 1)
                 if play_light:
                     threading.Thread(target=blink, args=(10, 2, 2), daemon=True).start()
                     # blink yellow
@@ -205,7 +205,7 @@ def connect(main_screen, connection_type, sys_id, date_str, time_str, barcode, s
             elif i == 1:  # if second try failed
                 print("Reconnect failed. Trying again in 30 seconds.")
                 if play_sound:
-                    playsound(wait_sound)
+                    playsound(wait_sound, 1)
                 if play_light:
                     threading.Thread(target=blink, args=(10, 2, 3), daemon=True).start()
                     # blink yellow
@@ -619,9 +619,9 @@ def set_media():
         GPIO.setup(11, GPIO.OUT)
 
 
-def playsound(path):
+def playsound(path, length):
     player = OMXPlayer(path, args="-o local")
-    time.sleep(5)
+    time.sleep(length)
     player.quit()
 
 
@@ -632,7 +632,7 @@ def timer_alert(user):
     global play_sound
     print("ALERT: %s has exceeded the time limit." % user)
     if play_sound:
-        playsound(alert_sound)
+        playsound(alert_sound, 5)
 
     return True
 
@@ -858,7 +858,7 @@ class MainScreen:
                                 threading.Thread(target=blink, args=(11, 3, 1), daemon=True).start()
                                 # blink green
                             if play_sound:
-                                playsound(pass_sound)
+                                playsound(pass_sound, 2)
                                 # makes a beeping sound on scan in
                         elif not success:
                             print("%s NOT checked IN" % barcode_data)
@@ -866,7 +866,7 @@ class MainScreen:
                                 threading.Thread(target=blink, args=(9, 3, 1), daemon=True).start()
                                 # blink red
                             if play_sound:
-                                playsound(fail_sound)
+                                playsound(fail_sound, 2)
                                 # makes a slightly deeper beeping sound on failed scan in
 
                     # if barcode information is found...
@@ -901,7 +901,7 @@ class MainScreen:
                                     threading.Thread(target=blink, args=(11, 3, 1), daemon=True).start()
                                     # blink green
                                 if play_sound:
-                                    playsound(pass_sound)
+                                    playsound(pass_sound, 2)
                                     # makes a beeping sound on scan
                             elif not success:
                                 print("%s NOT checked OUT" % barcode_data)
@@ -909,7 +909,7 @@ class MainScreen:
                                     threading.Thread(target=blink, args=(9, 3, 1), daemon=True).start()
                                     # blink red
                                 if play_sound:
-                                    playsound(fail_sound)
+                                    playsound(fail_sound, 2)
                                     # makes a slightly deeper beeping sound on failed scan out
                         # if found and check-in time is less than the specified wait time then wait
                         elif time_check < t_value and status_check == "OUT":
