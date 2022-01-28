@@ -9,6 +9,7 @@ import time
 import socket
 import select
 import urllib3
+import RPi.GPIO as GPIO
 from omxplayer.player import OMXPlayer, logger
 from gpiozero import LED
 from datetime import timedelta
@@ -74,6 +75,8 @@ play_light = False
 red: LED = None
 yellow: LED = None
 green: LED = None
+
+GPIO.setmode(GPIO.BCM)
 
 # Lists and Dictionaries used for special character handling and conversion
 trouble_characters = ['\t', '\n', '\r']  # characters that cause issues
@@ -196,7 +199,7 @@ def connect(main_screen, connection_type, sys_id, date_str, time_str, barcode, s
                 if play_sound:
                     playsound(wait_sound)
                 if play_light:
-                    threading.Thread(target=blink, args=(yellow, 2, 2), daemon=True).start()
+                    threading.Thread(target=blink, args=(10, 2, 2), daemon=True).start()
                     # blink yellow
                 time.sleep(10)
             elif i == 1:  # if second try failed
@@ -204,7 +207,7 @@ def connect(main_screen, connection_type, sys_id, date_str, time_str, barcode, s
                 if play_sound:
                     playsound(wait_sound)
                 if play_light:
-                    threading.Thread(target=blink, args=(yellow, 2, 3), daemon=True).start()
+                    threading.Thread(target=blink, args=(10, 2, 3), daemon=True).start()
                     # blink yellow
                 time.sleep(30)
             elif i > 1 and not duplicate:  # if failed thrice, write to backup.txt
@@ -495,6 +498,7 @@ def confirm_exit():
     print("\nAre you sure you want to quit?\n(unsaved data, such as from an open QR Reader, will be lost)")
     option = input("(Y/N): ")
     if option.lower() == 'y' or option.lower() == 'yes':
+        GPIO.cleanup()
         sys.exit()
     return True
 
@@ -576,14 +580,16 @@ def set_check_storage(main_screen, check):
 
 
 def blink(led, length, count):
-    global yellow
-    yellow.off()
-    for i in range(count):
+    GPIO.output(10, False)
+    GPIO.output(led, True)
+    time.sleep(length)
+    GPIO.output(led, False)
+    for i in range(count-1):
         time.sleep(1)
-        led.on()
+        GPIO.output(led, True)
         time.sleep(length)
-        led.off()
-    yellow.on()
+        GPIO.output(led, False)
+    GPIO.output(10, True)
 
 
 def set_media():
@@ -605,9 +611,12 @@ def set_media():
     else:
         print("Selection entered was not of an available option")
     if play_light:
-        red = LED(22)
-        yellow = LED(27)
-        green = LED(17)
+        # red = LED(9)
+        # yellow = LED(10)
+        # green = LED(11)
+        GPIO.setup(9, GPIO.OUT)
+        GPIO.setup(10, GPIO.OUT)
+        GPIO.setup(11, GPIO.OUT)
 
 
 def playsound(path):
@@ -761,7 +770,8 @@ class MainScreen:
                         print("Previous session restarted.")
                 elif not os.path.exists(qr_storage_file) or os.stat(qr_storage_file).st_size == 0:
                     print("No previous session found [qr-data.txt not found or is empty].")
-            global red, green
+            if play_light:
+                GPIO.output(10, True)
             # loop over the frames from the video stream
             while True:
                 # grab the frame from the threaded video stream and resize it to have a maximum width of 400 pixels
@@ -844,18 +854,20 @@ class MainScreen:
 
                         if success:
                             print("%s checking IN at %s at location: %s" % (barcode_data, datetime_scanned, system_id))
-                            if play_sound:
-                                playsound(pass_sound)  # makes a beeping sound on scan in
                             if play_light:
-                                threading.Thread(target=blink, args=(green, 3, 1), daemon=True).start()
+                                threading.Thread(target=blink, args=(11, 3, 1), daemon=True).start()
                                 # blink green
+                            if play_sound:
+                                playsound(pass_sound)
+                                # makes a beeping sound on scan in
                         elif not success:
                             print("%s NOT checked IN" % barcode_data)
-                            if play_sound:
-                                playsound(fail_sound)  # makes a slightly deeper beeping sound on failed scan in
                             if play_light:
-                                threading.Thread(target=blink, args=(red, 3, 1), daemon=True).start()
+                                threading.Thread(target=blink, args=(9, 3, 1), daemon=True).start()
                                 # blink red
+                            if play_sound:
+                                playsound(fail_sound)
+                                # makes a slightly deeper beeping sound on failed scan in
 
                     # if barcode information is found...
                     elif barcode_data in found:
@@ -885,18 +897,20 @@ class MainScreen:
                             if success:
                                 print("%s checking OUT at %s at location: %s for duration of %s" %
                                       (barcode_data, datetime_scanned, system_id, time_check))
-                                if play_sound:
-                                    playsound(pass_sound)  # makes a beeping sound on scan
                                 if play_light:
-                                    threading.Thread(target=blink, args=(green, 3, 1), daemon=True).start()
+                                    threading.Thread(target=blink, args=(11, 3, 1), daemon=True).start()
                                     # blink green
+                                if play_sound:
+                                    playsound(pass_sound)
+                                    # makes a beeping sound on scan
                             elif not success:
                                 print("%s NOT checked OUT" % barcode_data)
-                                if play_sound:
-                                    playsound(fail_sound)  # makes a slightly deeper beeping sound on failed scan out
                                 if play_light:
-                                    threading.Thread(target=blink, args=(red, 3, 1), daemon=True).start()
+                                    threading.Thread(target=blink, args=(9, 3, 1), daemon=True).start()
                                     # blink red
+                                if play_sound:
+                                    playsound(fail_sound)
+                                    # makes a slightly deeper beeping sound on failed scan out
                         # if found and check-in time is less than the specified wait time then wait
                         elif time_check < t_value and status_check == "OUT":
                             pass
@@ -954,6 +968,8 @@ class MainScreen:
             # close the output CSV file and do a bit of cleanup
             print("[ALERT] Cleaning up... \n")
             txt.close()
+            if play_light:
+                GPIO.output(10, False)
 
             if os.path.exists(qr_storage_file) and os.stat(qr_storage_file).st_size == 0:
                 os.remove(qr_storage_file)  # if the file is empty, delete it
