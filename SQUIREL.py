@@ -280,7 +280,7 @@ class MainScreenWidget(BoxLayout):
                             version=1,
                             error_correction=qrcode.constants.ERROR_CORRECT_L,
                             box_size=15,
-                            border=2
+                            border=4
                         )
                     else:
                         qr = qrcode.QRCode(
@@ -461,7 +461,7 @@ class MainScreenWidget(BoxLayout):
             w = 25; h = 25
             x_change = 70; y_change = 25.5
             max_in_row = 2; max_in_pg = 30
-            x, y = (6.0, 12.0)
+            x, y = (6.0, 13.0)
             # pdf.set_auto_page_break(auto=True,margin=0)
         elif layout == "Avery 3x2":
             w = 65; h = 65
