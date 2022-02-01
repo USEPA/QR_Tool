@@ -62,7 +62,9 @@ from Library.garden.recyclelabel import RecycleLabel
 
 
 # colors
-
+"""
+    Timer Snooze
+"""
 
 class bcolors:
     HEADER = ''
