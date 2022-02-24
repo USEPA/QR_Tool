@@ -801,7 +801,7 @@ class MainScreenWidget(BoxLayout):
                 cv2.waitKey(1)
 
                 # if the user closes the window, close the window (lol)
-                if cv2.getWindowProperty('QR Toolbox', 0) == -1:
+                if cv2.getWindowProperty('QR Toolbox', cv2.WND_PROP_VISIBLE) < 1:
                     break
 
             # close the output CSV file and do a bit of cleanup
