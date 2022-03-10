@@ -8,8 +8,8 @@ sudo apt-get install cmake -y
 python3 -m pip install --upgrade pip
 python3 -m pip install --upgrade numpy
 python3 -m pip install virtualenv
-virtualenv env
+python3 -m virtualenv env
 source env/bin/activate
 curl https://sh.rustup.rs -sSf | sh -s -- -y
 python -m pip install -r requirements.txt
-source QR_Tool.sh
+sudo reboot
