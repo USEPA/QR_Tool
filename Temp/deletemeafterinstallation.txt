@@ -2,4 +2,4 @@ This file exists only so that pyinstaller counts this folder and includes it in 
 within the QR-Toolbox-Installer-v1.5.exe and is thus included in the installation on the users computer. Without it, there would be an error
 when running the QR-batch and QR-single creator functions.
 
-##### YOU CAN DELETE THIS IF YOU ARE A USER AND YOU SEE THIS IN YOUR 'ARCHIVE' FOlDER. #####
+##### YOU CAN DELETE THIS IF YOU ARE A USER AND YOU SEE THIS IN YOUR 'TEMP' FOlDER. #####
