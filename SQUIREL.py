@@ -536,17 +536,17 @@ class MainScreenWidget(BoxLayout):
                 pdf.rotate(0)  # undo rotation
 
             if layout == "Avery 10x3":
-                pdf.set_font('Courier', '', 12)  # set font family, style, and size
-                text_to_print1 = self.code_labels_array[i][:14]
-                text_to_print2 = self.code_labels_array[i][14:28]  # split up texts so label fits and doesn't get cut off
-                text_to_print3 = self.code_labels_array[i][28:42]
-                text_to_print4 = self.code_labels_array[i][42:56]
-                text_to_print5 = self.code_labels_array[i][56:70]
-                pdf.text(x + w, y + 5, txt=text_to_print1)
-                pdf.text(x + w, y + 9, txt=text_to_print2)
-                pdf.text(x + w, y + 13, txt=text_to_print3)
-                pdf.text(x + w, y + 17, txt=text_to_print4)
-                pdf.text(x + w, y + 21, txt=text_to_print5)
+                pdf.set_font('Courier', '', 14)  # set font family, style, and size
+                text_to_print1 = self.code_labels_array[i][:12]
+                text_to_print2 = self.code_labels_array[i][12:24]  # split up texts so label fits and doesn't get cut off
+                text_to_print3 = self.code_labels_array[i][24:36]
+                text_to_print4 = self.code_labels_array[i][36:48]
+                text_to_print5 = self.code_labels_array[i][48:60]
+                pdf.text(x + w, y + 6, txt=text_to_print1)
+                pdf.text(x + w, y + 10, txt=text_to_print2)
+                pdf.text(x + w, y + 14, txt=text_to_print3)
+                pdf.text(x + w, y + 18, txt=text_to_print4)
+                pdf.text(x + w, y + 22, txt=text_to_print5)
 
             if layout == "Avery 3x2":
                 pdf.set_font('Courier', '', 12)
