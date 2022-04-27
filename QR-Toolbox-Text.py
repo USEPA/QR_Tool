@@ -37,8 +37,6 @@ from Setup.settings import settings
 """
     Known issues:
         disconnect upload from scanning, upload every 1-5 minutes + camera close
-        "SystemError: DBus cannot connect to the OMXPlayer process" error catch
-            clear threads after finishing
         redo documentation
 """
 
@@ -68,6 +66,7 @@ user_chose_storage = False  # tracks whether user chose a storage method or not
 display_video = False  # whether the video feed should be displayed or not
 system_id = socket.gethostname()  # this is used when checking qr codes in or out
 t_value = timedelta(seconds=10)  # time between scans for the same qr code
+upload_value = timedelta(minutes=5)
 cameraSource = "Integrated"  # the camera source, defaults to integrated (so source 0)
 storageChoice = ""  # users choice of local ('a') or online ('b') mode
 vs = None  # global video stream variable, to ensure only 1 instance of it exists at a time
@@ -236,7 +235,8 @@ This function uploads the data that was stored/backed up in the backup.txt file
 def upload_backup(main_screen, from_menu=False):
     if os.path.exists(backup_file):  # check if file exists, if not then return
         with open(backup_file, "r") as backup:
-            print("Uploading backed up data...")
+            if from_menu:
+                print("Uploading backed up data...")
             time_elapsed = None  # assume it's IN status so no elapsed time
             for line in backup:  # for each line, take the appropriate action according to what is read in
                 if line == '\n' or line == "":
@@ -248,10 +248,11 @@ def upload_backup(main_screen, from_menu=False):
                 successful = connect(main_screen, 'upload', content[0], content[1], content[2], content[3],
                                      content[4], time_elapsed=time_elapsed, duplicate=True)  # submit data for upload
                 if not successful:  # if upload failed print info to user
-                    print("Upload of backed up data failed. Program will try again at next upload, or you can "
-                          "trigger upload manually from the menu.")
+                    print("Upload of backed up data failed. Program will try again at next upload, or you can trigger "
+                          "upload manually from the menu.")
                     return False
-            print("Upload complete!")
+            if from_menu:
+                print("Upload complete!")
         os.remove(backup_file)  # file removed if upload is successful
     elif from_menu:
         print("No backed-up data to upload.")
@@ -668,7 +669,8 @@ class MainScreen:
     """
 
     def video(self):
-        global user_chose_storage, vs, video_on, display_video, uploadBackup, checkStorage
+        global user_chose_storage, vs, video_on, display_video, uploadBackup, checkStorage, t_value, upload_value, \
+            backup_file
 
         if user_chose_storage:
 
@@ -703,7 +705,7 @@ class MainScreen:
                 vs = None
                 return
 
-            time.sleep(5.0)  # give camera time
+            time.sleep(2.0)  # give camera time
 
             # open the output txt file for writing and initialize the set of barcodes found thus far
 
@@ -784,6 +786,7 @@ class MainScreen:
             if play_light:
                 GPIO.output(10, True)
             # loop over the frames from the video stream
+            upload_time = datetime.datetime.now()
             while True:
                 # grab the frame from the threaded video stream and resize it to have a maximum width of 400 pixels
                 # frame = None
@@ -799,6 +802,12 @@ class MainScreen:
                 timestr = datetime.datetime.now()
                 datestr = timestr.strftime("%m/%d/%Y")
                 timestr = timestr.strftime("%H:%M:%S.%f")
+                if storageChoice.lower() == 'b':
+                    time_since = timestr - upload_time
+
+                    if time_since > upload_value:
+                        upload_time = timestr
+                        threading.Thread(target=upload_backup, args=[self, False], daemon=True).start()
 
                 # loop over the detected barcodes
                 for barcode in barcodes:
@@ -840,28 +849,35 @@ class MainScreen:
                         date_scanned = datetime.datetime.now().strftime("%m/%d/%Y")  # this one prints to csv
                         time_scanned = datetime.datetime.now().strftime("%H:%M:%S.%f")  # this one prints to csv
 
-                        txt.write("{},{},{},{},{}\n".format(system_id, date_scanned, time_scanned,
-                                                            barcode_data, "IN"))  # write scanned data to the text file
-                        txt.flush()
+                        try:
+                            txt.write("{},{},{},{},{}\n".format(system_id, date_scanned, time_scanned,
+                                                                barcode_data, "IN"))  # write scanned data to the text file
+                            txt.flush()
 
-                        # add the scanned data to the found arrays so status/times can be managed
-                        found.append(barcode_data)
-                        found_time.append(datetime_scanned)
-                        found_status.append("IN")
-                        thread_started.append(False)
-                        # added so that it corresponds to the actual data in the found arrays
+                            # add the scanned data to the found arrays so status/times can be managed
+                            found.append(barcode_data)
+                            found_time.append(datetime_scanned)
+                            found_status.append("IN")
+                            thread_started.append(False)
+                            # added so that it corresponds to the actual data in the found arrays
 
-                        # Write updated found arrays to qr_data_file so that it is up to date with the latest scan ins
-                        with open(qr_storage_file, "w") as qr_data_file:
-                            for i in range(len(found)):
-                                code = found[i]
-                                tyme = found_time[i]
-                                status = found_status[i]
-                                qr_data_file.write("{0},{1},{2}\n".format(code, tyme, status))
+                            # Write updated found arrays to qr_data_file so that it is up to date with the latest scan
+                            # ins
+                            with open(qr_storage_file, "w") as qr_data_file:
+                                for i in range(len(found)):
+                                    code = found[i]
+                                    tyme = found_time[i]
+                                    status = found_status[i]
+                                    qr_data_file.write("{0},{1},{2}\n".format(code, tyme, status))
 
-                        success = True
-                        if storageChoice.lower() == 'b':  # if user chose online/arcgis
-                            success = connect(self, "upload", system_id, datestr, timestr, barcode_data, "IN")
+                            if storageChoice.lower() == 'b':  # if user chose online/arcgis
+                                # success = connect(self, "upload", system_id, datestr, timestr, barcode_data, "IN")
+                                content = f"{system_id},{datestr},{timestr},{barcode_data},IN,NONE"
+                                with open(backup_file, "a") as backup:  # write the data to the backup.txt file
+                                    backup.write(f"{content}\n")
+                            success = True
+                        except:
+                            success = False
 
                         if success:
                             print("%s checking IN at %s at location: %s" % (barcode_data, datetime_scanned, system_id))
@@ -895,15 +911,21 @@ class MainScreen:
                             found_status[index_loc] = "OUT"
                             found_time[index_loc] = datetime_scanned
                             # write to local txt file
-                            txt.write("{},{},{},{},{},{}\n".format(system_id, date_scanned, time_scanned,
-                                                                   barcode_data, "OUT", time_check))
+                            try:
+                                txt.write("{},{},{},{},{},{}\n".format(system_id, date_scanned, time_scanned,
+                                                                       barcode_data, "OUT", time_check))
 
-                            txt.flush()
+                                txt.flush()
 
-                            success = True
-                            if storageChoice.lower() == 'b':  # if user chose online/arcgis version
-                                success = connect(self, "upload", system_id, datestr, timestr, barcode_data, "OUT",
-                                                  time_check)
+                                if storageChoice.lower() == 'b':  # if user chose online/arcgis version
+                                    # success = connect(self, "upload", system_id, datestr, timestr, barcode_data,
+                                    #                   "OUT", time_check)
+                                    content = f"{system_id},{datestr},{timestr},{barcode_data},OUT,{time_check}"
+                                    with open(backup_file, "a") as backup:  # write the data to the backup.txt file
+                                        backup.write(f"{content}\n")
+                                success = True
+                            except:
+                                success = False
 
                             if success:
                                 print("%s checking OUT at %s at location: %s for duration of %s" %

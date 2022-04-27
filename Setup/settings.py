@@ -1,6 +1,6 @@
 settings = {
     'url': 'https://epa.maps.arcgis.com/home/content.html',
-    'query': 'owner:jdeagan_EPA AND title:"QR Tool Template"',  # query to get right layer
+    'query': 'owner:jdeagan_EPA AND title:"AnCOR QR Scan_In"',  # query to get right layer
     'latitude': 0,  # must use decimal degrees
     'longitude': 0,  # must use decimal degrees
     'localQRBatchFile': 'names.csv'
