@@ -799,14 +799,14 @@ class MainScreen:
 
                 # find the barcodes in the frame and decode each of the barcodes
                 barcodes = pyzbar.decode(frame, symbols=[ZBarSymbol.QRCODE])
-                timestr = datetime.datetime.now()
-                datestr = timestr.strftime("%m/%d/%Y")
-                timestr = timestr.strftime("%H:%M:%S.%f")
+                cur_time = datetime.datetime.now()
+                datestr = cur_time.strftime("%m/%d/%Y")
+                timestr = cur_time.strftime("%H:%M:%S.%f")
                 if storageChoice.lower() == 'b':
-                    time_since = timestr - upload_time
+                    time_since = cur_time - upload_time
 
                     if time_since > upload_value:
-                        upload_time = timestr
+                        upload_time = cur_time
                         threading.Thread(target=upload_backup, args=[self, False], daemon=True).start()
 
                 # loop over the detected barcodes
