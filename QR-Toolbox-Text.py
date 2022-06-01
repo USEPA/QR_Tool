@@ -12,7 +12,7 @@ import urllib3
 import RPi.GPIO as GPIO
 from omxplayer.player import OMXPlayer, logger
 from gpiozero import LED
-from datetime import timedelta
+from datetime import timedelta, datetime
 from tkinter import *
 from tkinter import filedialog
 
@@ -404,7 +404,7 @@ checks are built in to prevent bad things from happening
 
 
 def cons():
-    time_header = str(datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S'))  # get current date and time
+    time_header = str(datetime.now().strftime('%Y_%m_%d_%H_%M_%S'))  # get current date and time
     cons_filename = os.path.join(storagePath, 'Consolidated_Record_' + time_header + '.csv')
     if os.path.exists(storagePath):  # if storage directory has been set
         qrt_files = [fn for fn in os.listdir(storagePath) if
@@ -685,7 +685,7 @@ class MainScreen:
                             help="path to output CSV file containing barcodes")
             args = vars(ap.parse_args())
             # initialize time and date and make filename friendly
-            time_header = str(datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S'))
+            time_header = str(datetime.now().strftime('%Y_%m_%d_%H_%M_%S'))
             file_name = "QRT-R-" + system_id + "_" + time_header + ".csv"
             txt = None
 
@@ -720,8 +720,8 @@ class MainScreen:
                             line_array = line.split(",")
                             last_system_id = line_array[0]
                             # get date from file
-                            file_date = datetime.datetime.strptime(line_array[1], "%m/%d/%Y").date()
-                            file_time = datetime.datetime.strptime(line_array[2], "%H:%M:%S.%f").time()
+                            file_date = datetime.strptime(line_array[1], "%m/%d/%Y").date()
+                            file_time = datetime.strptime(line_array[2], "%H:%M:%S.%f").time()
                             file_time_online = file_time
 
                             barcode_data_special = line_array[3]  # get the QR Code from the file
@@ -777,7 +777,7 @@ class MainScreen:
                                 continue
                             line_array = line.split(",")
                             found.append(line_array[0])  # append file data to the found arrays
-                            found_time.append(datetime.datetime.strptime(line_array[1], "%Y-%m-%d %H:%M:%S.%f"))
+                            found_time.append(datetime.strptime(line_array[1], "%Y-%m-%d %H:%M:%S.%f"))
                             found_status.append(line_array[2][:len(line_array[2]) - 1:])
                             thread_started.append(False)
                         print("Previous session restarted.")
@@ -786,7 +786,7 @@ class MainScreen:
             if play_light:
                 GPIO.output(10, True)
             # loop over the frames from the video stream
-            upload_time = datetime.datetime.now()
+            upload_time = datetime.now()
             while True:
                 # grab the frame from the threaded video stream and resize it to have a maximum width of 400 pixels
                 # frame = None
@@ -799,7 +799,7 @@ class MainScreen:
 
                 # find the barcodes in the frame and decode each of the barcodes
                 barcodes = pyzbar.decode(frame, symbols=[ZBarSymbol.QRCODE])
-                cur_time = datetime.datetime.now()
+                cur_time = datetime.now()
                 datestr = cur_time.strftime("%m/%d/%Y")
                 timestr = cur_time.strftime("%H:%M:%S.%f")
                 if storageChoice.lower() == 'b':
@@ -845,9 +845,9 @@ class MainScreen:
                     # update the set of barcode data has never been seen, check the user in and record id, date,
                     # and time information
                     if barcode_data not in found:
-                        datetime_scanned = datetime.datetime.now()  # this one appended to found_time arr
-                        date_scanned = datetime.datetime.now().strftime("%m/%d/%Y")  # this one prints to csv
-                        time_scanned = datetime.datetime.now().strftime("%H:%M:%S.%f")  # this one prints to csv
+                        datetime_scanned = datetime.now()  # this one appended to found_time arr
+                        date_scanned = datetime.now().strftime("%m/%d/%Y")  # this one prints to csv
+                        time_scanned = datetime.now().strftime("%H:%M:%S.%f")  # this one prints to csv
 
                         try:
                             txt.write("{},{},{},{},{}\n".format(system_id, date_scanned, time_scanned,
@@ -899,9 +899,9 @@ class MainScreen:
                     # if barcode information is found...
                     elif barcode_data in found:
                         # get current time and also total time passed since user checked in
-                        datetime_scanned = datetime.datetime.now()  # this one appended to found_time arr
-                        date_scanned = datetime.datetime.now().strftime("%m/%d/%Y")  # this one prints to csv
-                        time_scanned = datetime.datetime.now().strftime("%H:%M:%S.%f")  # this one prints to csv
+                        datetime_scanned = datetime.now()  # this one appended to found_time arr
+                        date_scanned = datetime.now().strftime("%m/%d/%Y")  # this one prints to csv
+                        time_scanned = datetime.now().strftime("%H:%M:%S.%f")  # this one prints to csv
                         time_check = datetime_scanned - found_time[found.index(barcode_data)]
                         status_check = found_status[found.index(barcode_data)]
 
@@ -969,7 +969,7 @@ class MainScreen:
 
                 # If timer is active, check to see if any user has gone over the timer
                 if self.timer is not None:
-                    datetime_scanned = datetime.datetime.now()  # get current time
+                    datetime_scanned = datetime.now()  # get current time
                     for i in range(len(found)):  # below: total time passed since user checked in
                         time_check = \
                             (datetime_scanned.hour * 60 + datetime_scanned.minute + datetime_scanned.second / 60) - \
@@ -1298,6 +1298,66 @@ class QRToolboxApp:
         storage_location = Storage()
         storage_location.main_screen = self.main_screen
         urllib3.disable_warnings()
+
+        cur_date = datetime.date(datetime.today())
+        cur_time = datetime.time(datetime.today())
+
+        choice = input("Is %s the current date?(y/n) " % cur_date)
+        while True:
+            if choice.lower() == 'n':
+                cor_date = input("Please enter the current Date (YYYY-MM-DD): ")
+                temp_date = cor_date.split('-')
+                if len(temp_date) != 3:
+                    print("Date entered was not in the correct format")
+                    continue
+                if (not temp_date[0].isnumeric()) or len(temp_date[0]) != 4:
+                    print("Date entered was not in the correct format")
+                    continue
+                if (not temp_date[1].isnumeric()) or len(temp_date[1]) != 2:
+                    print("Date entered was not in the correct format")
+                    continue
+                if (not temp_date[2].isnumeric()) or len(temp_date[2]) != 2:
+                    print("Date entered was not in the correct format")
+                    continue
+                try:
+                    datetime.strptime(cor_date, "%Y-%m-%d")
+                except:
+                    print("Date entered was not valid")
+                    continue
+                break
+            elif choice.lower() == 'y':
+                cor_date = cur_date
+                break
+            else:
+                choice = input("Selection entered was not of an available option\nPlease enter an available response: ")
+        choice = input("Is %s the current time?(y/n) " % cur_time)
+        while True:
+            if choice.lower() == 'n':
+                cor_time = input("Please enter the current Time (HH:MM:SS): ")
+                temp_time = cor_time.split(':')
+                if len(temp_time) != 3:
+                    print("Time entered was not in the correct format")
+                    continue
+                correct = True
+                for part in temp_time:
+                    if (not part.isnumeric()) or len(part) != 2:
+                        correct = False
+                        break
+                if not correct:
+                    print("Time entered was not in the correct format")
+                    continue
+                try:
+                    datetime.strptime(cor_time, "%H:%M:%S")
+                except:
+                    print("Time entered was not valid")
+                    continue
+                break
+            elif choice.lower() == 'y':
+                cor_time = datetime.time(datetime.today())
+                break
+            else:
+                choice = input("Selection entered was not of an available option\nPlease enter an available response: ")
+        os.system("sudo date -s %s %s" % (cor_date, cor_time))
         print("Select a storage location\nNote: Files are also saved in the QR-Toolbox Archive folder regardless."
               "\n1) ArcGIS (online)\n2) Local ")
         choice = input("Choice: ")
