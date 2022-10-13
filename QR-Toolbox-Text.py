@@ -1357,7 +1357,7 @@ class QRToolboxApp:
                 break
             else:
                 choice = input("Selection entered was not of an available option\nPlease enter an available response: ")
-        os.system("sudo date -s %s %s" % (cor_date, cor_time))
+        os.system("sudo date --set=\"%s %s\"" % (cor_date, cor_time))
         print("Select a storage location\nNote: Files are also saved in the QR-Toolbox Archive folder regardless."
               "\n1) ArcGIS (online)\n2) Local ")
         choice = input("Choice: ")
