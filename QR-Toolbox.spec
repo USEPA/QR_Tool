@@ -1,20 +1,15 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-
-block_cipher = None
 from kivy_deps import sdl2, glew
 
+block_cipher = None
+
 b = [
-    ('C:\\Users\\jdeagan\\AppData\\Local\\Programs\\Python\\Python39\\Lib\\site-packages\\pyzbar\\*','.\\pyzbar')
+    ('C:\\Users\\jdeagan\\AppData\\Roaming\\Python\\Python310\\site-packages\\pyzbar\\*','.\\pyzbar')
     ]
 
 added_paths = [
-    ('qrtoolbox.kv','.'),
-    ('./Archive','Archive'),
-    ('./Library','Library'),
-    ('./Setup','Setup'),
-    ('./System_Data','System_Data'),
-    ('./Temp','Temp')
+    ('qrtoolbox.kv','.')
     ]
 
 a = Analysis(['QR-Toolbox.py'],
@@ -31,32 +26,24 @@ a = Analysis(['QR-Toolbox.py'],
              cipher=block_cipher,
              noarchive=False)
 
-pyz = PYZ(a.pure, a.zipped_data,
-             cipher=block_cipher)
+pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
 exe = EXE(pyz,
           a.scripts, 
-          [],
-          exclude_binaries=True,
-          name='QR-Toolbox-v1.5',
+          a.binaries,
+          a.zipfiles,
+          a.datas,
+          *[Tree(p) for p in (sdl2.dep_bins + glew.dep_bins)],
+          name='QR-Toolbox-v1.6',
           debug=False,
           bootloader_ignore_signals=False,
           strip=False,
           upx=True,
+          upx_exclude=[],
+          runtime_tmpdir=None,
           console=True,
           disable_windowed_traceback=False,
+          argv_emulation=False,
           target_arch=None,
           codesign_identity=None,
           entitlements_file=None )
-coll = COLLECT(exe,
-               a.binaries,
-               a.zipfiles,
-               a.datas, 
-	       *[Tree(p) for p in (sdl2.dep_bins + glew.dep_bins)],
-               strip=False,
-               upx=True,
-               upx_exclude=[],
-               name='QR-Toolbox-v1.5')
-
-
-
