@@ -956,11 +956,11 @@ class MainScreenWidget(BoxLayout):
 
     def about(self):
         # displays the about screen
-        text = "[u]QR Toolbox v1.5[/u]\n"
+        text = "[u]QR Toolbox v1.6[/u]\n"
         text = text + "About: The QR Toolbox is a suite a tools for creating and reading QR codes. The toolbox is " \
                       "lightweight, open source, and written in Python and Kivy. This toolbox may be used to track resources," \
                       " serve as a check-in capability for personnel, or customized to meet other operational needs. \n"
-        text = text + "Version: 1.5 \n\n"
+        text = text + "Version: 1.6 \n\n"
         text = text + "Credits: The QR Toolbox consists of a number of python packages, namely: \n qrcode - " \
                       "Lincoln Loop info@lincolnloop.com; \n pyzbar - Lawrence Hudson quicklizard@googlemail.com; \n OpenCV code - " \
                       "Adrian Rosebrock https://www.pyimagesearch.com/author/adrian/; \n Sound effects obtained from " \
