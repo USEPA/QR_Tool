@@ -53,8 +53,6 @@ from pyzbar.pyzbar import ZBarSymbol
 import threading
 from kivy.app import App
 
-from Setup.settings import settings
-
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.popup import Popup
 from kivy.core.window import Window
@@ -78,13 +76,14 @@ class bcolors:
 
 
 # ArcGIS/IO related variables
-url = settings['url']
-gis_query = settings['query']
-latitude = settings['latitude']
-longitude = settings['longitude']
-localQRBatchFile = settings['localQRBatchFile']
+url = ""
+gis_query = ""
+latitude = ""
+longitude = ""
+localQRBatchFile = ""
 
 # System variables
+settings = "Setup/settings.csv"
 qr_storage_file = "System_Data/qr-data.txt"  # file that contains saved session information
 backup_file = "System_Data/backup.txt"  # file that contains data that couldn't be uploaded, to later be uploaded
 archive_folder = "Archive"
@@ -877,7 +876,7 @@ class MainScreenWidget(BoxLayout):
 
     def update_arcgis(self, sys_id, date_str, time_str, barcode_data, status, time_elapsed=None):
         screen_label = self.ids.screen_label
-        search_results = self.gis.content.search(query=gis_query, max_items=15)  # query is set in the settings.py file
+        search_results = self.gis.content.search(query=gis_query, max_items=15)  # query is set in the settings.csv file
         data = search_results[0]  # code auto chooses the first option on the list
 
         # Add data to layer
@@ -1251,7 +1250,16 @@ class QRToolboxApp(App):
     """ This function runs the storage selection popup at the start of the App, and sets some global vars """
 
     def on_start(self):
-        global clear_screen, not_yet
+        global clear_screen, not_yet, url, gis_query, latitude, longitude, localQRBatchFile, settings
+        with open(settings, 'r', encoding='utf-8') as set_file:
+            reader = csv.reader(set_file)
+            reader.__next__()
+            values = reader.__next__()
+            url = values[0]
+            gis_query = values[1]
+            latitude = values[2]
+            longitude = values[3]
+            localQRBatchFile = values[4]
         storage_location = StorageWidget()
         storage_location.storage_popup = Popup(title="Select a storage location", content=storage_location,
                                                size_hint=(None, None),
