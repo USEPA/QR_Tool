@@ -1,2 +1,2 @@
 url,query,latitude,longitude,localQRBatchFile
-https://epa.maps.arcgis.com/home/content.html,owner:jdeagan_EPA AND title:"QR Tool Template",0,0,names.csv
+https://epa.maps.arcgis.com/home/content.html,owner:mblaser_EPA AND title:"QR Demo Layer",0,0,names.csv

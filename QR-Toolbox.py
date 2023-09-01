@@ -58,11 +58,14 @@ from kivy.uix.popup import Popup
 from kivy.core.window import Window
 from Library.garden.recyclelabel import RecycleLabel
 
-
 # colors
 """
-    Timer Snooze
+    Check if oneepa login has same issues
+    if no recent camera activity, test read data to check/maintain connection
+    restore log option
+    Plugging in camera while running doesn't detect
 """
+
 
 class bcolors:
     HEADER = ''
@@ -536,6 +539,12 @@ class MainScreenWidget(BoxLayout):
             # initialize time and date and make filename friendly
             time_header = str(datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S'))
             file_name = "QRT-R-" + system_id + "_" + time_header + ".csv"
+            if storageChoice == 'a' and os.path.exists(storagePath):
+                local_file = os.path.join(storagePath, file_name)
+            else:
+                local_file = ""
+                screen_label.text = screen_label.text + f"\n{bcolors.WARNING}[ALERT]: Storage folder not established or is unavailable. {bcolors.ENDC}" \
+                                                        f"{bcolors.WARNING}Files will only be saved to the root/working directory\n{bcolors.ENDC}"
 
             # initialize the video stream and allow the camera sensor to warm up
             try:
@@ -598,6 +607,12 @@ class MainScreenWidget(BoxLayout):
                     screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}Restoring records (online mode)...{bcolors.ENDC}\n{open(args['output'], 'r', encoding='utf-8').read()}"
                 if storageChoice.lower() == 'a':  # if in local mode, just open barcodes.txt for appending to restorerecords
                     screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}Restoring records (local mode)...{bcolors.ENDC}\n{open(args['output'], 'r', encoding='utf-8').read()}"
+                    if local_file != "":
+                        with open(args["output"], "r", encoding='utf-8') as txt:
+                            with open(local_file, "a", encoding="ANSI") as csv2:
+                                for line in txt:
+                                    csv2.write(line)
+
                 try:
                     txt = open(args["output"], "a",
                                encoding="utf-8")  # reopen txt file for appending (to continue records)
@@ -635,7 +650,9 @@ class MainScreenWidget(BoxLayout):
                         screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}Previous session restarted.{bcolors.ENDC}"
                 elif not os.path.exists(qr_storage_file) or os.stat(qr_storage_file).st_size == 0:
                     screen_label.text = screen_label.text + f"\n{bcolors.WARNING}No previous session found [qr-data.txt not found or is empty].{bcolors.ENDC}"
-
+            if storageChoice.lower() == 'a' and local_file != "":
+                local_timer = datetime.datetime.now()
+                local_temp = []
             # loop over the frames from the video stream
             while True:
                 # grab the frame from the threaded video stream and resize it to have a maximum width of 400 pixels
@@ -701,6 +718,10 @@ class MainScreenWidget(BoxLayout):
                                                             barcodeData, "IN"))  # write scanned data to the text file
                         txt.flush()
 
+                        if storageChoice.lower() == 'a' and local_file != "":
+                            local_temp.append(
+                                "{},{},{},{},{}\n".format(system_id, date_scanned, time_scanned, barcodeData, "IN"))
+
                         found.append(
                             barcodeData)  # add the scanned data to the found arrays so status/times can be managed
                         found_time.append(datetime_scanned)
@@ -747,6 +768,10 @@ class MainScreenWidget(BoxLayout):
 
                             txt.flush()
 
+                            if storageChoice.lower() == 'a' and local_file != "":
+                                local_temp.append("{},{},{},{},{},{}\n".format(system_id, date_scanned, time_scanned,
+                                                                               barcodeData, "OUT", time_check))
+
                             success = True
                             if storageChoice.lower() == 'b':  # if user chose online/arcgis version
                                 success = connect(self, "upload", system_id, datestr, timestr, barcodeData, "OUT",
@@ -788,12 +813,25 @@ class MainScreenWidget(BoxLayout):
                     for i in range(len(found)):  # below: total time passed since user checked in
                         time_check = (datetime_scanned.hour * 60 + datetime_scanned.minute + datetime_scanned.second /
                                       60) - (found_time[i].hour * 60 + found_time[i].minute + found_time[i].second / 60)
-                        if time_check > self.timer and thread_started[i] is not True:  # if they're beyond the timer limit
+                        if time_check > self.timer and thread_started[
+                            i] is not True:  # if they're beyond the timer limit
                             print(found[i])
                             threading.Thread(target=self.timer_alert, args=[found[i]],
                                              daemon=True).start()  # alert user
-                            thread_started[i] = True  # mark this code/item/user as having an alert already run for them, so that it doesn't happen again
+                            thread_started[
+                                i] = True  # mark this code/item/user as having an alert already run for them, so that it doesn't happen again
                 # future: it should probably also not have the potential to trigger multiple threads/alerts/sounds overlayed
+
+                if storageChoice.lower() == 'a' and local_file != "":
+                    datetime_scanned = datetime.datetime.now()
+                    time_check = (datetime_scanned.hour * 60 + datetime_scanned.minute + datetime_scanned.second /
+                                  60) - (local_timer.hour * 60 + local_timer.minute + local_timer.second / 60)
+                    if time_check > 5:
+                        with open(local_file, "a", encoding="ANSI") as csv2:
+                            for line in local_temp:
+                                csv2.write(line)
+                        local_timer = datetime_scanned
+                        local_temp = []
 
                 # show the output frame
                 cv2.imshow("QR Toolbox", frame)
@@ -806,6 +844,10 @@ class MainScreenWidget(BoxLayout):
             # close the output CSV file and do a bit of cleanup
             screen_label.text = screen_label.text + f"\n{bcolors.OKBLUE}[ALERT] Cleaning up... \n{bcolors.ENDC}"
             txt.close()
+            if storageChoice.lower() == 'a' and local_file != "":
+                with open(local_file, "a", encoding="ANSI") as csv2:
+                    for line in local_temp:
+                        csv2.write(line)
 
             if os.path.exists(qr_storage_file) and os.stat(qr_storage_file).st_size == 0:
                 os.remove(qr_storage_file)  # if the file is empty, delete it
@@ -825,14 +867,14 @@ class MainScreenWidget(BoxLayout):
                 data = f"\n{bcolors.FAIL}[ERROR] barcodes.txt not found as expected.{bcolors.ENDC}"
                 screen_label.text = screen_label.text + data
 
-            if storageChoice == 'a' and os.stat(
-                    args["output"]).st_size != 0:  # if local was chosen, also store barcodes file at the location given
-                if os.path.exists(storagePath):  # check if file path exists
-                    with open(os.path.join(storagePath, file_name), "w", encoding="ANSI") as csv2:
-                        csv2.write(data)
-                else:
-                    screen_label.text = screen_label.text + f"\n{bcolors.WARNING}[ALERT]: Storage folder not established or is unavailable. {bcolors.ENDC}" \
-                                                            f"{bcolors.WARNING}Files will only be saved to the root/working directory\n{bcolors.ENDC}"
+            # if storageChoice == 'a' and os.stat(
+            #         args["output"]).st_size != 0:  # if local was chosen, also store barcodes file at the location given
+            #     if os.path.exists(storagePath):  # check if file path exists
+            #         with open(os.path.join(storagePath, file_name), "w", encoding="ANSI") as csv2:
+            #             csv2.write(data)
+            #     else:
+            #         screen_label.text = screen_label.text + f"\n{bcolors.WARNING}[ALERT]: Storage folder not established or is unavailable. {bcolors.ENDC}" \
+            #                                                 f"{bcolors.WARNING}Files will only be saved to the root/working directory\n{bcolors.ENDC}"
 
             if os.path.exists(args["output"]) and os.stat(args["output"]).st_size == 0:  # delete barcodes.txt if empty
                 os.remove(
