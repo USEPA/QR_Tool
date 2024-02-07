@@ -27,6 +27,7 @@ import os
 import os.path
 import shutil
 import time
+import pyodbc
 from playsound import playsound
 from datetime import timedelta
 from time import strftime
@@ -60,6 +61,8 @@ from Library.garden.recyclelabel import RecycleLabel
 
 # colors
 """
+    Alter code to allow SQL access:
+    Change connect to upload (name)
     if no recent camera activity, test read data to check/maintain connection
     restore log option
     Plugging in camera while running doesn't detect
@@ -79,10 +82,12 @@ class bColors:
 
 
 # ArcGIS/IO related variables
-url = ""
+arcgis_url = ""
 gis_query = ""
 latitude = ""
 longitude = ""
+sql_address = ""
+sql_database = ""
 localQRBatchFile = ""
 
 # System variables
@@ -94,6 +99,13 @@ fail_ding = "Library/sounds/failed.mp3"
 pass_ding = "Library/sounds/passed.mp3"
 timer_alarm = "Library/sounds/alarm.mp3"
 
+# query_in = """
+# INSERT INTO ? (?, ?, ?, ?)
+# VALUES (?, ?, ?, 'IN');
+query_in = ""
+query_out = ""
+headers = []
+
 # load variables
 # set store folder default, assign system ID, and wait time
 storagePath = ""  # the path to the local storage directory if chosen
@@ -103,11 +115,13 @@ user_chose_storage = False  # tracks whether user chose a storage method or not
 system_id = os.environ['COMPUTERNAME']  # this is used when checking qr codes in or out
 t_value = timedelta(seconds=10)  # time between scans for the same qr code
 cameraSource = "Integrated"  # the camera source, defaults to integrated (so source 0)
-storageChoice = ""  # users choice of local ('a') or online ('b') mode
+storageChoice = ""  # users choice of local ('a'), ArcGIS ('b'), or SQL ('c') mode
 vs = None  # global video stream variable, to ensure only 1 instance of it exists at a time
 clear_screen = False  # if True, clear screen, else don't clear it (true only in 4 cases)
 not_yet = False  # prevents the screen from being cleared immediately at the start (only used at the start)
 connection_lost = False  # set if an upload fails
+sql_cursor = None
+
 
 # Lists and Dictionaries used for special character handling and conversion
 trouble_characters = ['\t', '\n', '\r']  # characters that cause issues
@@ -203,65 +217,137 @@ This function handles HTTP requests, and also handles errors that occur during t
 """
 
 
-def connect(main_screen, connection_type, sys_id, date_str, time_str, barcode, status, time_elapsed=None,
-            duplicate=False, from_backup=False):
-    global connection_lost
-    screen_label = main_screen.ids.screen_label
-    setup_screen_label(screen_label)
-    if status == "IN":
-        content = f"{sys_id},{date_str},{time_str},{barcode},{status},NONE"
-    elif status == "OUT":
-        content = f"{sys_id},{date_str},{time_str},{barcode},{status},{time_elapsed}"
-    else:
-        screen_label.text = screen_label.text + f"\n{bColors.WARNING}Status not a valid value.{bColors.ENDC}"
-        return False
-    i = 0
-    while i < 3:
-        try:
-            return_val = True
-            if connection_type == 'upload':  # if a record needs to be uploaded to arcgis
-                main_screen.update_arcgis(sys_id, date_str, time_str, barcode, status, time_elapsed)
-                if not from_backup:
-                    upload_backup(main_screen)
-            else:  # if for some reason connection type is not one of the above
-                screen_label.text = screen_label.text + f"\n{bColors.WARNING}Invalid connection type.{bColors.ENDC}"
-                return_val = False
-            if i > 0:  # if a connection retry occurred and was successful
-                screen_label.text = screen_label.text + f"\n{bColors.OKGREEN}Connection successful.{bColors.ENDC}"
-            return return_val  # so that calling method can use the results accordingly
-        except:
-            e = sys.exc_info()[0]  # used for error checking
-            print(e)
-            if i == 0:  # if first try failed
-                if connection_lost:
-                    screen_label.text = screen_label.text + f"\n{bColors.FAIL}No Connection. {bColors.ENDC}" \
-                                                            f"{bColors.OKBLUE}Data will be stored locally and " \
-                                                            f"uploaded at the next {bColors.OKBLUE}upload point, or " \
-                                                            f"if triggered from the menu.{bColors.ENDC}"
+def upload(main_screen, connection_type, sys_id, date_str, time_str, barcode, status, time_elapsed=None,
+           duplicate=False, from_backup=False):
+    global connection_lost, query_out, query_in, sql_cursor, headers, storageChoice
+    if storageChoice == "b":
+        screen_label = main_screen.ids.screen_label
+        setup_screen_label(screen_label)
+        if status == "IN":
+            content = f"{sys_id},{date_str},{time_str},{barcode},{status},NONE"
+        elif status == "OUT":
+            content = f"{sys_id},{date_str},{time_str},{barcode},{status},{time_elapsed}"
+        else:
+            screen_label.text = screen_label.text + f"\n{bColors.WARNING}Status not a valid value.{bColors.ENDC}"
+            return False
+        i = 0
+        while i < 3:
+            try:
+                return_val = True
+                if connection_type == 'upload':  # if a record needs to be uploaded to arcgis
+                    main_screen.update_arcgis(sys_id, date_str, time_str, barcode, status, time_elapsed)
+                    if not from_backup:
+                        upload_backup(main_screen)
+                else:  # if for some reason connection type is not one of the above
+                    screen_label.text = screen_label.text + f"\n{bColors.WARNING}Invalid connection type.{bColors.ENDC}"
+                    return_val = False
+                if i > 0:  # if a connection retry occurred and was successful
+                    screen_label.text = screen_label.text + f"\n{bColors.OKGREEN}Connection successful.{bColors.ENDC}"
+                return return_val  # so that calling method can use the results accordingly
+            except:
+                e = sys.exc_info()[0]  # used for error checking
+                print(e)
+                if i == 0:  # if first try failed
+                    if connection_lost:
+                        screen_label.text = screen_label.text + f"\n{bColors.FAIL}No Connection. {bColors.ENDC}" \
+                                                                f"{bColors.OKBLUE}Data will be stored locally and " \
+                                                                f"uploaded at the next {bColors.OKBLUE}upload point, or " \
+                                                                f"if triggered from the menu.{bColors.ENDC}"
+                        if connection_type == 'upload':
+                            with open(backup_file, "a") as backup:  # write the data to the backup.txt file
+                                backup.write(f"{content}\n")
+                        return False  # return a connection failure
+                    else:
+                        screen_label.text = screen_label.text + f"\n{bColors.FAIL}Connection lost. Trying again in 10 " \
+                                                                f"seconds.{bColors.ENDC}"
+                        time.sleep(10)
+
+                elif i == 1:  # if second try failed
+                    screen_label.text = screen_label.text + f"\n{bColors.FAIL}Reconnect failed. Trying again in 30 " \
+                                                            f"seconds.{bColors.ENDC}"
+                    time.sleep(30)
+                elif i > 1 and not duplicate:  # if failed thrice, write to backup.txt
+                    connection_lost = True
+                    screen_label.text = screen_label.text + f"\n{bColors.FAIL}Reconnect failed again. {bColors.ENDC}" \
+                                                            f"{bColors.OKBLUE}Data will be stored locally and uploaded at" \
+                                                            f" the {bColors.OKBLUE}next upload point, or if triggered " \
+                                                            f"from the menu.{bColors.ENDC}"
                     if connection_type == 'upload':
                         with open(backup_file, "a") as backup:  # write the data to the backup.txt file
                             backup.write(f"{content}\n")
                     return False  # return a connection failure
-                else:
-                    screen_label.text = screen_label.text + f"\n{bColors.FAIL}Connection lost. Trying again in 10 " \
-                                                            f"seconds.{bColors.ENDC}"
-                    time.sleep(10)
+            i += 1
+    elif storageChoice == "c":
+        screen_label = main_screen.ids.screen_label
+        setup_screen_label(screen_label)
+        date_time = "%s %s" % (date_str, time_str);
+        if status == "IN":
+            # content = tuple(headers[0:5]) + (sys_id, date_time, barcode)
+            content = f"{sys_id},{date_str},{time_str},{barcode},{status},NONE"
+            sql_data = (sys_id, date_time, barcode)
+            # print(content)
+            query = query_in
+        elif status == "OUT": #update needed
+            content = f"{sys_id},{date_str},{time_str},{barcode},{status},{time_elapsed}"
+            sql_data = (sys_id, date_time, barcode, time_elapsed)
+            query = query_out
+        else:
+            screen_label.text = screen_label.text + f"\n{bColors.WARNING}Status not a valid value.{bColors.ENDC}"
+            return False
+        i = 0
+        # query_find = "SELECT * FROM Table_1;"
+        #
+        # sql_cursor.execute(query_find)
+        # records = sql_cursor.fetchall()
+        # for r in records:
+        #     print(f"{r.Scan_Date_Time}\t{r.Scanned_Text}\t{r.Scan_Status}\t{r.Elapsed_Time}")
+        while i < 3:
+            try:
+                return_val = True
+                if connection_type == 'upload':  # if a record needs to be uploaded to arcgis
+                    sql_cursor.execute(query, sql_data)
+                    if not from_backup:
+                        upload_backup(main_screen)
+                    sql_cursor.commit()
+                else:  # if for some reason connection type is not one of the above
+                    screen_label.text = screen_label.text + f"\n{bColors.WARNING}Invalid connection type.{bColors.ENDC}"
+                    return_val = False
+                if i > 0:  # if a connection retry occurred and was successful
+                    screen_label.text = screen_label.text + f"\n{bColors.OKGREEN}Connection successful.{bColors.ENDC}"
+                return return_val  # so that calling method can use the results accordingly
+            except:
+                e = sys.exc_info()[0]  # used for error checking
+                print(e)
+                if i == 0:  # if first try failed
+                    if connection_lost:
+                        screen_label.text = screen_label.text + f"\n{bColors.FAIL}No Connection. {bColors.ENDC}" \
+                                                                f"{bColors.OKBLUE}Data will be stored locally and " \
+                                                                f"uploaded at the next {bColors.OKBLUE}upload point, or " \
+                                                                f"if triggered from the menu.{bColors.ENDC}"
+                        if connection_type == 'upload':
+                            with open(backup_file, "a") as backup:  # write the data to the backup.txt file
+                                backup.write(f"{content}\n")
+                        return False  # return a connection failure
+                    else:
+                        screen_label.text = screen_label.text + f"\n{bColors.FAIL}Connection lost. Trying again in 10 " \
+                                                                f"seconds.{bColors.ENDC}"
+                        time.sleep(10)
 
-            elif i == 1:  # if second try failed
-                screen_label.text = screen_label.text + f"\n{bColors.FAIL}Reconnect failed. Trying again in 30 " \
-                                                        f"seconds.{bColors.ENDC}"
-                time.sleep(30)
-            elif i > 1 and not duplicate:  # if failed thrice, write to backup.txt
-                connection_lost = True
-                screen_label.text = screen_label.text + f"\n{bColors.FAIL}Reconnect failed again. {bColors.ENDC}" \
-                                                        f"{bColors.OKBLUE}Data will be stored locally and uploaded at" \
-                                                        f" the {bColors.OKBLUE}next upload point, or if triggered " \
-                                                        f"from the menu.{bColors.ENDC}"
-                if connection_type == 'upload':
-                    with open(backup_file, "a") as backup:  # write the data to the backup.txt file
-                        backup.write(f"{content}\n")
-                return False  # return a connection failure
-        i += 1
+                elif i == 1:  # if second try failed
+                    screen_label.text = screen_label.text + f"\n{bColors.FAIL}Reconnect failed. Trying again in 30 " \
+                                                            f"seconds.{bColors.ENDC}"
+                    time.sleep(30)
+                elif i > 1 and not duplicate:  # if failed thrice, write to backup.txt
+                    connection_lost = True
+                    screen_label.text = screen_label.text + f"\n{bColors.FAIL}Reconnect failed again. {bColors.ENDC}" \
+                                                            f"{bColors.OKBLUE}Data will be stored locally and uploaded at" \
+                                                            f" the {bColors.OKBLUE}next upload point, or if triggered " \
+                                                            f"from the menu.{bColors.ENDC}"
+                    if connection_type == 'upload':
+                        with open(backup_file, "a") as backup:  # write the data to the backup.txt file
+                            backup.write(f"{content}\n")
+                    return False  # return a connection failure
+            i += 1
     return False
 
 
@@ -289,8 +375,8 @@ def upload_backup(main_screen_widget, from_menu=False):
                 # split line
                 if content[5] != "NONE":  # if time_elapsed is not none then get time_elapsed
                     time_elapsed = content[5]
-                successful = connect(main_screen_widget, 'upload', content[0], content[1], content[2], content[3],
-                                     content[4], time_elapsed=time_elapsed, duplicate=True, from_backup=True)
+                successful = upload(main_screen_widget, 'upload', content[0], content[1], content[2], content[3],
+                                    content[4], time_elapsed=time_elapsed, duplicate=True, from_backup=True)
                 # submit data for upload
                 if not successful:  # if upload failed print info to user
                     screen_label.text = screen_label.text + f"\n{bColors.FAIL}Upload of backed up data failed." \
@@ -623,7 +709,7 @@ class MainScreenWidget(BoxLayout):
 
             # open the output txt file for writing and initialize the set of barcodes found thus far
             if os.path.isfile(args["output"]) and checkStorage:  # check if user wanted to restart prev session
-                if storageChoice.lower() == 'b' and uploadBackup:  # do this only if QR Toolbox is in online-mode
+                if (storageChoice.lower() == 'b' or storageChoice.lower() == 'c') and uploadBackup:  # do this only if QR Toolbox is in online-mode
                     # Write previous records back to contentStrings
                     with open(args["output"], "r", encoding='utf-8') as txt:
                         screen_label.text = screen_label.text + f"\n{bColors.OKBLUE}Restoring records (online mode)" \
@@ -636,7 +722,7 @@ class MainScreenWidget(BoxLayout):
                             file_date = datetime.datetime.strptime(line_array[1],
                                                                    "%m/%d/%Y").date()  # get date from file
                             file_time = datetime.datetime.strptime(line_array[2],
-                                                                   "%H:%M:%S.%f").time()  # get time from file
+                                                                   "%H:%M:%S").time()  # get time from file
                             # hour = file_time.hour + 4
                             # this is to counter the weird arcgis effect where it auto subtracts 4 hrs
                             # if hour > 23:
@@ -658,15 +744,14 @@ class MainScreenWidget(BoxLayout):
                                 status = status[:len(status) - 1]  # else just remove the newline char from the status
 
                             if status == "IN":  # if status is IN, no duration
-                                success = connect(self, "upload", last_system_id, file_date, file_time_online,
-                                                  barcode_data_special, status)
+                                success = upload(self, "upload", last_system_id, file_date, file_time_online,
+                                                 barcode_data_special, status)
                             else:  # if status is OUT, add duration of qr code being checked in
-                                success = connect(self, "upload", last_system_id, file_date, file_time_online,
-                                                  barcode_data_special,
-                                                  status, duration)
+                                success = upload(self, "upload", last_system_id, file_date, file_time_online,
+                                                 barcode_data_special, status, duration)
                             if not success:
                                 break  # if upload failed, break loop and let user know it failed
-                elif storageChoice.lower() == 'b' and not uploadBackup:
+                elif (storageChoice.lower() == 'b' or storageChoice.lower() == 'c') and not uploadBackup:
                     screen_label.text = screen_label.text + f"\n{bColors.OKBLUE}Restoring records (online mode)" \
                                                             f"...{bColors.ENDC}\n" \
                                                             f"{open(args['output'], 'r', encoding='utf-8').read()}"
@@ -716,10 +801,10 @@ class MainScreenWidget(BoxLayout):
                                 continue
                             line_array = line.split(",")
                             found.append(line_array[0])  # append file data to the found arrays
-                            found_time.append(datetime.datetime.strptime(line_array[1], "%Y-%m-%d %H:%M:%S.%f"))
+                            found_time.append(datetime.datetime.strptime(line_array[1], "%Y-%m-%d %H:%M:%S"))
                             found_status.append(line_array[2][:len(line_array[2]) - 1:])
                             thread_started.append(False)
-                    if storageChoice.lower() == 'b':
+                    if storageChoice.lower() == 'b' or storageChoice.lower() == 'c':
                         upload_backup(self)
                     screen_label.text = screen_label.text + f"\n{bColors.OKBLUE}Previous session restarted." \
                                                             f"{bColors.ENDC}"
@@ -756,7 +841,7 @@ class MainScreenWidget(BoxLayout):
                 # need to increment day by one, otherwise when time is set back 4hrs by arcgis,
                 # it'll decrement the day as well so the date would end up one day off (one day early)
                 datestr = timestr.strftime("%m/%d/%Y")
-                timestr = timestr.strftime("%H:%M:%S.%f")
+                timestr = timestr.strftime("%H:%M:%S")
 
                 # loop over the detected barcodes
                 for barcode in barcodes:
@@ -797,7 +882,7 @@ class MainScreenWidget(BoxLayout):
                     if barcode_data not in found:
                         datetime_scanned = datetime.datetime.now()  # this one appended to found_time arr
                         date_scanned = datetime.datetime.now().strftime("%m/%d/%Y")  # this one prints to csv
-                        time_scanned = datetime.datetime.now().strftime("%H:%M:%S.%f")  # this one prints to csv
+                        time_scanned = datetime.datetime.now().strftime("%H:%M:%S")  # this one prints to csv
 
                         txt.write("{},{},{},{},{}\n".format(system_id, date_scanned, time_scanned,
                                                             barcode_data, "IN"))  # write scanned data to the text file
@@ -823,12 +908,12 @@ class MainScreenWidget(BoxLayout):
                                 qr_data_file.write("{0},{1},{2}\n".format(code, tyme, status))
 
                         success = True
-                        if storageChoice.lower() == 'b':  # if user chose online/arcgis
-                            success = connect(self, "upload", system_id, datestr, timestr, barcode_data, "IN")
+                        if storageChoice.lower() == 'b' or storageChoice.lower() == 'c':  # if user chose online/arcgis
+                            success = upload(self, "upload", system_id, datestr, timestr, barcode_data, "IN")
 
                         if success:
-                            screen_label.text = screen_label.text + f"\n{barcode_data} checking IN at " \
-                                                                    f"{str(datetime_scanned)} at location: {system_id}"
+                            screen_label.text = screen_label.text + f"\n{barcode_data} checking IN at {date_scanned} " \
+                                                                    f"{time_scanned} at location: {system_id}"
                             playsound(pass_ding)  # makes a beeping sound on scan in
                         elif not success:
                             screen_label.text = screen_label.text + f"\n{bColors.WARNING}{barcode_data} NOT checked " \
@@ -840,7 +925,7 @@ class MainScreenWidget(BoxLayout):
                         # get current time and also total time passed since user checked in
                         datetime_scanned = datetime.datetime.now()  # this one appended to found_time arr
                         date_scanned = datetime.datetime.now().strftime("%m/%d/%Y")  # this one prints to csv
-                        time_scanned = datetime.datetime.now().strftime("%H:%M:%S.%f")  # this one prints to csv
+                        time_scanned = datetime.datetime.now().strftime("%H:%M:%S")  # this one prints to csv
                         time_check = datetime_scanned - found_time[found.index(barcode_data)]
                         status_check = found_status[found.index(barcode_data)]
 
@@ -860,13 +945,13 @@ class MainScreenWidget(BoxLayout):
                                                                                barcode_data, "OUT", time_check))
 
                             success = True
-                            if storageChoice.lower() == 'b':  # if user chose online/arcgis version
-                                success = connect(self, "upload", system_id, datestr, timestr, barcode_data, "OUT",
-                                                  time_check)
+                            if storageChoice.lower() == 'b' or storageChoice.lower() == 'c':  # if user chose online/arcgis version
+                                success = upload(self, "upload", system_id, datestr, timestr, barcode_data, "OUT",
+                                                 str(time_check))
 
                             if success:
                                 screen_label.text = screen_label.text + f"\n{barcode_data} checking OUT at " \
-                                                                        f"{str(datetime_scanned)} at location: " \
+                                                                        f"{date_scanned} {time_scanned} at location: " \
                                                                         f"{system_id} for duration of {str(time_check)}"
                                 playsound(pass_ding)  # makes a beeping sound on scan
                             elif not success:
@@ -1205,7 +1290,7 @@ local or online)
 
 
 class StorageWidget(BoxLayout):
-    text = "Do you want data stored on ArcGIS (online) or locally? \nNote: Files are also saved in the QR-Toolbox " \
+    text = "Do you want data stored online or locally? \nNote: Files are also saved in the QR-Toolbox " \
            "Archive folder regardless."
     storage_popup = None
     main_screen = None
@@ -1216,12 +1301,12 @@ class StorageWidget(BoxLayout):
 
     def set_storage(self, storage):
         global storageChoice
-        if storage:  # Local button was pressed
+        if storage == 'a':  # Local button was pressed
             global storagePath
             storageChoice = "a"
             storagePath = store(self.main_screen)
-        elif not storage:  # online btn was pressed
-            storageChoice = "b"
+        else:  # online btn was pressed
+            storageChoice = storage
 
             login_widget = LoginWidget()  # user must login for online storage
             # login_widget.login_popup = Popup(
@@ -1396,32 +1481,47 @@ class LoginWidget(BoxLayout):
     """
 
     def sign_in(self):
-        global user_chose_storage
+        global user_chose_storage, storageChoice, sql_cursor, sql_address, sql_database, arcgis_url, gis_query
         screen_label = self.main_screen.ids.screen_label
         setup_screen_label(screen_label)
+        if storageChoice == "b":
+            try:
+                self.main_screen.gis = GIS(arcgis_url, client_id='vpeanPqMcHdq7G6z')  # Get ArcGIS access and save it
 
-        global url, gis_query
-        try:
-            self.main_screen.gis = GIS(url, client_id='vpeanPqMcHdq7G6z')  # Get ArcGIS access and save it
+                search_results = self.main_screen.gis.content.search(query=gis_query,
+                                                                     max_items=15)
+                # check that query works and there's a layer to get
+                # print(search_results)
+                data = search_results[0]  # Get the layer we'll be using, so user can see it
 
-            search_results = self.main_screen.gis.content.search(query=gis_query,
-                                                                 max_items=15)
-            # check that query works and there's a layer to get
-            # print(search_results)
-            data = search_results[0]  # Get the layer we'll be using, so user can see it
+                screen_label.text = screen_label.text + f"\n{bColors.OKBLUE}Storage location set to online (ArcGIS)." \
+                                                        f"{bColors.ENDC}"  # if successful
+                screen_label.text = screen_label.text + f"\n{bColors.OKBLUE}Layer: {data.title}{bColors.ENDC}"
+                # provides more info on the exact layer chosen
+                user_chose_storage = True
+            except Exception as e:  # if error in trying to access ArcGIS or run the query
+                # e = sys.exc_info()[0]  # used for error checking
+                screen_label.text = screen_label.text + f"\n{bColors.FAIL}Error: {e}{bColors.ENDC}"
+                user_chose_storage = False
+            except:  # in case the above except clause doesn't catch everything
+                screen_label.text = screen_label.text + f"\n{bColors.FAIL}An unknown error has occurred.{bColors.ENDC}"
+                user_chose_storage = False
+        elif storageChoice == "c":
+            try:
+                cxnn = pyodbc.connect(driver='{ODBC Driver 17 for SQL Server}', server=sql_address,
+                                      database=sql_database, trusted_connection='yes')
+                sql_cursor = cxnn.cursor()
 
-            screen_label.text = screen_label.text + f"\n{bColors.OKBLUE}Storage location set to online (ArcGIS)." \
-                                                    f"{bColors.ENDC}"  # if successful
-            screen_label.text = screen_label.text + f"\n{bColors.OKBLUE}Layer: {data.title}{bColors.ENDC}"
-            # provides more info on the exact layer chosen
-            user_chose_storage = True
-        except Exception as e:  # if error in trying to access ArcGIS or run the query
-            # e = sys.exc_info()[0]  # used for error checking
-            screen_label.text = screen_label.text + f"\n{bColors.FAIL}Error: {e}{bColors.ENDC}"
-            user_chose_storage = False
-        except:  # in case the above except clause doesn't catch everything
-            screen_label.text = screen_label.text + f"\n{bColors.FAIL}An error has occurred.{bColors.ENDC}"
-            user_chose_storage = False
+                screen_label.text = screen_label.text + f"\n{bColors.OKBLUE}Storage location set to online (SQL)." \
+                                                        f"{bColors.ENDC}"  # if successful
+                user_chose_storage = True
+            except Exception as e:  # if error in trying to access ArcGIS or run the query
+                # e = sys.exc_info()[0]  # used for error checking
+                screen_label.text = screen_label.text + f"\n{bColors.FAIL}Error: {e}{bColors.ENDC}"
+                user_chose_storage = False
+            except:  # in case the above except clause doesn't catch everything
+                screen_label.text = screen_label.text + f"\n{bColors.FAIL}An unknown error has occurred.{bColors.ENDC}"
+                user_chose_storage = False
 
     """ 
     This function is called if the user clicks cancel, so user knows no storage is set currently 
@@ -1476,16 +1576,29 @@ class QRToolboxApp(App):
     """
 
     def on_start(self):
-        global clear_screen, not_yet, url, gis_query, latitude, longitude, localQRBatchFile, settings
+        global clear_screen, not_yet, arcgis_url, gis_query, latitude, longitude, localQRBatchFile, settings, \
+            sql_address, headers, sql_database, query_in, query_out
         with open(settings, 'r', encoding='utf-8') as set_file:
             reader = csv.reader(set_file)
             reader.__next__()
             values = reader.__next__()
-            url = values[0]
+            arcgis_url = values[0]
             gis_query = values[1]
             latitude = values[2]
             longitude = values[3]
             localQRBatchFile = values[4]
+            sql_address = values[5]
+            sql_database = values[6]
+            headers = values[7:]
+            query_in = """
+            INSERT INTO %s (%s, %s, %s, %s)
+            VALUES (?, ?, ?, 'IN');
+            """ % (headers[0],headers[1],headers[2],headers[3],headers[4])
+            query_out = """
+            INSERT INTO %s (%s, %s, %s, %s, %s)
+            VALUES (?, ?, ?, 'OUT', ?);
+            """ % (headers[0],headers[1],headers[2],headers[3],headers[4],headers[5])
+
         storage_location = StorageWidget()
         storage_location.storage_popup = Popup(title="Select a storage location", content=storage_location,
                                                size_hint=(None, None),

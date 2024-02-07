@@ -118,18 +118,27 @@
 
 <StorageWidget>:
     orientation: 'vertical'
+    Label:
+        text: root.text
+        size_hint: 1, None
     BoxLayout:
-        orientation: 'vertical'
-        Label:
-            text: root.text
+        orientation: 'horizontal'
+
         Button:
             text: "Local (Specify a location on the computer)"
-            on_release: root.set_storage(True)
+            text_size: self.width, None
+            halign: "center"
+            on_release: root.set_storage("a")
             on_release: root.storage_popup.dismiss()
         Button:
             text: "Online (ArcGIS)"
-            on_release: root.set_storage(False)
+            on_release: root.set_storage("b")
             on_release: root.storage_popup.dismiss()
+        Button:
+            text: "Online (SQL Server)"
+            on_release: root.set_storage("c")
+            on_release: root.storage_popup.dismiss()
+
 
 <CameraWidget>:
     orientation: 'vertical'

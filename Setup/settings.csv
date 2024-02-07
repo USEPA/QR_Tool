@@ -1,2 +1,2 @@
-url,query,latitude,longitude,localQRBatchFile
-https://epa.maps.arcgis.com/home/content.html,owner:jdeagan_EPA AND title:"QR Scan In",0,0,names.csv
+arcgis_url,query,latitude,longitude,localQRBatchFile,sql_address,sql_database,sql_table,Source_col,DateTime_col,ScanText_col,Status_col,Elapsed_col
+https://epa.maps.arcgis.com/home/content.html,owner:jdeagan_EPA AND title:"QR Scan In",0,0,names.csv,LAPTOP-4FMUSB50,QR_Tool,Table_1,Scan_Source,Scan_Date_Time,Scanned_Text,Scan_Status,Elapsed_Time
