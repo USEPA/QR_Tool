@@ -59,18 +59,24 @@ from kivy.uix.popup import Popup
 from kivy.core.window import Window
 from Library.garden.recyclelabel import RecycleLabel
 
-# colors
+# to do
 """
     Alter code to allow SQL access:
     Change connect to upload (name)
-    if no recent camera activity, test read data to check/maintain connection
+    upload sync fail message should be changed (838, 877)
+    Auto upload during session start not triggering
+    Read back from ArcGIS to track interactions across multiple devices
     restore log option
+    Toggle tracking state option
+    if no recent camera activity, test read data to check/maintain connection
     Plugging in camera while running doesn't detect
     Use new architecture to allow ArcGIS connection longer than 30 min
 """
 
+# colors
 
-class bColors:
+
+class BaseColors:
     HEADER = ''
     OKBLUE = '[color=#009999]'
     OKGREEN = '[color=#66cc00]'
@@ -120,8 +126,8 @@ vs = None  # global video stream variable, to ensure only 1 instance of it exist
 clear_screen = False  # if True, clear screen, else don't clear it (true only in 4 cases)
 not_yet = False  # prevents the screen from being cleared immediately at the start (only used at the start)
 connection_lost = False  # set if an upload fails
+local_passed = False  # check source of connection error
 sql_cursor = None
-
 
 # Lists and Dictionaries used for special character handling and conversion
 trouble_characters = ['\t', '\n', '\r']  # characters that cause issues
@@ -195,8 +201,8 @@ def convert(main_screen, data_to_convert, character_list, conversion_dict, is_fo
     if old_data != data_to_convert and is_for_file_name and is_for_trouble is not True:
         # if the data was converted and it was for a bad file name and not only for a trouble character, print this
         # to user
-        screen_label.text = screen_label.text + f"\n{bColors.FAIL}Error saving file with name {old_data}, saved as " \
-                                                f"{data_to_convert} instead.{bColors.ENDC} "
+        screen_label.text = screen_label.text + f"\n{BaseColors.FAIL}Error saving file with name {old_data}, saved " \
+                                                f"as {data_to_convert} instead.{BaseColors.ENDC} "
     return data_to_convert
 
 
@@ -219,7 +225,7 @@ This function handles HTTP requests, and also handles errors that occur during t
 
 def upload(main_screen, connection_type, sys_id, date_str, time_str, barcode, status, time_elapsed=None,
            duplicate=False, from_backup=False):
-    global connection_lost, query_out, query_in, sql_cursor, headers, storageChoice
+    global connection_lost, query_out, query_in, sql_cursor, headers, storageChoice, local_passed
     if storageChoice == "b":
         screen_label = main_screen.ids.screen_label
         setup_screen_label(screen_label)
@@ -228,53 +234,59 @@ def upload(main_screen, connection_type, sys_id, date_str, time_str, barcode, st
         elif status == "OUT":
             content = f"{sys_id},{date_str},{time_str},{barcode},{status},{time_elapsed}"
         else:
-            screen_label.text = screen_label.text + f"\n{bColors.WARNING}Status not a valid value.{bColors.ENDC}"
+            screen_label.text = screen_label.text + f"\n{BaseColors.WARNING}Status not a valid value.{BaseColors.ENDC}"
+            local_passed = False
             return False
         i = 0
         while i < 3:
             try:
                 return_val = True
+                local_passed = True
                 if connection_type == 'upload':  # if a record needs to be uploaded to arcgis
                     main_screen.update_arcgis(sys_id, date_str, time_str, barcode, status, time_elapsed)
                     if not from_backup:
                         upload_backup(main_screen)
                 else:  # if for some reason connection type is not one of the above
-                    screen_label.text = screen_label.text + f"\n{bColors.WARNING}Invalid connection type.{bColors.ENDC}"
+                    screen_label.text = screen_label.text + f"\n{BaseColors.WARNING}Invalid connection type." \
+                                                            f"{BaseColors.ENDC}"
+                    local_passed = False
                     return_val = False
                 if i > 0:  # if a connection retry occurred and was successful
-                    screen_label.text = screen_label.text + f"\n{bColors.OKGREEN}Connection successful.{bColors.ENDC}"
+                    screen_label.text = screen_label.text + f"\n{BaseColors.OKGREEN}Connection successful.{BaseColors.ENDC}"
                 return return_val  # so that calling method can use the results accordingly
             except:
                 e = sys.exc_info()[0]  # used for error checking
                 print(e)
                 if i == 0:  # if first try failed
                     if connection_lost:
-                        screen_label.text = screen_label.text + f"\n{bColors.FAIL}No Connection. {bColors.ENDC}" \
-                                                                f"{bColors.OKBLUE}Data will be stored locally and " \
-                                                                f"uploaded at the next {bColors.OKBLUE}upload point, or " \
-                                                                f"if triggered from the menu.{bColors.ENDC}"
+                        screen_label.text = screen_label.text + f"\n{BaseColors.FAIL}No Connection. {BaseColors.ENDC}" \
+                                                                f"{BaseColors.OKBLUE}Data will be stored locally and " \
+                                                                f"uploaded at the next {BaseColors.OKBLUE}upload point"\
+                                                                f", or if triggered from the menu.{BaseColors.ENDC}"
                         if connection_type == 'upload':
                             with open(backup_file, "a") as backup:  # write the data to the backup.txt file
                                 backup.write(f"{content}\n")
+                        local_passed = True
                         return False  # return a connection failure
                     else:
-                        screen_label.text = screen_label.text + f"\n{bColors.FAIL}Connection lost. Trying again in 10 " \
-                                                                f"seconds.{bColors.ENDC}"
+                        screen_label.text = screen_label.text + f"\n{BaseColors.FAIL}Connection lost. Trying again in 10 " \
+                                                                f"seconds.{BaseColors.ENDC}"
                         time.sleep(10)
 
                 elif i == 1:  # if second try failed
-                    screen_label.text = screen_label.text + f"\n{bColors.FAIL}Reconnect failed. Trying again in 30 " \
-                                                            f"seconds.{bColors.ENDC}"
+                    screen_label.text = screen_label.text + f"\n{BaseColors.FAIL}Reconnect failed. Trying again in 30 " \
+                                                            f"seconds.{BaseColors.ENDC}"
                     time.sleep(30)
                 elif i > 1 and not duplicate:  # if failed thrice, write to backup.txt
                     connection_lost = True
-                    screen_label.text = screen_label.text + f"\n{bColors.FAIL}Reconnect failed again. {bColors.ENDC}" \
-                                                            f"{bColors.OKBLUE}Data will be stored locally and uploaded at" \
-                                                            f" the {bColors.OKBLUE}next upload point, or if triggered " \
-                                                            f"from the menu.{bColors.ENDC}"
+                    screen_label.text = screen_label.text + f"\n{BaseColors.FAIL}Reconnect failed again. {BaseColors.ENDC}" \
+                                                            f"{BaseColors.OKBLUE}Data will be stored locally and uploaded at" \
+                                                            f" the {BaseColors.OKBLUE}next upload point, or if triggered " \
+                                                            f"from the menu.{BaseColors.ENDC}"
                     if connection_type == 'upload':
                         with open(backup_file, "a") as backup:  # write the data to the backup.txt file
                             backup.write(f"{content}\n")
+                        local_passed = True
                     return False  # return a connection failure
             i += 1
     elif storageChoice == "c":
@@ -292,7 +304,8 @@ def upload(main_screen, connection_type, sys_id, date_str, time_str, barcode, st
             sql_data = (sys_id, date_time, barcode, time_elapsed)
             query = query_out
         else:
-            screen_label.text = screen_label.text + f"\n{bColors.WARNING}Status not a valid value.{bColors.ENDC}"
+            screen_label.text = screen_label.text + f"\n{BaseColors.WARNING}Status not a valid value.{BaseColors.ENDC}"
+            local_passed = False
             return False
         i = 0
         # query_find = "SELECT * FROM Table_1;"
@@ -304,50 +317,55 @@ def upload(main_screen, connection_type, sys_id, date_str, time_str, barcode, st
         while i < 3:
             try:
                 return_val = True
+                local_passed = True
                 if connection_type == 'upload':  # if a record needs to be uploaded to arcgis
                     sql_cursor.execute(query, sql_data)
                     if not from_backup:
                         upload_backup(main_screen)
                     sql_cursor.commit()
                 else:  # if for some reason connection type is not one of the above
-                    screen_label.text = screen_label.text + f"\n{bColors.WARNING}Invalid connection type.{bColors.ENDC}"
+                    screen_label.text = screen_label.text + f"\n{BaseColors.WARNING}Invalid connection type.{BaseColors.ENDC}"
+                    local_passed = False
                     return_val = False
                 if i > 0:  # if a connection retry occurred and was successful
-                    screen_label.text = screen_label.text + f"\n{bColors.OKGREEN}Connection successful.{bColors.ENDC}"
+                    screen_label.text = screen_label.text + f"\n{BaseColors.OKGREEN}Connection successful.{BaseColors.ENDC}"
                 return return_val  # so that calling method can use the results accordingly
             except:
                 e = sys.exc_info()[0]  # used for error checking
                 print(e)
                 if i == 0:  # if first try failed
                     if connection_lost:
-                        screen_label.text = screen_label.text + f"\n{bColors.FAIL}No Connection. {bColors.ENDC}" \
-                                                                f"{bColors.OKBLUE}Data will be stored locally and " \
-                                                                f"uploaded at the next {bColors.OKBLUE}upload point, or " \
-                                                                f"if triggered from the menu.{bColors.ENDC}"
+                        screen_label.text = screen_label.text + f"\n{BaseColors.FAIL}No Connection. {BaseColors.ENDC}" \
+                                                                f"{BaseColors.OKBLUE}Data will be stored locally and " \
+                                                                f"uploaded at the next {BaseColors.OKBLUE}upload point, or " \
+                                                                f"if triggered from the menu.{BaseColors.ENDC}"
                         if connection_type == 'upload':
                             with open(backup_file, "a") as backup:  # write the data to the backup.txt file
                                 backup.write(f"{content}\n")
+                        local_passed = True
                         return False  # return a connection failure
                     else:
-                        screen_label.text = screen_label.text + f"\n{bColors.FAIL}Connection lost. Trying again in 10 " \
-                                                                f"seconds.{bColors.ENDC}"
+                        screen_label.text = screen_label.text + f"\n{BaseColors.FAIL}Connection lost. Trying again in 10 " \
+                                                                f"seconds.{BaseColors.ENDC}"
                         time.sleep(10)
 
                 elif i == 1:  # if second try failed
-                    screen_label.text = screen_label.text + f"\n{bColors.FAIL}Reconnect failed. Trying again in 30 " \
-                                                            f"seconds.{bColors.ENDC}"
+                    screen_label.text = screen_label.text + f"\n{BaseColors.FAIL}Reconnect failed. Trying again in 30 " \
+                                                            f"seconds.{BaseColors.ENDC}"
                     time.sleep(30)
                 elif i > 1 and not duplicate:  # if failed thrice, write to backup.txt
                     connection_lost = True
-                    screen_label.text = screen_label.text + f"\n{bColors.FAIL}Reconnect failed again. {bColors.ENDC}" \
-                                                            f"{bColors.OKBLUE}Data will be stored locally and uploaded at" \
-                                                            f" the {bColors.OKBLUE}next upload point, or if triggered " \
-                                                            f"from the menu.{bColors.ENDC}"
+                    screen_label.text = screen_label.text + f"\n{BaseColors.FAIL}Reconnect failed again. {BaseColors.ENDC}" \
+                                                            f"{BaseColors.OKBLUE}Data will be stored locally and uploaded at" \
+                                                            f" the {BaseColors.OKBLUE}next upload point, or if triggered " \
+                                                            f"from the menu.{BaseColors.ENDC}"
                     if connection_type == 'upload':
                         with open(backup_file, "a") as backup:  # write the data to the backup.txt file
                             backup.write(f"{content}\n")
+                        local_passed = True
                     return False  # return a connection failure
             i += 1
+    local_passed = False
     return False
 
 
@@ -379,15 +397,15 @@ def upload_backup(main_screen_widget, from_menu=False):
                                     content[4], time_elapsed=time_elapsed, duplicate=True, from_backup=True)
                 # submit data for upload
                 if not successful:  # if upload failed print info to user
-                    screen_label.text = screen_label.text + f"\n{bColors.FAIL}Upload of backed up data failed." \
-                                                            f"{bColors.ENDC}{bColors.OKBLUE} Program will try again " \
-                                                            f"at next upload, {bColors.OKBLUE}or you can trigger " \
-                                                            f"upload manually from the menu.{bColors.ENDC}"
+                    screen_label.text = screen_label.text + f"\n{BaseColors.FAIL}Upload of backed up data failed." \
+                                                            f"{BaseColors.ENDC}{BaseColors.OKBLUE} Program will try " \
+                                                            f"again at next upload, {BaseColors.OKBLUE}or you can " \
+                                                            f"trigger upload manually from the menu.{BaseColors.ENDC}"
                     return False
-            screen_label.text = screen_label.text + f"\n{bColors.OKGREEN}Upload complete!{bColors.ENDC}"
+            screen_label.text = screen_label.text + f"\n{BaseColors.OKGREEN}Upload complete!{BaseColors.ENDC}"
         os.remove(backup_file)  # file removed if upload is successful
     elif from_menu:
-        screen_label.text = screen_label.text + f"\n{bColors.OKBLUE}No backed-up data to upload.{bColors.ENDC}"
+        screen_label.text = screen_label.text + f"\n{BaseColors.OKBLUE}No backed-up data to upload.{BaseColors.ENDC}"
 
 
 """
@@ -464,14 +482,14 @@ def qr_batch(main_screen_widget):
                 img.save(storagePath + "/" + qr_file)
             except:
                 success = False  # if any failures occur, set this to success so user knows a failure occurred
-                screen_label.text = screen_label.text + f"\n\n{bColors.FAIL}QR Code {labeldata} not " \
-                                                        f"created.{bColors.ENDC}\n "
+                screen_label.text = screen_label.text + f"\n\n{BaseColors.FAIL}QR Code {labeldata} not " \
+                                                        f"created.{BaseColors.ENDC}\n "
 
     if success:
-        screen_label.text = screen_label.text + f"\n\n{bColors.OKGREEN}Success!{bColors.ENDC}\n"
+        screen_label.text = screen_label.text + f"\n\n{BaseColors.OKGREEN}Success!{BaseColors.ENDC}\n"
     else:
-        screen_label.text = screen_label.text + f"\n{bColors.FAIL}Some or no files were saved in {storagePath}, " \
-                                                f"only in Archive folder.{bColors.ENDC}"
+        screen_label.text = screen_label.text + f"\n{BaseColors.FAIL}Some or no files were saved in {storagePath}, " \
+                                                f"only in Archive folder.{BaseColors.ENDC}"
 
 
 """
@@ -530,13 +548,13 @@ def qr_single(main_screen_widget, text):
         img.save(storagePath + "/" + file_name)
     except:
         succeed = False
-        screen_label.text = screen_label.text + f"\n\n{bColors.FAIL}QR Code {text} not created.{bColors.ENDC}\n"
+        screen_label.text = screen_label.text + f"\n\n{BaseColors.FAIL}QR Code {text} not created.{BaseColors.ENDC}\n"
 
     if succeed:
-        screen_label.text = screen_label.text + f"\n{bColors.OKGREEN}Success!{bColors.ENDC}"
+        screen_label.text = screen_label.text + f"\n{BaseColors.OKGREEN}Success!{BaseColors.ENDC}"
     else:
-        screen_label.text = screen_label.text + f"\n{bColors.FAIL}File not saved in {storagePath}, only in Archive " \
-                                                f"folder.{bColors.ENDC}"
+        screen_label.text = screen_label.text + f"\n{BaseColors.FAIL}File not saved in {storagePath}, only in " \
+                                                f"Archive folder.{BaseColors.ENDC}"
 
 
 """
@@ -566,23 +584,23 @@ def cons(main_screen_widget):
                         with open(fname, 'rb') as infile:
                             shutil.copyfileobj(infile, outfile)  # copy data from each file to the consolidated file
                             screen_label.text = screen_label.text + f"\n{fname} has been imported."
-                screen_label.text = screen_label.text + f"\n\n{bColors.OKGREEN}Consolidated file created in the " \
-                                                        f"specified storage directory under {bColors.OKBLUE}" \
-                                                        f"{bColors.OKGREEN}the filename " + cons_filename + \
-                                                        f"{bColors.ENDC}\n"
+                screen_label.text = screen_label.text + f"\n\n{BaseColors.OKGREEN}Consolidated file created in the " \
+                                                        f"specified storage directory under {BaseColors.OKBLUE}" \
+                                                        f"{BaseColors.OKGREEN}the filename " + cons_filename + \
+                                                        f"{BaseColors.ENDC}\n"
             except:
-                screen_label.text = screen_label.text + f"\n{bColors.WARNING}[WARNING] Either the system was unable " \
-                                                        f"to write the consolidated file {bColors.ENDC}" \
-                                                        f"{bColors.WARNING}to the specified storage directory or " \
-                                                        f"the file {bColors.ENDC}" + cons_filename + \
-                                    f"{bColors.WARNING} is currently in use {bColors.ENDC}" \
-                                    f"{bColors.WARNING}or unavailable. The consolidated record " \
-                                    f"may be incomplete.{bColors.ENDC}\n"
+                screen_label.text = screen_label.text + f"\n{BaseColors.WARNING}[WARNING] Either the system was " \
+                                                        f"unable to write the consolidated file {BaseColors.ENDC}" \
+                                                        f"{BaseColors.WARNING}to the specified storage directory or " \
+                                                        f"the file {BaseColors.ENDC}" + cons_filename + \
+                                    f"{BaseColors.WARNING} is currently in use {BaseColors.ENDC}" \
+                                    f"{BaseColors.WARNING}or unavailable. The consolidated record " \
+                                    f"may be incomplete.{BaseColors.ENDC}\n"
     else:  # if no storage location chosen yet
-        screen_label.text = screen_label.text + f"\n{bColors.WARNING}A storage location has not been established. " \
-                                                f"Specify a storage folder using the {bColors.ENDC}" \
-                                                f"{bColors.WARNING}'Choose Storage Location' option before " \
-                                                f"continuing\n{bColors.ENDC}"
+        screen_label.text = screen_label.text + f"\n{BaseColors.WARNING}A storage location has not been established. " \
+                                                f"Specify a storage folder using the {BaseColors.ENDC}" \
+                                                f"{BaseColors.WARNING}'Choose Storage Location' option before " \
+                                                f"continuing\n{BaseColors.ENDC}"
 
 
 # GUI PART OF PROGRAM STARTS HERE
@@ -606,11 +624,12 @@ def store(main_screen):
     root.withdraw()
     store_path = filedialog.askdirectory(title='Select a Storage Directory')  # ask user to choose a directory
     if os.path.exists(store_path):  # if they chose one
-        screen_label.text = screen_label.text + f"\n{bColors.OKGREEN}Storage directory established: " \
-                                                f"{store_path}{bColors.ENDC}"
+        screen_label.text = screen_label.text + f"\n{BaseColors.OKGREEN}Storage directory established: " \
+                                                f"{store_path}{BaseColors.ENDC}"
         user_chose_storage = True
     else:
-        screen_label.text = screen_label.text + f"\n{bColors.WARNING}Storage directory NOT established{bColors.ENDC}"
+        screen_label.text = screen_label.text + f"\n{BaseColors.WARNING}Storage directory NOT " \
+                                                f"established{BaseColors.ENDC}"
         user_chose_storage = False
     return store_path
 
@@ -659,15 +678,16 @@ class MainScreenWidget(BoxLayout):
     """
 
     def video(self):
-        global user_chose_storage, vs, uploadBackup, checkStorage
+        global user_chose_storage, vs, uploadBackup, checkStorage, local_passed
 
         screen_label = self.ids.screen_label
         setup_screen_label(screen_label)
 
         if user_chose_storage:
-            screen_label.text = screen_label.text + f"\n{bColors.OKBLUE}[ALERT] Starting video stream..." \
-                                                    f"{bColors.ENDC}\n"
-            screen_label.text = screen_label.text + f"{bColors.OKBLUE}To exit, close the webcam window.{bColors.ENDC}"
+            screen_label.text = screen_label.text + f"\n{BaseColors.OKBLUE}[ALERT] Starting video stream..." \
+                                                    f"{BaseColors.ENDC}\n"
+            screen_label.text = screen_label.text + f"{BaseColors.OKBLUE}To exit, close the webcam " \
+                                                    f"window.{BaseColors.ENDC}"
 
             # construct the argument parser and parse the arguments
             ap = argparse.ArgumentParser()
@@ -682,10 +702,10 @@ class MainScreenWidget(BoxLayout):
             else:
                 local_file = ""
                 if storageChoice == 'a':
-                    screen_label.text = screen_label.text + f"\n{bColors.WARNING}[ALERT]: Storage folder not " \
-                                                            f"established or is unavailable.\n {bColors.ENDC}" \
-                                                            f"{bColors.WARNING}Files will only be saved to the " \
-                                                            f"root/working directory\n{bColors.ENDC} "
+                    screen_label.text = screen_label.text + f"\n{BaseColors.WARNING}[ALERT]: Storage folder not " \
+                                                            f"established or is unavailable.\n {BaseColors.ENDC}" \
+                                                            f"{BaseColors.WARNING}Files will only be saved to the " \
+                                                            f"root/working directory\n{BaseColors.ENDC} "
 
             # initialize the video stream and allow the camera sensor to warm up
             try:
@@ -696,11 +716,12 @@ class MainScreenWidget(BoxLayout):
                 elif cameraSource == 'PiCamera':
                     vs = VideoStream(usePiCamera=True).start()  # for mobile solution like Raspberry Pi Camera
                 else:
-                    screen_label.text = screen_label.text + f"\n{bColors.FAIL}An error has occurred.{bColors.ENDC}"
+                    screen_label.text = screen_label.text + f"\n{BaseColors.FAIL}An error has " \
+                                                            f"occurred.{BaseColors.ENDC}"
                     return
             except:  # if an error occurs in creating video stream, print to user and return
-                screen_label.text = screen_label.text + f"\n{bColors.FAIL}An error occurred starting the QR Reader. " \
-                                                        f"Check your cameras and try again.{bColors.ENDC}"
+                screen_label.text = screen_label.text + f"\n{BaseColors.FAIL}An error occurred starting the QR " \
+                                                        f"Reader. Check your cameras and try again.{BaseColors.ENDC}"
                 vs = None
                 self.ids.qrreader.disabled = False  # makes QR Reader btn enabled again
                 return
@@ -712,8 +733,8 @@ class MainScreenWidget(BoxLayout):
                 if (storageChoice.lower() == 'b' or storageChoice.lower() == 'c') and uploadBackup:  # do this only if QR Toolbox is in online-mode
                     # Write previous records back to contentStrings
                     with open(args["output"], "r", encoding='utf-8') as txt:
-                        screen_label.text = screen_label.text + f"\n{bColors.OKBLUE}Restoring records (online mode)" \
-                                                                f"...{bColors.ENDC}"
+                        screen_label.text = screen_label.text + f"\n{BaseColors.OKBLUE}Restoring records (online " \
+                                                                f"mode)...{BaseColors.ENDC}"
                         for line in txt:  # get each record from the file by line
                             if line == '\n':
                                 continue  # if line is newline only then skip it
@@ -752,13 +773,13 @@ class MainScreenWidget(BoxLayout):
                             if not success:
                                 break  # if upload failed, break loop and let user know it failed
                 elif (storageChoice.lower() == 'b' or storageChoice.lower() == 'c') and not uploadBackup:
-                    screen_label.text = screen_label.text + f"\n{bColors.OKBLUE}Restoring records (online mode)" \
-                                                            f"...{bColors.ENDC}\n" \
+                    screen_label.text = screen_label.text + f"\n{BaseColors.OKBLUE}Restoring records (online mode)" \
+                                                            f"...{BaseColors.ENDC}\n" \
                                                             f"{open(args['output'], 'r', encoding='utf-8').read()}"
                 if storageChoice.lower() == 'a':
                     # if in local mode, just open barcodes.txt for appending to restorerecords
-                    screen_label.text = screen_label.text + f"\n{bColors.OKBLUE}Restoring records (local mode)" \
-                                                            f"...{bColors.ENDC}\n" \
+                    screen_label.text = screen_label.text + f"\n{BaseColors.OKBLUE}Restoring records (local mode)" \
+                                                            f"...{BaseColors.ENDC}\n" \
                                                             f"{open(args['output'], 'r', encoding='utf-8').read()}"
                     if local_file != "":
                         with open(args["output"], "r", encoding='utf-8') as txt:
@@ -773,17 +794,17 @@ class MainScreenWidget(BoxLayout):
                 except:
                     success = False
                 if success:
-                    screen_label.text = screen_label.text + f"\n{bColors.OKBLUE}Previous records restored." \
-                                                            f"{bColors.ENDC}"
+                    screen_label.text = screen_label.text + f"\n{BaseColors.OKBLUE}Previous records restored." \
+                                                            f"{BaseColors.ENDC}"
                 else:
-                    screen_label.text = screen_label.text + f"\n{bColors.FAIL}Previous records NOT restored." \
-                                                            f"{bColors.ENDC}"
+                    screen_label.text = screen_label.text + f"\n{BaseColors.FAIL}Previous records NOT restored." \
+                                                            f"{BaseColors.ENDC}"
             else:  # if no previous records and user wanted to restart/restore them then print that none exist
                 txt = open(args["output"], "w", encoding="utf-8")  # else open new file/overwrite previous
                 if checkStorage:
-                    screen_label.text = screen_label.text + f"\n{bColors.WARNING}No previous records found. CSV file " \
-                                                            f"will not include {bColors.ENDC}" \
-                                                            f"{bColors.WARNING}past records.{bColors.ENDC}"
+                    screen_label.text = screen_label.text + f"\n{BaseColors.WARNING}No previous records found. CSV " \
+                                                            f"file will not include {BaseColors.ENDC}" \
+                                                            f"{BaseColors.WARNING}past records.{BaseColors.ENDC}"
 
             # time track variables. These are used to keep track of QR codes as they enter the screen
             found = []
@@ -794,7 +815,8 @@ class MainScreenWidget(BoxLayout):
             # Check if there are any stored QR codes that were scanned-in in an earlier instance of the system
             if checkStorage:
                 if os.path.exists(qr_storage_file) and os.stat(qr_storage_file).st_size != 0:
-                    screen_label.text = screen_label.text + f"\n{bColors.OKBLUE}Restarting session...{bColors.ENDC}"
+                    screen_label.text = screen_label.text + f"\n{BaseColors.OKBLUE}Restarting session" \
+                                                            f"...{BaseColors.ENDC}"
                     with open(qr_storage_file, "r") as qr_data_file:
                         for line in qr_data_file:  # if yes, read them in line by line
                             if line == '\n':
@@ -806,11 +828,11 @@ class MainScreenWidget(BoxLayout):
                             thread_started.append(False)
                     if storageChoice.lower() == 'b' or storageChoice.lower() == 'c':
                         upload_backup(self)
-                    screen_label.text = screen_label.text + f"\n{bColors.OKBLUE}Previous session restarted." \
-                                                            f"{bColors.ENDC}"
+                    screen_label.text = screen_label.text + f"\n{BaseColors.OKBLUE}Previous session restarted." \
+                                                            f"{BaseColors.ENDC}"
                 elif not os.path.exists(qr_storage_file) or os.stat(qr_storage_file).st_size == 0:
-                    screen_label.text = screen_label.text + f"\n{bColors.WARNING}No previous session found " \
-                                                            f"[qr-data.txt not found or is empty].{bColors.ENDC}"
+                    screen_label.text = screen_label.text + f"\n{BaseColors.WARNING}No previous session found " \
+                                                            f"[qr-data.txt not found or is empty].{BaseColors.ENDC}"
             if storageChoice.lower() == 'a' and local_file != "":
                 local_timer = datetime.datetime.now()
                 local_temp = []
@@ -822,8 +844,8 @@ class MainScreenWidget(BoxLayout):
                     frame = vs.read()
                     frame = imutils.resize(frame, width=400)
                 except:  # then catch and break the loop, and do clean up
-                    screen_label.text = screen_label.text + f"\n{bColors.FAIL}Video stream lost. Check your " \
-                                                            f"cameras. Proceeding to clean up.{bColors.ENDC}"
+                    screen_label.text = screen_label.text + f"\n{BaseColors.FAIL}Video stream lost. Check your " \
+                                                            f"cameras. Proceeding to clean up.{BaseColors.ENDC}"
                     break
 
                 # find the barcodes in the frame and decode each of the barcodes
@@ -867,8 +889,8 @@ class MainScreenWidget(BoxLayout):
                     try:  # if code was not generated by qr tool or doesn't meet its conditions, let user know
                         d.text((0, 0), text_to_print + ' (' + barcode_type + ')', fill='blue')
                     except UnicodeEncodeError:
-                        screen_label.text = screen_label.text + f"\n{bColors.FAIL}[ERROR] Can't use QR Codes not " \
-                                                                f"generated by the system.{bColors.ENDC}"
+                        screen_label.text = screen_label.text + f"\n{BaseColors.FAIL}[ERROR] Can't use QR Codes not " \
+                                                                f"generated by the system.{BaseColors.ENDC}"
                         continue
 
                     pil_image = Image.fromarray(frame)  # convert frame to pil image format, then to numpy array
@@ -915,9 +937,16 @@ class MainScreenWidget(BoxLayout):
                             screen_label.text = screen_label.text + f"\n{barcode_data} checking IN at {date_scanned} " \
                                                                     f"{time_scanned} at location: {system_id}"
                             playsound(pass_ding)  # makes a beeping sound on scan in
-                        elif not success:
-                            screen_label.text = screen_label.text + f"\n{bColors.WARNING}{barcode_data} NOT checked " \
-                                                                    f"IN{bColors.ENDC}"
+                        elif local_passed and not success:
+                            screen_label.text = screen_label.text + f"\n{BaseColors.WARNING}Online login unavailable" \
+                                                                    f" at current time, continuing local login" \
+                                                                    f"\n{barcode_data} checking IN at " \
+                                                                    f"{date_scanned} {time_scanned} at location: " \
+                                                                    f"{system_id}"
+                            playsound(pass_ding)
+                        elif not success and not local_passed:
+                            screen_label.text = screen_label.text + f"\n{BaseColors.WARNING}{barcode_data} NOT " \
+                                                                    f"CHECKED IN, SEE ABOVE ERROR{BaseColors.ENDC}"
                             playsound(fail_ding)  # makes a slightly deeper beeping sound on failed scan in
 
                     # if barcode information is found...
@@ -954,9 +983,17 @@ class MainScreenWidget(BoxLayout):
                                                                         f"{date_scanned} {time_scanned} at location: " \
                                                                         f"{system_id} for duration of {str(time_check)}"
                                 playsound(pass_ding)  # makes a beeping sound on scan
-                            elif not success:
-                                screen_label.text = screen_label.text + f"\n{bColors.WARNING}{barcode_data} NOT " \
-                                                                        f"checked OUT{bColors.ENDC}"
+                            elif local_passed and not success:
+                                screen_label.text = screen_label.text + f"\n{BaseColors.WARNING}Online logout " \
+                                                                        f"unavailable at current time, continuing " \
+                                                                        f"local logout\n{barcode_data} checking OUT " \
+                                                                        f"at {date_scanned} {time_scanned} at " \
+                                                                        f"location: {system_id} for duration of " \
+                                                                        f"{str(time_check)}"
+                                playsound(pass_ding)  # makes a beeping sound on scan
+                            elif not local_passed and not success:
+                                screen_label.text = screen_label.text + f"\n{BaseColors.WARNING}{barcode_data} NOT " \
+                                                                        f"checked OUT{BaseColors.ENDC}"
                                 playsound(fail_ding)  # makes a slightly deeper beeping sound on failed scan out
                         # if found and check-in time is less than the specified wait time then wait
                         elif time_check < t_value and status_check == "OUT":
@@ -980,8 +1017,8 @@ class MainScreenWidget(BoxLayout):
                                 status = found_status[i]
                                 qr_data_file.write("{0},{1},{2}\n".format(code, tyme, status))
                     else:
-                        screen_label.text = screen_label.text + f"\n{bColors.FAIL}[Error] Barcode data issue in " \
-                                                                f"video() function.{bColors.ENDC}"
+                        screen_label.text = screen_label.text + f"\n{BaseColors.FAIL}[Error] Barcode data issue in " \
+                                                                f"video() function.{BaseColors.ENDC}"
 
                 # If timer is active, check to see if any user has gone over the timer
                 if self.timer is not None:
@@ -1020,7 +1057,7 @@ class MainScreenWidget(BoxLayout):
                     break
 
             # close the output CSV file and do a bit of cleanup
-            screen_label.text = screen_label.text + f"\n{bColors.OKBLUE}[ALERT] Cleaning up... \n{bColors.ENDC}"
+            screen_label.text = screen_label.text + f"\n{BaseColors.OKBLUE}[ALERT] Cleaning up... \n{BaseColors.ENDC}"
             txt.close()
             if storageChoice.lower() == 'a' and local_file != "":
                 with open(local_file, "a", encoding="ANSI") as csv2:
@@ -1042,7 +1079,7 @@ class MainScreenWidget(BoxLayout):
                 barcodes_txt.close()
                 new_csv.close()
             elif not os.path.exists(args["output"]):
-                data = f"\n{bColors.FAIL}[ERROR] barcodes.txt not found as expected.{bColors.ENDC}"
+                data = f"\n{BaseColors.FAIL}[ERROR] barcodes.txt not found as expected.{BaseColors.ENDC}"
                 screen_label.text = screen_label.text + data
 
             # if storageChoice == 'a' and os.stat(
@@ -1052,10 +1089,10 @@ class MainScreenWidget(BoxLayout):
             #         with open(os.path.join(storagePath, file_name), "w", encoding="ANSI") as csv2:
             #             csv2.write(data)
             #     else:
-            #         screen_label.text = screen_label.text + f"\n{bColors.WARNING}[ALERT]: Storage folder not " \
-            #                                                 f"established or is unavailable. {bColors.ENDC}" \
-            #                                                 f"{bColors.WARNING}Files will only be saved to the " \
-            #                                                 f"root/working directory\n{bColors.ENDC}"
+            #         screen_label.text = screen_label.text + f"\n{BaseColors.WARNING}[ALERT]: Storage folder not " \
+            #                                                 f"established or is unavailable. {BaseColors.ENDC}" \
+            #                                                 f"{BaseColors.WARNING}Files will only be saved to the " \
+            #                                                 f"root/working directory\n{BaseColors.ENDC}"
 
             if os.path.exists(args["output"]) and os.stat(args["output"]).st_size == 0:  # delete barcodes.txt if empty
                 os.remove(
@@ -1067,8 +1104,8 @@ class MainScreenWidget(BoxLayout):
 
             cv2.destroyAllWindows()  # close all cv windows
         else:  # if user did not choose storage
-            screen_label.text = screen_label.text + f"\n{bColors.WARNING}Storage location not chosen, please choose " \
-                                                    f"a storage location{bColors.ENDC}"
+            screen_label.text = screen_label.text + f"\n{BaseColors.WARNING}Storage location not chosen, please " \
+                                                    f"choose a storage location{BaseColors.ENDC}"
         self.ids.qrreader.disabled = False  # makes QR Reader btn enabled again
 
     """
@@ -1088,8 +1125,8 @@ class MainScreenWidget(BoxLayout):
         if vs is not None:
             # if vs already exists let user know (this code will likely never be run due to disabled btn)
             screen_label = self.ids.screen_label
-            screen_label.text = screen_label.text + f"\n{bColors.WARNING}[ALERT] A video stream already exists." \
-                                                    f"{bColors.ENDC}"
+            screen_label.text = screen_label.text + f"\n{BaseColors.WARNING}[ALERT] A video stream already exists." \
+                                                    f"{BaseColors.ENDC}"
             return
 
         restart_session_popup.restart_popup.open()
@@ -1272,13 +1309,13 @@ class RestartSessionWidget(BoxLayout):
         if check:  # if user wants to check for previous session/session data
             global checkStorage
             checkStorage = True
-            screen_label.text = screen_label.text + f"\n{bColors.OKBLUE}Previous session will be restarted, if one " \
-                                                    f"exists.{bColors.ENDC}"
+            screen_label.text = screen_label.text + f"\n{BaseColors.OKBLUE}Previous session will be restarted, if " \
+                                                    f"one exists.{BaseColors.ENDC}"
         if upload:
             global uploadBackup
             uploadBackup = True
-            screen_label.text = screen_label.text + f"\n{bColors.OKBLUE}Local records will be uploaded to the " \
-                                                    f"online session.{bColors.ENDC}"
+            screen_label.text = screen_label.text + f"\n{BaseColors.OKBLUE}Local records will be uploaded to the " \
+                                                    f"online session.{BaseColors.ENDC}"
         self.main_screen.ids.qrreader.disabled = True  # disables QR Reader btn so user can't start multiple streams
         threading.Thread(target=self.main_screen.video, daemon=True).start()  # starts video method on its own thread
 
@@ -1341,8 +1378,8 @@ class CameraWidget(BoxLayout):
         cameraSource = camera_choice  # set camera source based on user choice
         screen_label = self.main_screen.ids.screen_label
         setup_screen_label(screen_label)
-        screen_label.text = screen_label.text + f"\n{bColors.OKBLUE}Camera source set to '{camera_choice}'." \
-                                                f"{bColors.ENDC}"
+        screen_label.text = screen_label.text + f"\n{BaseColors.OKBLUE}Camera source set to '{camera_choice}'." \
+                                                f"{BaseColors.ENDC}"
 
 
 class TimerWidget(BoxLayout):
@@ -1356,16 +1393,16 @@ class TimerWidget(BoxLayout):
     def set_timer(self, time_to_set):  # a time of 0min also counts as unsetting the timer
         if time_to_set != "" and time_to_set is not None and int(time_to_set) != 0:
             self.main_screen.timer = int(time_to_set)  # set the timer and print a message
-            self.main_screen.ids.screen_label.text = self.main_screen.ids.screen_label.text + f"\n{bColors.WARNING}" \
+            self.main_screen.ids.screen_label.text = self.main_screen.ids.screen_label.text + f"\n{BaseColors.WARNING}"\
                                                                                               f"Timer set to " \
                                                                                               f"{time_to_set} " \
                                                                                               f"minute(s)." \
-                                                                                              f"{bColors.ENDC}"
+                                                                                              f"{BaseColors.ENDC}"
         else:  # unset the timer
             self.main_screen.timer = None
-            self.main_screen.ids.screen_label.text = self.main_screen.ids.screen_label.text + f"\n{bColors.WARNING}" \
+            self.main_screen.ids.screen_label.text = self.main_screen.ids.screen_label.text + f"\n{BaseColors.WARNING}"\
                                                                                               f"Timer unset." \
-                                                                                              f"{bColors.ENDC}"
+                                                                                              f"{BaseColors.ENDC}"
 
 
 """ 
@@ -1461,9 +1498,9 @@ class QRSingleWidget(BoxLayout):
         if text != "" and text is not None:
             qr_single(self.main_screen, text)
         else:
-            self.main_screen.ids.screen_label.text = self.main_screen.ids.screen_label.text + f"\n{bColors.WARNING}" \
-                                                                                              f"QR Code text can't be" \
-                                                                                              f" empty.{bColors.ENDC}"
+            self.main_screen.ids.screen_label.text = self.main_screen.ids.screen_label.text + f"\n{BaseColors.WARNING}"\
+                                                                                              f"QR Code text can't be "\
+                                                                                              f"empty.{BaseColors.ENDC}"
 
 
 """ 
@@ -1494,17 +1531,17 @@ class LoginWidget(BoxLayout):
                 # print(search_results)
                 data = search_results[0]  # Get the layer we'll be using, so user can see it
 
-                screen_label.text = screen_label.text + f"\n{bColors.OKBLUE}Storage location set to online (ArcGIS)." \
-                                                        f"{bColors.ENDC}"  # if successful
-                screen_label.text = screen_label.text + f"\n{bColors.OKBLUE}Layer: {data.title}{bColors.ENDC}"
+                screen_label.text = screen_label.text + f"\n{BaseColors.OKBLUE}Storage location set to online (ArcGIS)." \
+                                                        f"{BaseColors.ENDC}"  # if successful
+                screen_label.text = screen_label.text + f"\n{BaseColors.OKBLUE}Layer: {data.title}{BaseColors.ENDC}"
                 # provides more info on the exact layer chosen
                 user_chose_storage = True
             except Exception as e:  # if error in trying to access ArcGIS or run the query
                 # e = sys.exc_info()[0]  # used for error checking
-                screen_label.text = screen_label.text + f"\n{bColors.FAIL}Error: {e}{bColors.ENDC}"
+                screen_label.text = screen_label.text + f"\n{BaseColors.FAIL}Error: {e}{BaseColors.ENDC}"
                 user_chose_storage = False
             except:  # in case the above except clause doesn't catch everything
-                screen_label.text = screen_label.text + f"\n{bColors.FAIL}An unknown error has occurred.{bColors.ENDC}"
+                screen_label.text = screen_label.text + f"\n{BaseColors.FAIL}An unknown error has occurred.{BaseColors.ENDC}"
                 user_chose_storage = False
         elif storageChoice == "c":
             try:
@@ -1512,15 +1549,15 @@ class LoginWidget(BoxLayout):
                                       database=sql_database, trusted_connection='yes')
                 sql_cursor = cxnn.cursor()
 
-                screen_label.text = screen_label.text + f"\n{bColors.OKBLUE}Storage location set to online (SQL)." \
-                                                        f"{bColors.ENDC}"  # if successful
+                screen_label.text = screen_label.text + f"\n{BaseColors.OKBLUE}Storage location set to online (SQL)." \
+                                                        f"{BaseColors.ENDC}"  # if successful
                 user_chose_storage = True
             except Exception as e:  # if error in trying to access ArcGIS or run the query
                 # e = sys.exc_info()[0]  # used for error checking
-                screen_label.text = screen_label.text + f"\n{bColors.FAIL}Error: {e}{bColors.ENDC}"
+                screen_label.text = screen_label.text + f"\n{BaseColors.FAIL}Error: {e}{BaseColors.ENDC}"
                 user_chose_storage = False
             except:  # in case the above except clause doesn't catch everything
-                screen_label.text = screen_label.text + f"\n{bColors.FAIL}An unknown error has occurred.{bColors.ENDC}"
+                screen_label.text = screen_label.text + f"\n{BaseColors.FAIL}An unknown error has occurred.{BaseColors.ENDC}"
                 user_chose_storage = False
 
     """ 
@@ -1533,7 +1570,7 @@ class LoginWidget(BoxLayout):
         screen_label = self.main_screen.ids.screen_label
         setup_screen_label(screen_label)
 
-        screen_label.text = screen_label.text + f"\n{bColors.WARNING}Online storage not set.{bColors.ENDC}"
+        screen_label.text = screen_label.text + f"\n{BaseColors.WARNING}Online storage not set.{BaseColors.ENDC}"
 
 
 """ 
