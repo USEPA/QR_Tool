@@ -1140,7 +1140,15 @@ class MainScreenWidget(BoxLayout):
 
     def update_arcgis(self, sys_id, date_str, time_str, barcode_data, status, time_elapsed=None):
         screen_label = self.ids.screen_label
-        search_results = self.gis.content.search(query=gis_query, max_items=15)  # query is set in the settings.csv file
+        try:
+            search_results = self.gis.content.search(query=gis_query, max_items=15)
+        except Exception as e:
+            if e.__str__() == "Invalid token.\n(Error Code: 498)":
+                self.gis._con.token = self.gis._con.relogin()
+                search_results = self.gis.content.search(query=gis_query, max_items=15)  # query is set in the settings.csv file
+            else:
+                screen_label.text = screen_label.text + f"\n{e}"
+                return False
         data = search_results[0]  # code auto chooses the first option on the list
 
         # Add data to layer
@@ -1524,9 +1532,8 @@ class LoginWidget(BoxLayout):
         if storageChoice == "b":
             try:
                 self.main_screen.gis = GIS(arcgis_url, client_id='vpeanPqMcHdq7G6z')  # Get ArcGIS access and save it
+                search_results = self.main_screen.gis.content.search(query=gis_query, max_items=15)
 
-                search_results = self.main_screen.gis.content.search(query=gis_query,
-                                                                     max_items=15)
                 # check that query works and there's a layer to get
                 # print(search_results)
                 data = search_results[0]  # Get the layer we'll be using, so user can see it
@@ -1538,8 +1545,24 @@ class LoginWidget(BoxLayout):
                 user_chose_storage = True
             except Exception as e:  # if error in trying to access ArcGIS or run the query
                 # e = sys.exc_info()[0]  # used for error checking
-                screen_label.text = screen_label.text + f"\n{BaseColors.FAIL}Error: {e}{BaseColors.ENDC}"
-                user_chose_storage = False
+                if e.__str__() == "Invalid token.\n(Error Code: 498)":
+                    try:
+                        self.main_screen.gis._con.token = self.main_screen.gis._con.relogin()
+                        search_results = self.main_screen.gis.content.search(query=gis_query,
+                                                                             max_items=15)  # query is set in the settings.csv file
+                        data = search_results[0]  # Get the layer we'll be using, so user can see it
+
+                        screen_label.text = screen_label.text + f"\n{BaseColors.OKBLUE}Storage location set to online (ArcGIS)." \
+                                                                f"{BaseColors.ENDC}"  # if successful
+                        screen_label.text = screen_label.text + f"\n{BaseColors.OKBLUE}Layer: {data.title}{BaseColors.ENDC}"
+                        # provides more info on the exact layer chosen
+                        user_chose_storage = True
+                    except Exception as e:
+                        screen_label.text = screen_label.text + f"\n{BaseColors.FAIL}Error: {e}{BaseColors.ENDC}"
+                        user_chose_storage = False
+                else:
+                    screen_label.text = screen_label.text + f"\n{BaseColors.FAIL}Error: {e}{BaseColors.ENDC}"
+                    user_chose_storage = False
             except:  # in case the above except clause doesn't catch everything
                 screen_label.text = screen_label.text + f"\n{BaseColors.FAIL}An unknown error has occurred.{BaseColors.ENDC}"
                 user_chose_storage = False
