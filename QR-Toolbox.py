@@ -1,6 +1,6 @@
 # -*- coding: windows-1252 -*-
 """
-Name: QR Toolbox v1.7
+Name: QR Toolbox v1.7.2
 Description: The QR Toolbox is a suite a tools for creating and reading QR codes. See the About screen for more
 information
 Author(s): Code integration, minor enhancements, & platform development - Timothy Boe boe.timothy@epa.gov;
@@ -9,13 +9,11 @@ Author(s): Code integration, minor enhancements, & platform development - Timoth
     OpenCV code - Adrian Rosebrock https://www.pyimagesearch.com/author/adrian/;
     Sound effects obtained from https://www.zapsplat.com
 Contact: Timothy Boe boe.timothy@epa.gov
-Requirements: Python 3.7+, pyzbar, imutils, opencv-python, qrcode[pil], Pillow, Kivy, kivy-deps.angle,
-kivy-deps.glew, kivy-deps.gstreamer, kivy-deps.sdl2, Kivy-Garden, arcgis, playsound
 
-Specific versions:
-{"pyzbar": "0.1.8", "imutils": "0.5.4", "qrcode": "6.1", "Pillow": "8.2.0", "opencv-python": "4.5.1.48",
-"Kivy": "2.0.0", "kivy-deps.angle": "0.3.0", "kivy-deps.glew": "0.3.0", "kivy-deps.gstreamer": "0.3.2",
-"kivy-deps.sdl2": "0.4.2", "Kivy-Garden": "0.1.4", "arcgis": "1.8.5.post3", "playsound": "1.2.2}
+Requirements:
+{"pyzbar" >= "0.1.8", "imutils" >= "0.5.4", "qrcode" >= "6.1", "Pillow" >= "8.2.0", "opencv-python" >= "4.5.1.48",
+"Kivy" >= "2.0.0", "kivy-deps.angle" >= "0.3.0", "kivy-deps.glew" >= "0.3.0", "kivy-deps.gstreamer" >= "0.3.2",
+"kivy-deps.sdl2" >= "0.4.2", "Kivy-Garden" >= "0.1.4", "arcgis" >= "1.8.5.post3", "playsound" == "1.2.2"}
 """
 
 # import the necessary packages
@@ -62,16 +60,14 @@ from Library.garden.recyclelabel import RecycleLabel
 # to do
 """
     Alter code to allow SQL access:
-    Change connect to upload (name)
-    upload sync fail message should be changed (838, 877)
+    upload sync fail message should be changed
     Auto upload during session start not triggering
     Read back from ArcGIS to track interactions across multiple devices
     restore log option
     Toggle tracking state option
-    if no recent camera activity, test read data to check/maintain connection
     Plugging in camera while running doesn't detect
-    Use new architecture to allow ArcGIS connection longer than 30 min
 """
+
 
 # colors
 
@@ -83,18 +79,28 @@ class BaseColors:
     WARNING = '[color=#e3e129]'
     FAIL = '[color=#a72618]'
     ENDC = '[/color]'
-    BOLD = ''
-    UNDERLINE = ''
+    BOLD = '[b]'
+    ENDB = '[/b]'
+    UNDERLINE = '[u]'
+    ENDU = '[/u]'
 
 
-# ArcGIS/IO related variables
+# ArcGIS/IO Settings variables
 arcgis_url = ""
+arcgis_token = ""
 gis_query = ""
 latitude = ""
 longitude = ""
-sql_address = ""
-sql_database = ""
 localQRBatchFile = ""
+# SQL Settings variables
+# sql_address = ""
+# sql_database = ""
+
+# SQL Access Variables
+# query_in = ""
+# query_out = ""
+# headers = []
+# sql_cursor = None
 
 # System variables
 settings = "Setup/settings.csv"
@@ -105,29 +111,22 @@ fail_ding = "Library/sounds/failed.mp3"
 pass_ding = "Library/sounds/passed.mp3"
 timer_alarm = "Library/sounds/alarm.mp3"
 
-# query_in = """
-# INSERT INTO ? (?, ?, ?, ?)
-# VALUES (?, ?, ?, 'IN');
-query_in = ""
-query_out = ""
-headers = []
-
 # load variables
 # set store folder default, assign system ID, and wait time
-storagePath = ""  # the path to the local storage directory if chosen
 checkStorage = False  # whether system should check if there is any backed up data or previous session data
 uploadBackup = False
 user_chose_storage = False  # tracks whether user chose a storage method or not
+clear_screen = False  # if True, clear screen, else don't clear it (true only in 4 cases)
+not_yet = False  # prevents the screen from being cleared immediately at the start (only used at the start)
+connection_lost = False  # set if an upload fails
+local_passed = False  # check source of connection error
+
+storagePath = ""  # the path to the local storage directory if chosen
 system_id = os.environ['COMPUTERNAME']  # this is used when checking qr codes in or out
 t_value = timedelta(seconds=10)  # time between scans for the same qr code
 cameraSource = "Integrated"  # the camera source, defaults to integrated (so source 0)
 storageChoice = ""  # users choice of local ('a'), ArcGIS ('b'), or SQL ('c') mode
 vs = None  # global video stream variable, to ensure only 1 instance of it exists at a time
-clear_screen = False  # if True, clear screen, else don't clear it (true only in 4 cases)
-not_yet = False  # prevents the screen from being cleared immediately at the start (only used at the start)
-connection_lost = False  # set if an upload fails
-local_passed = False  # check source of connection error
-sql_cursor = None
 
 # Lists and Dictionaries used for special character handling and conversion
 trouble_characters = ['\t', '\n', '\r']  # characters that cause issues
@@ -225,7 +224,7 @@ This function handles HTTP requests, and also handles errors that occur during t
 
 def upload(main_screen, connection_type, sys_id, date_str, time_str, barcode, status, time_elapsed=None,
            duplicate=False, from_backup=False):
-    global connection_lost, query_out, query_in, sql_cursor, headers, storageChoice, local_passed
+    global connection_lost, storageChoice, local_passed  # , query_out, query_in, sql_cursor, headers
     if storageChoice == "b":
         screen_label = main_screen.ids.screen_label
         setup_screen_label(screen_label)
@@ -261,7 +260,7 @@ def upload(main_screen, connection_type, sys_id, date_str, time_str, barcode, st
                     if connection_lost:
                         screen_label.text = screen_label.text + f"\n{BaseColors.FAIL}No Connection. {BaseColors.ENDC}" \
                                                                 f"{BaseColors.OKBLUE}Data will be stored locally and " \
-                                                                f"uploaded at the next {BaseColors.OKBLUE}upload point"\
+                                                                f"uploaded at the next {BaseColors.OKBLUE}upload point" \
                                                                 f", or if triggered from the menu.{BaseColors.ENDC}"
                         if connection_type == 'upload':
                             with open(backup_file, "a") as backup:  # write the data to the backup.txt file
@@ -289,82 +288,82 @@ def upload(main_screen, connection_type, sys_id, date_str, time_str, barcode, st
                         local_passed = True
                     return False  # return a connection failure
             i += 1
-    elif storageChoice == "c":
-        screen_label = main_screen.ids.screen_label
-        setup_screen_label(screen_label)
-        date_time = "%s %s" % (date_str, time_str);
-        if status == "IN":
-            # content = tuple(headers[0:5]) + (sys_id, date_time, barcode)
-            content = f"{sys_id},{date_str},{time_str},{barcode},{status},NONE"
-            sql_data = (sys_id, date_time, barcode)
-            # print(content)
-            query = query_in
-        elif status == "OUT": #update needed
-            content = f"{sys_id},{date_str},{time_str},{barcode},{status},{time_elapsed}"
-            sql_data = (sys_id, date_time, barcode, time_elapsed)
-            query = query_out
-        else:
-            screen_label.text = screen_label.text + f"\n{BaseColors.WARNING}Status not a valid value.{BaseColors.ENDC}"
-            local_passed = False
-            return False
-        i = 0
-        # query_find = "SELECT * FROM Table_1;"
-        #
-        # sql_cursor.execute(query_find)
-        # records = sql_cursor.fetchall()
-        # for r in records:
-        #     print(f"{r.Scan_Date_Time}\t{r.Scanned_Text}\t{r.Scan_Status}\t{r.Elapsed_Time}")
-        while i < 3:
-            try:
-                return_val = True
-                local_passed = True
-                if connection_type == 'upload':  # if a record needs to be uploaded to arcgis
-                    sql_cursor.execute(query, sql_data)
-                    if not from_backup:
-                        upload_backup(main_screen)
-                    sql_cursor.commit()
-                else:  # if for some reason connection type is not one of the above
-                    screen_label.text = screen_label.text + f"\n{BaseColors.WARNING}Invalid connection type.{BaseColors.ENDC}"
-                    local_passed = False
-                    return_val = False
-                if i > 0:  # if a connection retry occurred and was successful
-                    screen_label.text = screen_label.text + f"\n{BaseColors.OKGREEN}Connection successful.{BaseColors.ENDC}"
-                return return_val  # so that calling method can use the results accordingly
-            except:
-                e = sys.exc_info()[0]  # used for error checking
-                print(e)
-                if i == 0:  # if first try failed
-                    if connection_lost:
-                        screen_label.text = screen_label.text + f"\n{BaseColors.FAIL}No Connection. {BaseColors.ENDC}" \
-                                                                f"{BaseColors.OKBLUE}Data will be stored locally and " \
-                                                                f"uploaded at the next {BaseColors.OKBLUE}upload point, or " \
-                                                                f"if triggered from the menu.{BaseColors.ENDC}"
-                        if connection_type == 'upload':
-                            with open(backup_file, "a") as backup:  # write the data to the backup.txt file
-                                backup.write(f"{content}\n")
-                        local_passed = True
-                        return False  # return a connection failure
-                    else:
-                        screen_label.text = screen_label.text + f"\n{BaseColors.FAIL}Connection lost. Trying again in 10 " \
-                                                                f"seconds.{BaseColors.ENDC}"
-                        time.sleep(10)
-
-                elif i == 1:  # if second try failed
-                    screen_label.text = screen_label.text + f"\n{BaseColors.FAIL}Reconnect failed. Trying again in 30 " \
-                                                            f"seconds.{BaseColors.ENDC}"
-                    time.sleep(30)
-                elif i > 1 and not duplicate:  # if failed thrice, write to backup.txt
-                    connection_lost = True
-                    screen_label.text = screen_label.text + f"\n{BaseColors.FAIL}Reconnect failed again. {BaseColors.ENDC}" \
-                                                            f"{BaseColors.OKBLUE}Data will be stored locally and uploaded at" \
-                                                            f" the {BaseColors.OKBLUE}next upload point, or if triggered " \
-                                                            f"from the menu.{BaseColors.ENDC}"
-                    if connection_type == 'upload':
-                        with open(backup_file, "a") as backup:  # write the data to the backup.txt file
-                            backup.write(f"{content}\n")
-                        local_passed = True
-                    return False  # return a connection failure
-            i += 1
+    # elif storageChoice == "c":
+    #     screen_label = main_screen.ids.screen_label
+    #     setup_screen_label(screen_label)
+    #     date_time = "%s %s" % (date_str, time_str);
+    #     if status == "IN":
+    #         # content = tuple(headers[0:5]) + (sys_id, date_time, barcode)
+    #         content = f"{sys_id},{date_str},{time_str},{barcode},{status},NONE"
+    #         sql_data = (sys_id, date_time, barcode)
+    #         # print(content)
+    #         query = query_in
+    #     elif status == "OUT":  # update needed
+    #         content = f"{sys_id},{date_str},{time_str},{barcode},{status},{time_elapsed}"
+    #         sql_data = (sys_id, date_time, barcode, time_elapsed)
+    #         query = query_out
+    #     else:
+    #         screen_label.text = screen_label.text + f"\n{BaseColors.WARNING}Status not a valid value.{BaseColors.ENDC}"
+    #         local_passed = False
+    #         return False
+    #     i = 0
+    #     # query_find = "SELECT * FROM Table_1;"
+    #     #
+    #     # sql_cursor.execute(query_find)
+    #     # records = sql_cursor.fetchall()
+    #     # for r in records:
+    #     #     print(f"{r.Scan_Date_Time}\t{r.Scanned_Text}\t{r.Scan_Status}\t{r.Elapsed_Time}")
+    #     while i < 3:
+    #         try:
+    #             return_val = True
+    #             local_passed = True
+    #             if connection_type == 'upload':  # if a record needs to be uploaded to arcgis
+    #                 sql_cursor.execute(query, sql_data)
+    #                 if not from_backup:
+    #                     upload_backup(main_screen)
+    #                 sql_cursor.commit()
+    #             else:  # if for some reason connection type is not one of the above
+    #                 screen_label.text = screen_label.text + f"\n{BaseColors.WARNING}Invalid connection type.{BaseColors.ENDC}"
+    #                 local_passed = False
+    #                 return_val = False
+    #             if i > 0:  # if a connection retry occurred and was successful
+    #                 screen_label.text = screen_label.text + f"\n{BaseColors.OKGREEN}Connection successful.{BaseColors.ENDC}"
+    #             return return_val  # so that calling method can use the results accordingly
+    #         except:
+    #             e = sys.exc_info()[0]  # used for error checking
+    #             print(e)
+    #             if i == 0:  # if first try failed
+    #                 if connection_lost:
+    #                     screen_label.text = screen_label.text + f"\n{BaseColors.FAIL}No Connection. {BaseColors.ENDC}" \
+    #                                                             f"{BaseColors.OKBLUE}Data will be stored locally and " \
+    #                                                             f"uploaded at the next {BaseColors.OKBLUE}upload point, or " \
+    #                                                             f"if triggered from the menu.{BaseColors.ENDC}"
+    #                     if connection_type == 'upload':
+    #                         with open(backup_file, "a") as backup:  # write the data to the backup.txt file
+    #                             backup.write(f"{content}\n")
+    #                     local_passed = True
+    #                     return False  # return a connection failure
+    #                 else:
+    #                     screen_label.text = screen_label.text + f"\n{BaseColors.FAIL}Connection lost. Trying again in 10 " \
+    #                                                             f"seconds.{BaseColors.ENDC}"
+    #                     time.sleep(10)
+    #
+    #             elif i == 1:  # if second try failed
+    #                 screen_label.text = screen_label.text + f"\n{BaseColors.FAIL}Reconnect failed. Trying again in 30 " \
+    #                                                         f"seconds.{BaseColors.ENDC}"
+    #                 time.sleep(30)
+    #             elif i > 1 and not duplicate:  # if failed thrice, write to backup.txt
+    #                 connection_lost = True
+    #                 screen_label.text = screen_label.text + f"\n{BaseColors.FAIL}Reconnect failed again. {BaseColors.ENDC}" \
+    #                                                         f"{BaseColors.OKBLUE}Data will be stored locally and uploaded at" \
+    #                                                         f" the {BaseColors.OKBLUE}next upload point, or if triggered " \
+    #                                                         f"from the menu.{BaseColors.ENDC}"
+    #                 if connection_type == 'upload':
+    #                     with open(backup_file, "a") as backup:  # write the data to the backup.txt file
+    #                         backup.write(f"{content}\n")
+    #                     local_passed = True
+    #                 return False  # return a connection failure
+    #         i += 1
     local_passed = False
     return False
 
@@ -587,7 +586,7 @@ def cons(main_screen_widget):
                 screen_label.text = screen_label.text + f"\n\n{BaseColors.OKGREEN}Consolidated file created in the " \
                                                         f"specified storage directory under {BaseColors.OKBLUE}" \
                                                         f"{BaseColors.OKGREEN}the filename " + cons_filename + \
-                                                        f"{BaseColors.ENDC}\n"
+                                    f"{BaseColors.ENDC}\n"
             except:
                 screen_label.text = screen_label.text + f"\n{BaseColors.WARNING}[WARNING] Either the system was " \
                                                         f"unable to write the consolidated file {BaseColors.ENDC}" \
@@ -730,7 +729,8 @@ class MainScreenWidget(BoxLayout):
 
             # open the output txt file for writing and initialize the set of barcodes found thus far
             if os.path.isfile(args["output"]) and checkStorage:  # check if user wanted to restart prev session
-                if (storageChoice.lower() == 'b' or storageChoice.lower() == 'c') and uploadBackup:  # do this only if QR Toolbox is in online-mode
+                if (storageChoice.lower() == 'b') and uploadBackup:  # do this only if QR Toolbox is in online-mode
+                    # add "or storageChoice.lower() == 'c'" if SQL active
                     # Write previous records back to contentStrings
                     with open(args["output"], "r", encoding='utf-8') as txt:
                         screen_label.text = screen_label.text + f"\n{BaseColors.OKBLUE}Restoring records (online " \
@@ -772,7 +772,8 @@ class MainScreenWidget(BoxLayout):
                                                  barcode_data_special, status, duration)
                             if not success:
                                 break  # if upload failed, break loop and let user know it failed
-                elif (storageChoice.lower() == 'b' or storageChoice.lower() == 'c') and not uploadBackup:
+                elif (storageChoice.lower() == 'b') and not uploadBackup:
+                    # add "or storageChoice.lower() == 'c'" if SQL active
                     screen_label.text = screen_label.text + f"\n{BaseColors.OKBLUE}Restoring records (online mode)" \
                                                             f"...{BaseColors.ENDC}\n" \
                                                             f"{open(args['output'], 'r', encoding='utf-8').read()}"
@@ -826,7 +827,8 @@ class MainScreenWidget(BoxLayout):
                             found_time.append(datetime.datetime.strptime(line_array[1], "%Y-%m-%d %H:%M:%S"))
                             found_status.append(line_array[2][:len(line_array[2]) - 1:])
                             thread_started.append(False)
-                    if storageChoice.lower() == 'b' or storageChoice.lower() == 'c':
+                    if storageChoice.lower() == 'b':
+                        # add "or storageChoice.lower() == 'c'" if SQL active
                         upload_backup(self)
                     screen_label.text = screen_label.text + f"\n{BaseColors.OKBLUE}Previous session restarted." \
                                                             f"{BaseColors.ENDC}"
@@ -930,7 +932,8 @@ class MainScreenWidget(BoxLayout):
                                 qr_data_file.write("{0},{1},{2}\n".format(code, tyme, status))
 
                         success = True
-                        if storageChoice.lower() == 'b' or storageChoice.lower() == 'c':  # if user chose online/arcgis
+                        if storageChoice.lower() == 'b':  # if user chose online/arcgis
+                            # add "or storageChoice.lower() == 'c'" if SQL active
                             success = upload(self, "upload", system_id, datestr, timestr, barcode_data, "IN")
 
                         if success:
@@ -974,7 +977,8 @@ class MainScreenWidget(BoxLayout):
                                                                                barcode_data, "OUT", time_check))
 
                             success = True
-                            if storageChoice.lower() == 'b' or storageChoice.lower() == 'c':  # if user chose online/arcgis version
+                            if storageChoice.lower() == 'b':  # if user chose online/arcgis version
+                                # add "or storageChoice.lower() == 'c'" if SQL active
                                 success = upload(self, "upload", system_id, datestr, timestr, barcode_data, "OUT",
                                                  str(time_check))
 
@@ -1145,7 +1149,8 @@ class MainScreenWidget(BoxLayout):
         except Exception as e:
             if e.__str__() == "Invalid token.\n(Error Code: 498)":
                 self.gis._con.token = self.gis._con.relogin()
-                search_results = self.gis.content.search(query=gis_query, max_items=15)  # query is set in the settings.csv file
+                search_results = self.gis.content.search(query=gis_query,
+                                                         max_items=15)  # query is set in the settings.csv file
             else:
                 screen_label.text = screen_label.text + f"\n{e}"
                 return False
@@ -1235,12 +1240,12 @@ class MainScreenWidget(BoxLayout):
 
     def about(self):
         # displays the about screen
-        text = "[u]QR Toolbox v1.6[/u]\n"
+        text = "[u]QR Toolbox v1.7.2[/u]\n"
         text = text + "About: The QR Toolbox is a suite a tools for creating and reading QR codes. The toolbox is " \
                       "lightweight, open source, and written in Python and Kivy. This toolbox may be used to track " \
                       "resources, serve as a check-in capability for personnel, or customized to meet other " \
                       "operational needs. \n"
-        text = text + "Version: 1.6 \n\n"
+        text = text + "Version: 1.7.2 \n\n"
         text = text + "Credits: The QR Toolbox consists of a number of python packages, namely: \n qrcode - " \
                       "Lincoln Loop info@lincolnloop.com; \n pyzbar - Lawrence Hudson quicklizard@googlemail.com; \n " \
                       "OpenCV code - Adrian Rosebrock https://www.pyimagesearch.com/author/adrian/; \n Sound effects " \
@@ -1401,14 +1406,14 @@ class TimerWidget(BoxLayout):
     def set_timer(self, time_to_set):  # a time of 0min also counts as unsetting the timer
         if time_to_set != "" and time_to_set is not None and int(time_to_set) != 0:
             self.main_screen.timer = int(time_to_set)  # set the timer and print a message
-            self.main_screen.ids.screen_label.text = self.main_screen.ids.screen_label.text + f"\n{BaseColors.WARNING}"\
+            self.main_screen.ids.screen_label.text = self.main_screen.ids.screen_label.text + f"\n{BaseColors.WARNING}" \
                                                                                               f"Timer set to " \
                                                                                               f"{time_to_set} " \
                                                                                               f"minute(s)." \
                                                                                               f"{BaseColors.ENDC}"
         else:  # unset the timer
             self.main_screen.timer = None
-            self.main_screen.ids.screen_label.text = self.main_screen.ids.screen_label.text + f"\n{BaseColors.WARNING}"\
+            self.main_screen.ids.screen_label.text = self.main_screen.ids.screen_label.text + f"\n{BaseColors.WARNING}" \
                                                                                               f"Timer unset." \
                                                                                               f"{BaseColors.ENDC}"
 
@@ -1506,8 +1511,8 @@ class QRSingleWidget(BoxLayout):
         if text != "" and text is not None:
             qr_single(self.main_screen, text)
         else:
-            self.main_screen.ids.screen_label.text = self.main_screen.ids.screen_label.text + f"\n{BaseColors.WARNING}"\
-                                                                                              f"QR Code text can't be "\
+            self.main_screen.ids.screen_label.text = self.main_screen.ids.screen_label.text + f"\n{BaseColors.WARNING}" \
+                                                                                              f"QR Code text can't be " \
                                                                                               f"empty.{BaseColors.ENDC}"
 
 
@@ -1526,12 +1531,14 @@ class LoginWidget(BoxLayout):
     """
 
     def sign_in(self):
-        global user_chose_storage, storageChoice, sql_cursor, sql_address, sql_database, arcgis_url, gis_query
+        global user_chose_storage, storageChoice, arcgis_token, gis_query, \
+            arcgis_url  # , sql_cursor, sql_address, sql_database
+
         screen_label = self.main_screen.ids.screen_label
         setup_screen_label(screen_label)
         if storageChoice == "b":
             try:
-                self.main_screen.gis = GIS(arcgis_url, client_id='vpeanPqMcHdq7G6z')  # Get ArcGIS access and save it
+                self.main_screen.gis = GIS(arcgis_url, arcgis_token)  # Get ArcGIS access and save it
                 search_results = self.main_screen.gis.content.search(query=gis_query, max_items=15)
 
                 # check that query works and there's a layer to get
@@ -1566,22 +1573,22 @@ class LoginWidget(BoxLayout):
             except:  # in case the above except clause doesn't catch everything
                 screen_label.text = screen_label.text + f"\n{BaseColors.FAIL}An unknown error has occurred.{BaseColors.ENDC}"
                 user_chose_storage = False
-        elif storageChoice == "c":
-            try:
-                cxnn = pyodbc.connect(driver='{ODBC Driver 17 for SQL Server}', server=sql_address,
-                                      database=sql_database, trusted_connection='yes')
-                sql_cursor = cxnn.cursor()
-
-                screen_label.text = screen_label.text + f"\n{BaseColors.OKBLUE}Storage location set to online (SQL)." \
-                                                        f"{BaseColors.ENDC}"  # if successful
-                user_chose_storage = True
-            except Exception as e:  # if error in trying to access ArcGIS or run the query
-                # e = sys.exc_info()[0]  # used for error checking
-                screen_label.text = screen_label.text + f"\n{BaseColors.FAIL}Error: {e}{BaseColors.ENDC}"
-                user_chose_storage = False
-            except:  # in case the above except clause doesn't catch everything
-                screen_label.text = screen_label.text + f"\n{BaseColors.FAIL}An unknown error has occurred.{BaseColors.ENDC}"
-                user_chose_storage = False
+        # elif storageChoice == "c":
+        #     try:
+        #         cxnn = pyodbc.connect(driver='{ODBC Driver 17 for SQL Server}', server=sql_address,
+        #                               database=sql_database, trusted_connection='yes')
+        #         sql_cursor = cxnn.cursor()
+        #
+        #         screen_label.text = screen_label.text + f"\n{BaseColors.OKBLUE}Storage location set to online (SQL)." \
+        #                                                 f"{BaseColors.ENDC}"  # if successful
+        #         user_chose_storage = True
+        #     except Exception as e:  # if error in trying to access ArcGIS or run the query
+        #         # e = sys.exc_info()[0]  # used for error checking
+        #         screen_label.text = screen_label.text + f"\n{BaseColors.FAIL}Error: {e}{BaseColors.ENDC}"
+        #         user_chose_storage = False
+        #     except:  # in case the above except clause doesn't catch everything
+        #         screen_label.text = screen_label.text + f"\n{BaseColors.FAIL}An unknown error has occurred.{BaseColors.ENDC}"
+        #         user_chose_storage = False
 
     """ 
     This function is called if the user clicks cancel, so user knows no storage is set currently 
@@ -1637,27 +1644,32 @@ class QRToolboxApp(App):
 
     def on_start(self):
         global clear_screen, not_yet, arcgis_url, gis_query, latitude, longitude, localQRBatchFile, settings, \
-            sql_address, headers, sql_database, query_in, query_out
+            arcgis_token  # , sql_address, headers, sql_database, query_in, query_out
         with open(settings, 'r', encoding='utf-8') as set_file:
             reader = csv.reader(set_file)
             reader.__next__()
             values = reader.__next__()
-            arcgis_url = values[0]
-            gis_query = values[1]
-            latitude = values[2]
-            longitude = values[3]
-            localQRBatchFile = values[4]
-            sql_address = values[5]
-            sql_database = values[6]
-            headers = values[7:]
-            query_in = """
-            INSERT INTO %s (%s, %s, %s, %s)
-            VALUES (?, ?, ?, 'IN');
-            """ % (headers[0],headers[1],headers[2],headers[3],headers[4])
-            query_out = """
-            INSERT INTO %s (%s, %s, %s, %s, %s)
-            VALUES (?, ?, ?, 'OUT', ?);
-            """ % (headers[0],headers[1],headers[2],headers[3],headers[4],headers[5])
+            localQRBatchFile = values[0]
+            reader.__next__()
+            arcgis_values = reader.__next__()
+            arcgis_url = arcgis_values[0]
+            arcgis_token = arcgis_values[1]
+            gis_query = arcgis_values[2]
+            latitude = arcgis_values[3]
+            longitude = arcgis_values[4]
+            # reader.__next__()
+            # sql_values = reader.__next__()
+            # sql_address = sql_values[0]
+            # sql_database = sql_values[1]
+            # headers = sql_values[2:]
+            # query_in = """
+            # INSERT INTO %s (%s, %s, %s, %s)
+            # VALUES (?, ?, ?, 'IN');
+            # """ % (headers[0], headers[1], headers[2], headers[3], headers[4])
+            # query_out = """
+            # INSERT INTO %s (%s, %s, %s, %s, %s)
+            # VALUES (?, ?, ?, 'OUT', ?);
+            # """ % (headers[0], headers[1], headers[2], headers[3], headers[4], headers[5])
 
         storage_location = StorageWidget()
         storage_location.storage_popup = Popup(title="Select a storage location", content=storage_location,
