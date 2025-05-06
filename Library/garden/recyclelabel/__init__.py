@@ -4,6 +4,7 @@ from kivy.uix.widget import Widget
 from kivy.uix.label import Label
 from kivy.lang import Builder
 from kivy.clock import Clock
+from kivy.uix.recycleview import RecycleView
 from kivy.properties import (NumericProperty, StringProperty, OptionProperty,
                              BooleanProperty, AliasProperty, ListProperty)
 

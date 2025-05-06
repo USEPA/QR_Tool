@@ -8,7 +8,7 @@
         size_hint_y: 1
         height: self.parent.height
         text_size: (self.parent.width, None)
-        text: f"\n\n[size=50][u][color=#009999]QR TOOLBOX[/color][/size][/u]\n\n\n\n\n\n[size=30]QR Toolbox v1.3\n\nUSEPA Homeland Security Research Program\n\nSystem ID: {root.sys_id}[/size]\n"
+        text: f"\n\n[size=50][u][color=#009999]QR TOOLBOX[/color][/size][/u]\n\n\n\n\n\n[size=30]QR Toolbox v1.7.2\n\nUSEPA Homeland Security Research Program\n\nSystem ID: {root.sys_id}[/size]\n"
         font_size: 18
         halign: 'center'
         valign: 'middle'
@@ -69,16 +69,22 @@
         orientation: 'horizontal'
         Button:
             id: test
-            text: "New session (all previous data will be deleted)"
+            text: "New session\n(previous data will be deleted)"
             size_hint: None, None
-            size: 350, 100
-            on_release: root.set_check_storage(False)
+            size: 235, 100
+            on_release: root.set_check_storage(False, False)
             on_release: root.restart_popup.dismiss()
         Button:
-            text: "Restart previous session"
+            text: "Continue Local session\n(if one exists)"
             size_hint: None, None
-            size: 350, 100
-            on_release: root.set_check_storage(True)
+            size: 225, 100
+            on_release: root.set_check_storage(True, True)
+            on_release: root.restart_popup.dismiss()
+        Button:
+            text: "Continue Online session\n(if one exists)"
+            size_hint: None, None
+            size: 225, 100
+            on_release: root.set_check_storage(True, False)
             on_release: root.restart_popup.dismiss()
 
 <SetupWidget>:
@@ -104,27 +110,35 @@
             on_release: root.change_storage_location()
             on_release: root.setup_popup.dismiss()
         Button:
-            id: specialcharbutton
-            text: "Special Character Conversion"
+            text: "Set/Adjust Timer"
             size_hint: None, None
             size: 225, 100
-            on_release: root.set_special_character_conversion()
+            on_release: root.set_timer_popup()
             on_release: root.setup_popup.dismiss()
 
 <StorageWidget>:
     orientation: 'vertical'
+    Label:
+        text: root.text
+        size_hint: 1, None
     BoxLayout:
-        orientation: 'vertical'
-        Label:
-            text: root.text
+        orientation: 'horizontal'
+
         Button:
             text: "Local (Specify a location on the computer)"
-            on_release: root.set_storage(True)
+            text_size: self.width, None
+            halign: "center"
+            on_release: root.set_storage("a")
             on_release: root.storage_popup.dismiss()
         Button:
-            text: "Online (Sharepoint)"
-            on_release: root.set_storage(False)
+            text: "Online (ArcGIS)"
+            on_release: root.set_storage("b")
             on_release: root.storage_popup.dismiss()
+        # Button:
+        #     text: "Online (SQL Server)"
+        #     on_release: root.set_storage("c")
+        #     on_release: root.storage_popup.dismiss()
+
 
 <CameraWidget>:
     orientation: 'vertical'
@@ -150,6 +164,42 @@
             on_release: root.set_camera("PiCamera")
             on_release: root.camera_popup.dismiss()
 
+<TimerWidget>:
+    orientation: 'vertical'
+    padding: (0, 5)
+    TextInput:
+        id: timer_input
+        use_bubble: True
+        use_handles: True
+        size: 150, 80
+        input_filter: 'int'
+        hint_text: '30'
+    BoxLayout:
+        orientation: 'horizontal'
+        Button:
+            text: "OK"
+            size_hint: None, None
+            size: 150, 55
+            on_release: root.set_timer(timer_input.text)
+            on_release: root.timer_popup.dismiss()
+        Button:
+            text: "Cancel"
+            size_hint: None, None
+            size: 150, 55
+            on_release: root.timer_popup.dismiss()
+
+<TimerAlertWidget>:
+    orientation: 'vertical'
+    BoxLayout:
+        orientation: 'horizontal'
+        Button:
+            id: timer_alert_widget
+            text: "Acknowledge"
+            size_hint: None, None
+            size: 395, 70
+            on_release: root.alert_acknowledged()
+            on_release: root.timer_alert_widget_popup.dismiss()
+
 <QRSingleWidget>:
     orientation: 'vertical'
     padding: (0, 5)
@@ -171,24 +221,6 @@
             size_hint: None, None
             size: 150, 75
             on_release: root.qr_single_popup.dismiss()
-
-<AskSpecialCharConversionWidget>:
-    orientation: 'vertical'
-    BoxLayout:
-        orientation: 'vertical'
-        Button:
-            id: special_char
-            text: "Yes"
-            size_hint: None, None
-            size: 350, 100
-            on_release: root.set_special_char_bool(True)
-            on_release: root.special_char_popup.dismiss()
-        Button:
-            text: "No (those QR Codes will be skipped)"
-            size_hint: None, None
-            size: 350, 100
-            on_release: root.set_special_char_bool(False)
-            on_release: root.special_char_popup.dismiss()
 
 <ExitWidget>:
     orientation: 'vertical'
